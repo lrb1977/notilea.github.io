@@ -1,147 +1,58 @@
-```html
-<!DOCTYPE html>
+
+  <!DOCTYPE html>
 <html lang="es">
 <head>
-    <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Noticias PY - Nueva Asunción</title>
-    <style>
-        :root {
-            --primary: #0056b3;
-            --secondary: #d32f2f;
-            --accent: #fca311;
-            --bg: #f4f6f8;
-            --text: #1a1a1a;
-            --card-bg: #ffffff;
-            --shadow: 0 4px 6px -1px rgba(0, 0, 0, 0.1), 0 2px 4px -1px rgba(0, 0, 0, 0.06);
-        }
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Notilea | Noticias Paraguay</title>
+<style>
+  body { font-family: Arial, sans-serif; background: #111; color: #fff; margin:0; padding:0; }
+  header { background: #FFD700; color: #000; padding: 20px; text-align: center; }
+  h1 { margin:0; font-size: 2em; }
+  .section { padding: 20px; border-bottom: 1px solid #333; }
+  .section h2 { color: #FFD700; }
+  .section p { margin: 10px 0; line-height: 1.4em; }
+  footer { text-align: center; padding: 10px; background: #222; font-size: 0.9em; }
+  .news-img { width: 100%; max-height: 200px; object-fit: cover; margin:10px 0; border-radius: 5px; }
+</style>
+</head>
+<body>
 
-        * {
-            box-sizing: border-box;
-            margin: 0;
-            padding: 0;
-            font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Helvetica, Arial, sans-serif;
-        }
+<header>
+  <h1>NOTILEA</h1>
+  <p>Noticias de Paraguay y el mundo</p>
+</header>
 
-        body {
-            background-color: var(--bg);
-            color: var(--text);
-            line-height: 1.6;
-            padding-bottom: 80px; /* Space for bottom nav if needed, or just footer */
-        }
+<div class="section">
+  <h2>🌦️ Clima Paraguay</h2>
+  <img class="news-img" src="https://source.unsplash.com/600x300/?paraguay,weather" alt="Clima Paraguay">
+  <p>Calor intenso entre 32°C y 38°C con posibles tormentas aisladas en la tarde. Alta humedad, hidratate y evita el sol en horas pico.</p>
+</div>
 
-        /* Header */
-        header {
-            background: var(--primary);
-            color: white;
-            padding: 1rem;
-            position: sticky;
-            top: 0;
-            z-index: 100;
-            box-shadow: var(--shadow);
-            display: flex;
-            justify-content: space-between;
-            align-items: center;
-        }
+<div class="section">
+  <h2>🇵🇾 Noticias Paraguay</h2>
+  <img class="news-img" src="https://source.unsplash.com/600x300/?paraguay,news" alt="Noticias Paraguay">
+  <p>Debates políticos rumbo a municipales 2026, presión económica y aumento de controles de seguridad en zonas urbanas.</p>
+</div>
 
-        .logo {
-            font-size: 1.5rem;
-            font-weight: 800;
-            letter-spacing: -0.5px;
-        }
+<div class="section">
+  <h2>🌎 Noticias del Mundo</h2>
+  <img class="news-img" src="https://source.unsplash.com/600x300/?world,news" alt="Noticias Mundo">
+  <p>Tensiones internacionales en aumento, inflación global afectando LATAM, y avance fuerte de inteligencia artificial en el mundo.</p>
+</div>
 
-        .date-display {
-            font-size: 0.8rem;
-            opacity: 0.9;
-            text-align: right;
-        }
+<div class="section">
+  <h2>📍 Local – Nueva Asunción (Pte. Hayes)</h2>
+  <img class="news-img" src="https://source.unsplash.com/600x300/?city,paraguay" alt="Nueva Asunción">
+  <p>Crecimiento acelerado de la ciudad, foco político emergente, migración interna aumentando población y falta de infraestructura en algunas zonas.</p>
+</div>
 
-        /* Navigation */
-        nav {
-            background: white;
-            overflow-x: auto;
-            white-space: nowrap;
-            padding: 0.5rem 1rem;
-            border-bottom: 1px solid #e0e0e0;
-            -webkit-overflow-scrolling: touch;
-        }
+<footer>
+  &copy; 2026 Notilea | Síguenos en TikTok @notilea
+</footer>
 
-        nav a {
-            text-decoration: none;
-            color: var(--text);
-            font-weight: 600;
-            margin-right: 1.5rem;
-            padding: 0.5rem 0;
-            display: inline-block;
-            position: relative;
-        }
-
-        nav a.active {
-            color: var(--primary);
-        }
-
-        nav a.active::after {
-            content: '';
-            position: absolute;
-            bottom: 0;
-            left: 0;
-            width: 100%;
-            height: 3px;
-            background: var(--primary);
-        }
-
-        /* Main Content */
-        main {
-            max-width: 1200px;
-            margin: 0 auto;
-            padding: 1rem;
-        }
-
-        /* Hero Section */
-        .hero {
-            background: var(--card-bg);
-            border-radius: 12px;
-            overflow: hidden;
-            box-shadow: var(--shadow);
-            margin-bottom: 1.5rem;
-            position: relative;
-        }
-
-        .hero-img {
-            width: 100%;
-            height: 250px;
-            object-fit: cover;
-            display: block;
-        }
-
-        .hero-content {
-            padding: 1.5rem;
-        }
-
-        .tag {
-            background: var(--secondary);
-            color: white;
-            padding: 0.25rem 0.75rem;
-            border-radius: 50px;
-            font-size: 0.75rem;
-            font-weight: 700;
-            text-transform: uppercase;
-            display: inline-block;
-            margin-bottom: 0.5rem;
-        }
-
-        .hero-title {
-            font-size: 1.5rem;
-            margin-bottom: 0.5rem;
-            line-height: 1.2;
-        }
-
-        .hero-excerpt {
-            color: #666;
-            font-size: 0.95rem;
-        }
-
-        /* Grid Layout */
+</body>
+</html>      /* Grid Layout */
         .news-grid {
             display: grid;
             grid-template-columns: 1fr;
