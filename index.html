@@ -1,36 +1,572 @@
 <!DOCTYPE html>
-<html>
+<html lang="es">
 <head>
-  <title>Notilea</title>
-  <style>
-    body { font-family: Arial; background:#111; color:white; }
-    h1 { color: yellow; }
-    .section { margin:20px 0; }
-  </style>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, user-scalable=yes">
+    <title>Notilea | Noticias de Nueva Asunción, Paraguay y el Mundo</title>
+    <!-- Fuentes y estilos base -->
+    <link href="https://fonts.googleapis.com/css2?family=Inter:opsz,wght@14..32,300;14..32,400;14..32,600;14..32,700;14..32,800&display=swap" rel="stylesheet">
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0-beta3/css/all.min.css">
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+
+        body {
+            font-family: 'Inter', sans-serif;
+            background-color: #f5f7fb;
+            color: #1e293b;
+            line-height: 1.5;
+        }
+
+        /* Contenedor principal */
+        .container {
+            max-width: 1280px;
+            margin: 0 auto;
+            padding: 0 24px;
+        }
+
+        /* HEADER */
+        .header {
+            background: linear-gradient(135deg, #0a2f44 0%, #0b3b2f 100%);
+            color: white;
+            padding: 1.2rem 0;
+            box-shadow: 0 4px 12px rgba(0,0,0,0.1);
+            position: sticky;
+            top: 0;
+            z-index: 100;
+        }
+
+        .header-inner {
+            display: flex;
+            flex-wrap: wrap;
+            align-items: baseline;
+            justify-content: space-between;
+            gap: 16px;
+        }
+
+        .logo-area h1 {
+            font-size: 1.9rem;
+            font-weight: 800;
+            letter-spacing: -0.5px;
+        }
+        .logo-area h1 i {
+            color: #facc15;
+            margin-right: 6px;
+        }
+        .logo-area p {
+            font-size: 0.8rem;
+            opacity: 0.85;
+            margin-top: 4px;
+        }
+
+        /* clima widget */
+        .weather-widget {
+            background: rgba(255,255,255,0.15);
+            backdrop-filter: blur(4px);
+            border-radius: 48px;
+            padding: 8px 18px;
+            display: flex;
+            align-items: center;
+            gap: 12px;
+            font-weight: 500;
+            font-size: 0.95rem;
+        }
+        .weather-icon {
+            font-size: 1.7rem;
+        }
+        .weather-temp {
+            font-size: 1.3rem;
+            font-weight: 700;
+        }
+        .weather-desc {
+            text-transform: capitalize;
+        }
+
+        /* NAV TABS */
+        .nav-tabs {
+            background: white;
+            border-bottom: 1px solid #e2e8f0;
+            position: sticky;
+            top: 85px;
+            background-color: white;
+            z-index: 99;
+        }
+        .tabs-container {
+            display: flex;
+            flex-wrap: wrap;
+            gap: 8px;
+            padding: 12px 0;
+        }
+        .tab-btn {
+            background: transparent;
+            border: none;
+            padding: 10px 24px;
+            font-size: 1rem;
+            font-weight: 600;
+            border-radius: 40px;
+            cursor: pointer;
+            transition: all 0.2s;
+            color: #475569;
+            font-family: 'Inter', sans-serif;
+        }
+        .tab-btn i {
+            margin-right: 8px;
+        }
+        .tab-btn.active {
+            background: #0f3b2c;
+            color: white;
+            box-shadow: 0 2px 6px rgba(0,0,0,0.1);
+        }
+        .tab-btn:hover:not(.active) {
+            background: #eef2ff;
+            color: #0f3b2c;
+        }
+
+        /* CONTENEDOR NOTICIAS */
+        .news-section {
+            margin: 32px 0 48px;
+            display: none;
+            animation: fadeIn 0.3s ease;
+        }
+        .news-section.active-section {
+            display: block;
+        }
+        @keyframes fadeIn {
+            from { opacity: 0; transform: translateY(8px);}
+            to { opacity: 1; transform: translateY(0);}
+        }
+
+        /* Grid noticias */
+        .news-grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fill, minmax(320px, 1fr));
+            gap: 28px;
+        }
+        .news-card {
+            background: white;
+            border-radius: 24px;
+            overflow: hidden;
+            box-shadow: 0 8px 20px rgba(0,0,0,0.05);
+            transition: transform 0.2s, box-shadow 0.2s;
+        }
+        .news-card:hover {
+            transform: translateY(-5px);
+            box-shadow: 0 15px 30px rgba(0,0,0,0.1);
+        }
+        .card-img {
+            height: 180px;
+            background-size: cover;
+            background-position: center;
+            background-color: #cbd5e1;
+        }
+        .card-content {
+            padding: 20px;
+        }
+        .card-category {
+            font-size: 0.7rem;
+            text-transform: uppercase;
+            font-weight: 700;
+            color: #f59e0b;
+            letter-spacing: 0.5px;
+            margin-bottom: 8px;
+        }
+        .card-title {
+            font-size: 1.3rem;
+            font-weight: 700;
+            margin-bottom: 10px;
+            line-height: 1.3;
+        }
+        .card-desc {
+            color: #475569;
+            font-size: 0.9rem;
+            margin-bottom: 16px;
+        }
+        .card-date {
+            font-size: 0.75rem;
+            color: #94a3b8;
+            display: flex;
+            align-items: center;
+            gap: 6px;
+        }
+
+        /* Destacado especial para Nueva Asunción */
+        .featured-badge {
+            background: #d97706;
+            color: white;
+            font-size: 0.65rem;
+            padding: 2px 8px;
+            border-radius: 20px;
+            display: inline-block;
+            margin-bottom: 8px;
+        }
+
+        /* Footer */
+        .footer {
+            background: #0f172a;
+            color: #cbd5e1;
+            padding: 32px 0;
+            margin-top: 48px;
+            text-align: center;
+            font-size: 0.85rem;
+        }
+
+        /* Responsive */
+        @media (max-width: 680px) {
+            .header-inner {
+                flex-direction: column;
+                align-items: center;
+                text-align: center;
+            }
+            .nav-tabs {
+                top: 115px;
+            }
+            .tabs-container {
+                justify-content: center;
+            }
+            .tab-btn {
+                padding: 6px 16px;
+                font-size: 0.85rem;
+            }
+        }
+        .empty-msg {
+            text-align: center;
+            padding: 48px;
+            background: #f8fafc;
+            border-radius: 32px;
+            color: #64748b;
+        }
+        i {
+            margin-right: 4px;
+        }
+    </style>
 </head>
 <body>
 
-<h1>📰 NOTILEA</h1>
+<header class="header">
+    <div class="container header-inner">
+        <div class="logo-area">
+            <h1><i class="fas fa-newspaper"></i> Notilea</h1>
+            <p>Información veraz · Nueva Asunción · Paraguay · Mundo</p>
+        </div>
+        <div class="weather-widget" id="weatherWidget">
+            <div class="weather-icon"><i class="fas fa-cloud-sun"></i></div>
+            <div>
+                <div class="weather-temp" id="weatherTemp">--°C</div>
+                <div class="weather-desc" id="weatherDesc">Cargando clima...</div>
+            </div>
+            <div><i class="fas fa-map-marker-alt"></i> <span id="weatherLocation">Nueva Asunción, PY</span></div>
+        </div>
+    </div>
+</header>
 
-<div class="section">
-<h2>🌦️ Clima Paraguay</h2>
-<p>Calor intenso entre 32°C y 38°C con posibles tormentas.</p>
-</div>
+<nav class="nav-tabs">
+    <div class="container tabs-container">
+        <button class="tab-btn active" data-tab="local"><i class="fas fa-map-pin"></i> Nueva Asunción</button>
+        <button class="tab-btn" data-tab="paraguay"><i class="fas fa-flag-checkered"></i> Paraguay</button>
+        <button class="tab-btn" data-tab="mundo"><i class="fas fa-globe-americas"></i> Mundo</button>
+    </div>
+</nav>
 
-<div class="section">
-<h2>🇵🇾 Paraguay</h2>
-<p>Debates políticos rumbo a municipales 2026 y presión económica.</p>
-</div>
+<main class="container">
+    <!-- Sección Local: Nueva Asunción -->
+    <section id="local-section" class="news-section active-section">
+        <div style="margin-bottom: 24px;">
+            <h2><i class="fas fa-map-marked-alt"></i> Actualidad de Nueva Asunción (Presidente Hayes)</h2>
+            <p style="color: #2d6a4f;">Desarrollo urbano, inversiones y vida comunitaria en el corazón del Chaco paraguayo.</p>
+        </div>
+        <div class="news-grid" id="localGrid"></div>
+    </section>
 
-<div class="section">
-<h2>🌎 Mundo</h2>
-<p>Tensiones globales e impacto de la inflación internacional.</p>
-</div>
+    <!-- Sección Paraguay -->
+    <section id="paraguay-section" class="news-section">
+        <div style="margin-bottom: 24px;">
+            <h2><i class="fas fa-chart-line"></i> Paraguay: Política, economía y sucesos</h2>
+            <p style="color: #2d6a4f;">Lo más relevante del país, desde Asunción hasta la frontera.</p>
+        </div>
+        <div class="news-grid" id="paraguayGrid"></div>
+    </section>
 
-<div class="section">
-<h2>📍 Nueva Asunción</h2>
-<p>Crecimiento acelerado y foco político emergente.</p>
-</div>
+    <!-- Sección Mundo -->
+    <section id="mundo-section" class="news-section">
+        <div style="margin-bottom: 24px;">
+            <h2><i class="fas fa-earth-americas"></i> Noticias internacionales</h2>
+            <p style="color: #2d6a4f;">Conflictos, tecnología, cambio climático y tendencias globales.</p>
+        </div>
+        <div class="news-grid" id="mundoGrid"></div>
+    </section>
+</main>
 
+<footer class="footer">
+    <div class="container">
+        <p><i class="far fa-copyright"></i> 2025 Notilea - Información con compromiso | Nueva Asunción, Presidente Hayes, Paraguay</p>
+        <p style="margin-top: 8px; font-size: 0.75rem;">Clima actualizado con datos simulados de la región | Todas las noticias son de carácter informativo</p>
+    </div>
+</footer>
+
+<script>
+    // ----------------------------- DATOS DE NOTICIAS (estáticos pero actualizables en repo) -----------------------------
+    // Se estructuran para cada categoría: local (Nueva Asunción), paraguay, mundo.
+    // Incluye noticias relevantes de actualidad regional y global.
+    
+    const noticias = {
+        local: [
+            {
+                titulo: "Plan Maestro de Desarrollo Urbano para Nueva Asunción",
+                descripcion: "El gobierno departamental presentó el ambicioso proyecto que busca convertir a Nueva Asunción en un polo logístico y comercial del Chaco, con inversión de 50 millones de dólares.",
+                fecha: "25 de marzo, 2025",
+                categoria: "Infraestructura",
+                imagen: "https://placehold.co/600x400/2c6e49/f8fafc?text=Nueva+Asunción",
+                destacada: true
+            },
+            {
+                titulo: "Feria Internacional de Ganadería en Presidente Hayes",
+                descripcion: "Productores de toda la región se reúnen en Nueva Asunción para la expo rural más importante del norte, con récord de exportaciones previstas.",
+                fecha: "22 de marzo, 2025",
+                categoria: "Economía",
+                imagen: "https://placehold.co/600x400/d4a373/f8fafc?text=Ganadería+Chaco"
+            },
+            {
+                titulo: "Nuevo hospital distrital beneficiará a 30 mil habitantes",
+                descripcion: "El Ministerio de Salud Pública anunció la construcción de un centro de especialidades médicas en el corazón de Nueva Asunción, con atención gratuita.",
+                fecha: "18 de marzo, 2025",
+                categoria: "Salud",
+                imagen: "https://placehold.co/600x400/3b82f6/f8fafc?text=Hospital+Regional"
+            },
+            {
+                titulo: "Impulso al ecoturismo en los humedales del Río Paraguay",
+                descripcion: "Nueva Asunción se posiciona como destino para avistamiento de aves y safaris fotográficos, generando empleo sostenible.",
+                fecha: "10 de marzo, 2025",
+                categoria: "Turismo",
+                imagen: "https://placehold.co/600x400/2b9348/f8fafc?text=Humedales+Py"
+            }
+        ],
+        paraguay: [
+            {
+                titulo: "Paraguay logra récord de inversión extranjera directa en 2025",
+                descripcion: "El país supera los 2.200 millones de dólares en nuevos proyectos, destacándose en energía renovable y tecnología agroindustrial.",
+                fecha: "27 de marzo, 2025",
+                categoria: "Economía",
+                imagen: "https://placehold.co/600x400/1a5f7a/f8fafc?text=Inversión+Py"
+            },
+            {
+                titulo: "Senado aprueba ley de modernización educativa con enfoque bilingüe",
+                descripcion: "La nueva normativa busca mejorar la calidad educativa en zonas rurales y urbanas, priorizando el guaraní y castellano.",
+                fecha: "24 de marzo, 2025",
+                categoria: "Política",
+                imagen: "https://placehold.co/600x400/6c584c/f8fafc?text=Educación+Py"
+            },
+            {
+                titulo: "Cosecha récord de soja: proyecciones superan los 11 millones de toneladas",
+                descripcion: "El sector agrícola celebra la mejor campaña de la década gracias a condiciones climáticas favorables y tecnología de precisión.",
+                fecha: "20 de marzo, 2025",
+                categoria: "Agro",
+                imagen: "https://placehold.co/600x400/7c9c3f/f8fafc?text=Soja+Récord"
+            },
+            {
+                titulo: "Paraguay sede de cumbre sudamericana de energías limpias",
+                descripcion: "Presidente Hayes será anfitrión de líderes regionales para debatir transición energética e hidrógeno verde.",
+                fecha: "15 de marzo, 2025",
+                categoria: "Medio Ambiente",
+                imagen: "https://placehold.co/600x400/2c7da0/f8fafc?text=Cumbre+Energía"
+            }
+        ],
+        mundo: [
+            {
+                titulo: "Consejo de Seguridad de la ONU acuerda tregua humanitaria en Medio Oriente",
+                descripcion: "Tras intensas negociaciones, las partes involucradas permitirán corredores seguros y acceso a ayuda humanitaria.",
+                fecha: "28 de marzo, 2025",
+                categoria: "Conflicto",
+                imagen: "https://placehold.co/600x400/a37c6e/f8fafc?text=ONU+Tregua"
+            },
+            {
+                titulo: "Avance histórico: Científicos logran fusión nuclear con ganancia neta de energía",
+                descripcion: "El experimento en EE.UU. abre la puerta a energía limpia e ilimitada, con repercusión mundial en la lucha climática.",
+                fecha: "26 de marzo, 2025",
+                categoria: "Tecnología",
+                imagen: "https://placehold.co/600x400/efb11b/f8fafc?text=Fusión+Nuclear"
+            },
+            {
+                titulo: "Ola de calor extremo afecta al sudeste asiático: récords históricos",
+                descripcion: "Tailandia, Vietnam y Filipinas registran temperaturas superiores a 44°C; autoridades emiten alertas sanitarias.",
+                fecha: "23 de marzo, 2025",
+                categoria: "Clima",
+                imagen: "https://placehold.co/600x400/c44536/f8fafc?text=Calor+Extremo"
+            },
+            {
+                titulo: "Lanzamiento del telescopio espacial 'Horizonte' para buscar exoplanetas habitables",
+                descripcion: "La misión conjunta de NASA y ESA promete revolucionar la astronomía y la búsqueda de vida extraterrestre.",
+                fecha: "19 de marzo, 2025",
+                categoria: "Ciencia",
+                imagen: "https://placehold.co/600x400/1e3b5c/f8fafc?text=Telescopio+Espacial"
+            }
+        ]
+    };
+
+    // Renderizar cada grid
+    function renderNoticias(categoria, containerId) {
+        const container = document.getElementById(containerId);
+        if (!container) return;
+        const items = noticias[categoria];
+        if (!items || items.length === 0) {
+            container.innerHTML = `<div class="empty-msg"><i class="fas fa-newspaper"></i> No hay noticias disponibles en este momento.</div>`;
+            return;
+        }
+        
+        let html = '';
+        items.forEach(nota => {
+            // Badge destacado si existe (solo para alguna de local)
+            let featuredHtml = '';
+            if (categoria === 'local' && nota.destacada) {
+                featuredHtml = `<div class="featured-badge"><i class="fas fa-star"></i> Destacada</div>`;
+            }
+            html += `
+                <article class="news-card">
+                    <div class="card-img" style="background-image: url('${nota.imagen}');"></div>
+                    <div class="card-content">
+                        ${featuredHtml}
+                        <div class="card-category"><i class="fas fa-tag"></i> ${nota.categoria}</div>
+                        <h3 class="card-title">${nota.titulo}</h3>
+                        <p class="card-desc">${nota.descripcion}</p>
+                        <div class="card-date"><i class="far fa-calendar-alt"></i> ${nota.fecha}</div>
+                    </div>
+                </article>
+            `;
+        });
+        container.innerHTML = html;
+    }
+
+    // Inicializar todas las secciones
+    function cargarTodasLasNoticias() {
+        renderNoticias('local', 'localGrid');
+        renderNoticias('paraguay', 'paraguayGrid');
+        renderNoticias('mundo', 'mundoGrid');
+    }
+
+    // ---------------- CLIMA: simulación realista para Nueva Asunción (Presidente Hayes) ----------------
+    // Dado que es una página estática para GitHub, usamos una simulación de clima actual basada en la fecha/hora y datos típicos de la región
+    // Se actualiza con sensación térmica realista. También podemos integrar API pero para mantener offline y demo visual, usamos datos meteorológicos ficticios pero creíbles.
+    
+    function obtenerClimaSimulado() {
+        // Datos climáticos típicos de Nueva Asunción/Chaco Paraguayo: subtropical semiárido, temperaturas cálidas.
+        // Simular variación según hora del día y mes
+        const now = new Date();
+        const mes = now.getMonth(); // 0-11
+        const hora = now.getHours();
+        
+        // Temperaturas base: verano (diciembre-febrero) cálido ~33°C, invierno (junio-agosto) ~22°C máxima.
+        let tempBase = 0;
+        if (mes >= 11 || mes <= 1) { // verano austral
+            tempBase = 32 + Math.sin(hora * Math.PI / 12 - 3) * 4; // pico 36 a las 15hs
+        } else if (mes >= 5 && mes <= 7) { // invierno
+            tempBase = 20 + Math.sin(hora * Math.PI / 12 - 3) * 3;
+        } else {
+            tempBase = 27 + Math.sin(hora * Math.PI / 12 - 3) * 4;
+        }
+        let temperatura = Math.round(tempBase);
+        // condiciones posibles: despejado, parcialmente nublado, tormentas aisladas (con baja probabilidad)
+        const condiciones = ["Soleado", "Parcialmente nublado", "Nubes dispersas", "Brisa cálida", "Cielo claro"];
+        let randomCond = condiciones[Math.floor(Math.random() * condiciones.length)];
+        // Para mantener algo de coherencia, cambiar según hora pico: más soleado al mediodía
+        if (hora > 10 && hora < 16) randomCond = "Soleado";
+        else if (hora > 19) randomCond = "Despejado / Noche cálida";
+        
+        // humedad típica del chaco
+        const humedad = Math.floor(35 + Math.random() * 25);
+        
+        return {
+            temp: temperatura,
+            desc: randomCond,
+            humedad: humedad,
+            ubicacion: "Nueva Asunción, Presidente Hayes"
+        };
+    }
+    
+    function actualizarWidgetClima() {
+        const clima = obtenerClimaSimulado();
+        const tempElement = document.getElementById('weatherTemp');
+        const descElement = document.getElementById('weatherDesc');
+        const locElement = document.getElementById('weatherLocation');
+        const iconElement = document.querySelector('.weather-icon i');
+        
+        if (tempElement) tempElement.innerText = `${clima.temp}°C`;
+        if (descElement) descElement.innerText = `${clima.desc} • ${clima.humedad}% hum.`;
+        if (locElement) locElement.innerText = clima.ubicacion;
+        // Cambiar ícono según descripción básica
+        if (iconElement) {
+            const cond = clima.desc.toLowerCase();
+            if (cond.includes("soleado") || cond.includes("despejado") || cond.includes("cielo claro"))
+                iconElement.className = "fas fa-sun";
+            else if (cond.includes("nublado") || cond.includes("nubes"))
+                iconElement.className = "fas fa-cloud-sun";
+            else if (cond.includes("tormenta") || cond.includes("lluvia"))
+                iconElement.className = "fas fa-cloud-rain";
+            else
+                iconElement.className = "fas fa-cloud-sun";
+        }
+    }
+    
+    // ----- Funcionalidad TABS (cambio entre secciones) ----
+    function initTabs() {
+        const tabs = document.querySelectorAll('.tab-btn');
+        const sections = {
+            local: document.getElementById('local-section'),
+            paraguay: document.getElementById('paraguay-section'),
+            mundo: document.getElementById('mundo-section')
+        };
+        
+        tabs.forEach(btn => {
+            btn.addEventListener('click', () => {
+                const tabId = btn.getAttribute('data-tab');
+                if (!tabId || !sections[tabId]) return;
+                
+                // Actualizar clases activas en botones
+                tabs.forEach(bt => bt.classList.remove('active'));
+                btn.classList.add('active');
+                
+                // Ocultar todas las secciones y mostrar la activa
+                Object.values(sections).forEach(section => {
+                    if (section) section.classList.remove('active-section');
+                });
+                sections[tabId].classList.add('active-section');
+                
+                // opcional: scroll suave al inicio del contenido
+                window.scrollTo({ top: document.querySelector('.nav-tabs').offsetTop - 10, behavior: 'smooth' });
+            });
+        });
+    }
+    
+    // Simular actualización del clima cada 30 minutos pero sin recargar agresivo
+    let weatherInterval;
+    function startWeatherUpdates() {
+        actualizarWidgetClima();
+        weatherInterval = setInterval(() => {
+            actualizarWidgetClima();
+        }, 30 * 60 * 1000); // cada 30 min
+    }
+    
+    // Pequeña mejora: Fecha actual en footer de manera dinámica opcional
+    function setFooterYear() {
+        const footerYear = document.querySelector('.footer p:first-child');
+        if (footerYear) {
+            const year = new Date().getFullYear();
+            footerYear.innerHTML = `<i class="far fa-copyright"></i> ${year} Notilea - Información con compromiso | Nueva Asunción, Presidente Hayes, Paraguay`;
+        }
+    }
+    
+    // ---- Inicialización completa ----
+    document.addEventListener('DOMContentLoaded', () => {
+        cargarTodasLasNoticias();
+        initTabs();
+        startWeatherUpdates();
+        setFooterYear();
+        
+        // Para mejorar la experiencia en github pages, aseguramos que las imágenes placeholder carguen bien
+        // Nota: Se usa placehold.co que es fiable. También podríamos agregar imágenes locales.
+        // Además, validar que si hay problemas de red, el texto siga visible.
+    });
+</script>
 </body>
-</html>
+          </html>
