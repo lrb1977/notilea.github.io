@@ -1,0 +1,1139 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>NOTILEA — Análisis Internacional y Local · Paraguay</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link href="https://fonts.googleapis.com/css2?family=Playfair+Display:ital,wght@0,700;0,900;1,400&family=Libre+Baskerville:ital,wght@0,400;0,700;1,400&family=Barlow+Condensed:wght@400;600;700&display=swap" rel="stylesheet">
+<style>
+  *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+
+  :root {
+    --ink: #16140f;
+    --paper: #f7f3ec;
+    --paper-dark: #ede7d9;
+    --red: #8c1c1c;
+    --red-light: #b52828;
+    --gold: #b8860b;
+    --gray: #6b6457;
+    --gray-light: #c8bfae;
+    --border: #c0b49a;
+    --white: #fff;
+  }
+
+  html { scroll-behavior: smooth; }
+
+  body {
+    background: var(--paper);
+    color: var(--ink);
+    font-family: 'Libre Baskerville', Georgia, serif;
+    font-size: 16px;
+    line-height: 1.7;
+    overflow-x: hidden;
+  }
+
+  /* ── TOP UTILITY BAR ── */
+  .util-bar {
+    background: var(--ink);
+    color: #c8bfae;
+    font-family: 'Barlow Condensed', sans-serif;
+    font-size: 11px;
+    letter-spacing: 0.1em;
+    text-transform: uppercase;
+    padding: 6px 24px;
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    flex-wrap: wrap;
+    gap: 6px;
+  }
+
+  .util-bar a { color: #d4a017; text-decoration: none; }
+  .util-bar a:hover { text-decoration: underline; }
+
+  /* ── MASTHEAD ── */
+  .masthead {
+    border-bottom: 4px double var(--ink);
+    padding: 28px 24px 20px;
+    text-align: center;
+    background: var(--paper);
+    position: relative;
+  }
+
+  .masthead-eyebrow {
+    font-family: 'Barlow Condensed', sans-serif;
+    font-size: 10.5px;
+    letter-spacing: 0.35em;
+    text-transform: uppercase;
+    color: var(--gray);
+    margin-bottom: 10px;
+  }
+
+  .masthead-name {
+    font-family: 'Playfair Display', serif;
+    font-size: clamp(52px, 10vw, 96px);
+    font-weight: 900;
+    letter-spacing: -3px;
+    line-height: 0.92;
+    color: var(--ink);
+    display: block;
+  }
+
+  .masthead-rule {
+    display: flex;
+    align-items: center;
+    gap: 12px;
+    margin: 14px 0 10px;
+    justify-content: center;
+  }
+
+  .masthead-rule .line { flex: 1; max-width: 180px; height: 1px; background: var(--border); }
+  .masthead-rule .diamond {
+    width: 8px; height: 8px;
+    background: var(--red);
+    transform: rotate(45deg);
+    flex-shrink: 0;
+  }
+
+  .masthead-tagline {
+    font-family: 'Barlow Condensed', sans-serif;
+    font-size: 11px;
+    letter-spacing: 0.28em;
+    text-transform: uppercase;
+    color: var(--gray);
+  }
+
+  /* ── NAV ── */
+  nav {
+    background: var(--ink);
+    position: sticky;
+    top: 0;
+    z-index: 100;
+    border-bottom: 3px solid var(--red);
+  }
+
+  .nav-inner {
+    max-width: 1100px;
+    margin: 0 auto;
+    display: flex;
+    align-items: center;
+    padding: 0 24px;
+    overflow-x: auto;
+    scrollbar-width: none;
+  }
+
+  .nav-inner::-webkit-scrollbar { display: none; }
+
+  .nav-logo {
+    font-family: 'Playfair Display', serif;
+    font-size: 18px;
+    font-weight: 900;
+    color: var(--paper);
+    letter-spacing: -0.5px;
+    padding: 12px 20px 12px 0;
+    margin-right: 12px;
+    border-right: 1px solid #333;
+    white-space: nowrap;
+    text-decoration: none;
+  }
+
+  nav a {
+    font-family: 'Barlow Condensed', sans-serif;
+    font-size: 13px;
+    letter-spacing: 0.12em;
+    text-transform: uppercase;
+    color: #c8bfae;
+    text-decoration: none;
+    padding: 14px 16px;
+    white-space: nowrap;
+    transition: color 0.2s;
+    border-bottom: 3px solid transparent;
+    margin-bottom: -3px;
+  }
+
+  nav a:hover, nav a.active {
+    color: var(--paper);
+    border-bottom-color: var(--red);
+  }
+
+  /* ── LAYOUT ── */
+  .container { max-width: 1100px; margin: 0 auto; padding: 0 24px; }
+
+  /* ── HERO SECTION ── */
+  .hero {
+    padding: 36px 0 28px;
+    border-bottom: 2px solid var(--border);
+    margin-bottom: 36px;
+  }
+
+  .hero-grid {
+    display: grid;
+    grid-template-columns: 1fr 320px;
+    gap: 32px;
+    align-items: start;
+  }
+
+  @media (max-width: 768px) {
+    .hero-grid { grid-template-columns: 1fr; }
+  }
+
+  .hero-main {}
+
+  .section-kicker {
+    font-family: 'Barlow Condensed', sans-serif;
+    font-size: 11px;
+    letter-spacing: 0.25em;
+    text-transform: uppercase;
+    color: var(--red);
+    margin-bottom: 10px;
+    display: flex;
+    align-items: center;
+    gap: 10px;
+  }
+
+  .section-kicker::before {
+    content: '';
+    display: block;
+    width: 32px;
+    height: 2px;
+    background: var(--red);
+  }
+
+  .hero-headline {
+    font-family: 'Playfair Display', serif;
+    font-size: clamp(28px, 4vw, 44px);
+    font-weight: 900;
+    line-height: 1.1;
+    color: var(--ink);
+    margin-bottom: 16px;
+  }
+
+  .hero-deck {
+    font-size: 15px;
+    font-style: italic;
+    color: var(--gray);
+    line-height: 1.6;
+    border-left: 3px solid var(--red);
+    padding-left: 14px;
+    margin-bottom: 16px;
+  }
+
+  .hero-body {
+    font-size: 14.5px;
+    color: #2a2620;
+    line-height: 1.8;
+    margin-bottom: 14px;
+  }
+
+  .hero-body p:first-child::first-letter {
+    float: left;
+    font-family: 'Playfair Display', serif;
+    font-size: 60px;
+    font-weight: 900;
+    line-height: 0.78;
+    padding: 8px 8px 0 0;
+    color: var(--red);
+  }
+
+  .read-more {
+    font-family: 'Barlow Condensed', sans-serif;
+    font-size: 12px;
+    letter-spacing: 0.18em;
+    text-transform: uppercase;
+    color: var(--red);
+    text-decoration: none;
+    border-bottom: 1px solid var(--red);
+    padding-bottom: 1px;
+    transition: color 0.2s;
+  }
+
+  .read-more:hover { color: var(--red-light); }
+
+  /* ── SIDEBAR ── */
+  .hero-sidebar {}
+
+  .sidebar-block {
+    border: 1px solid var(--border);
+    margin-bottom: 20px;
+    background: var(--paper-dark);
+  }
+
+  .sidebar-block-title {
+    background: var(--ink);
+    color: var(--paper);
+    font-family: 'Barlow Condensed', sans-serif;
+    font-size: 11px;
+    letter-spacing: 0.2em;
+    text-transform: uppercase;
+    padding: 8px 14px;
+    display: flex;
+    align-items: center;
+    gap: 8px;
+  }
+
+  .sidebar-block-title .dot {
+    width: 6px; height: 6px;
+    background: var(--gold);
+    border-radius: 50%;
+    flex-shrink: 0;
+  }
+
+  .sidebar-item {
+    padding: 12px 14px;
+    border-bottom: 1px solid var(--border);
+    font-size: 13px;
+    line-height: 1.5;
+  }
+
+  .sidebar-item:last-child { border-bottom: none; }
+
+  .sidebar-item .si-cat {
+    font-family: 'Barlow Condensed', sans-serif;
+    font-size: 10px;
+    letter-spacing: 0.2em;
+    text-transform: uppercase;
+    color: var(--red);
+    display: block;
+    margin-bottom: 3px;
+  }
+
+  .sidebar-item .si-title {
+    font-family: 'Playfair Display', serif;
+    font-weight: 700;
+    font-size: 14px;
+    line-height: 1.3;
+    color: var(--ink);
+    display: block;
+    text-decoration: none;
+  }
+
+  .sidebar-item .si-title:hover { color: var(--red); }
+
+  .sidebar-item .si-time {
+    font-family: 'Barlow Condensed', sans-serif;
+    font-size: 10.5px;
+    color: var(--gray);
+    margin-top: 4px;
+    display: block;
+  }
+
+  /* ── SECTION DIVIDER ── */
+  .section-divider {
+    display: flex;
+    align-items: center;
+    gap: 14px;
+    margin: 40px 0 28px;
+  }
+
+  .section-divider .sd-label {
+    font-family: 'Playfair Display', serif;
+    font-size: 22px;
+    font-weight: 700;
+    white-space: nowrap;
+    color: var(--ink);
+  }
+
+  .section-divider .sd-line { flex: 1; height: 1px; background: var(--border); }
+  .section-divider .sd-accent {
+    width: 28px; height: 3px;
+    background: var(--red);
+    flex-shrink: 0;
+  }
+
+  /* ── ARTICLE GRID ── */
+  .articles-grid {
+    display: grid;
+    grid-template-columns: repeat(3, 1fr);
+    gap: 24px 28px;
+    margin-bottom: 40px;
+  }
+
+  @media (max-width: 900px) {
+    .articles-grid { grid-template-columns: repeat(2, 1fr); }
+  }
+
+  @media (max-width: 560px) {
+    .articles-grid { grid-template-columns: 1fr; }
+  }
+
+  .article-card {
+    border-top: 3px solid var(--border);
+    padding-top: 16px;
+    transition: border-color 0.2s;
+    cursor: pointer;
+  }
+
+  .article-card:hover { border-top-color: var(--red); }
+
+  .article-card .ac-cat {
+    font-family: 'Barlow Condensed', sans-serif;
+    font-size: 10.5px;
+    letter-spacing: 0.2em;
+    text-transform: uppercase;
+    color: var(--red);
+    margin-bottom: 6px;
+    display: block;
+  }
+
+  .article-card .ac-title {
+    font-family: 'Playfair Display', serif;
+    font-size: 17px;
+    font-weight: 700;
+    line-height: 1.3;
+    color: var(--ink);
+    margin-bottom: 8px;
+    display: block;
+    text-decoration: none;
+  }
+
+  .article-card .ac-title:hover { color: var(--red); }
+
+  .article-card .ac-summary {
+    font-size: 13.5px;
+    color: var(--gray);
+    line-height: 1.6;
+    margin-bottom: 10px;
+  }
+
+  .article-card .ac-meta {
+    font-family: 'Barlow Condensed', sans-serif;
+    font-size: 11px;
+    color: var(--gray);
+    letter-spacing: 0.06em;
+    display: flex;
+    gap: 10px;
+    align-items: center;
+    flex-wrap: wrap;
+  }
+
+  .ac-tag {
+    background: var(--ink);
+    color: var(--paper);
+    font-family: 'Barlow Condensed', sans-serif;
+    font-size: 10px;
+    letter-spacing: 0.14em;
+    text-transform: uppercase;
+    padding: 2px 8px;
+  }
+
+  .ac-tag.red { background: var(--red); }
+  .ac-tag.gold { background: var(--gold); }
+
+  /* ── ANALYSIS BAND ── */
+  .analysis-band {
+    background: var(--ink);
+    color: var(--paper);
+    padding: 40px 0;
+    margin: 40px 0;
+  }
+
+  .analysis-band .container { display: grid; grid-template-columns: 1fr 1fr; gap: 40px; }
+
+  @media (max-width: 700px) {
+    .analysis-band .container { grid-template-columns: 1fr; }
+  }
+
+  .analysis-headline {
+    font-family: 'Playfair Display', serif;
+    font-size: 26px;
+    font-weight: 900;
+    line-height: 1.2;
+    color: var(--paper);
+    margin-bottom: 14px;
+    border-top: 3px solid var(--red);
+    padding-top: 14px;
+  }
+
+  .analysis-body {
+    font-size: 13.5px;
+    color: #c8bfae;
+    line-height: 1.75;
+  }
+
+  .analysis-author {
+    font-family: 'Barlow Condensed', sans-serif;
+    font-size: 11px;
+    letter-spacing: 0.14em;
+    text-transform: uppercase;
+    color: var(--gold);
+    margin-top: 14px;
+  }
+
+  /* ── PULSO PARAGUAY ── */
+  .paraguay-grid {
+    display: grid;
+    grid-template-columns: 2fr 1fr;
+    gap: 32px;
+    margin-bottom: 40px;
+  }
+
+  @media (max-width: 768px) {
+    .paraguay-grid { grid-template-columns: 1fr; }
+  }
+
+  .featured-story {
+    border-bottom: 1px solid var(--border);
+    padding-bottom: 24px;
+    margin-bottom: 24px;
+  }
+
+  .featured-story:last-child { border-bottom: none; margin-bottom: 0; }
+
+  .featured-story .fs-headline {
+    font-family: 'Playfair Display', serif;
+    font-size: 22px;
+    font-weight: 700;
+    line-height: 1.25;
+    color: var(--ink);
+    margin: 8px 0 10px;
+  }
+
+  .featured-story .fs-body {
+    font-size: 14px;
+    color: #333;
+    line-height: 1.75;
+  }
+
+  /* ── DATA BOX ── */
+  .data-box {
+    background: var(--ink);
+    color: var(--paper);
+    padding: 20px;
+    margin-bottom: 20px;
+  }
+
+  .data-box-title {
+    font-family: 'Barlow Condensed', sans-serif;
+    font-size: 11px;
+    letter-spacing: 0.22em;
+    text-transform: uppercase;
+    color: var(--gold);
+    border-bottom: 1px solid #333;
+    padding-bottom: 8px;
+    margin-bottom: 14px;
+  }
+
+  .data-row {
+    display: flex;
+    justify-content: space-between;
+    align-items: baseline;
+    padding: 7px 0;
+    border-bottom: 1px solid #2a2620;
+    font-size: 13px;
+  }
+
+  .data-row:last-child { border-bottom: none; }
+
+  .data-row .dr-label { color: #9a9080; font-size: 12px; }
+  .data-row .dr-value { font-family: 'Barlow Condensed', sans-serif; font-size: 16px; color: var(--paper); }
+  .data-row .dr-value.up { color: #5cb85c; }
+  .data-row .dr-value.down { color: #e85454; }
+
+  /* ── OPINION ROW ── */
+  .opinion-strip {
+    display: grid;
+    grid-template-columns: repeat(3, 1fr);
+    gap: 20px;
+    margin-bottom: 40px;
+  }
+
+  @media (max-width: 700px) {
+    .opinion-strip { grid-template-columns: 1fr; }
+  }
+
+  .opinion-card {
+    background: var(--paper-dark);
+    border: 1px solid var(--border);
+    padding: 18px;
+  }
+
+  .opinion-card .oc-initial {
+    width: 44px; height: 44px;
+    background: var(--ink);
+    color: var(--paper);
+    font-family: 'Playfair Display', serif;
+    font-weight: 700;
+    font-size: 20px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    margin-bottom: 12px;
+    flex-shrink: 0;
+  }
+
+  .opinion-card .oc-name {
+    font-family: 'Barlow Condensed', sans-serif;
+    font-size: 12.5px;
+    letter-spacing: 0.1em;
+    text-transform: uppercase;
+    color: var(--gray);
+    margin-bottom: 8px;
+  }
+
+  .opinion-card .oc-quote {
+    font-family: 'Playfair Display', serif;
+    font-size: 15px;
+    font-style: italic;
+    line-height: 1.5;
+    color: var(--ink);
+    border-left: 3px solid var(--red);
+    padding-left: 12px;
+  }
+
+  /* ── FOOTER ── */
+  footer {
+    background: var(--ink);
+    color: #9a9080;
+    padding: 40px 0 24px;
+    margin-top: 40px;
+    border-top: 4px solid var(--red);
+  }
+
+  .footer-grid {
+    display: grid;
+    grid-template-columns: 1.5fr 1fr 1fr;
+    gap: 40px;
+    margin-bottom: 32px;
+  }
+
+  @media (max-width: 700px) {
+    .footer-grid { grid-template-columns: 1fr; gap: 24px; }
+  }
+
+  .footer-brand-name {
+    font-family: 'Playfair Display', serif;
+    font-size: 36px;
+    font-weight: 900;
+    color: var(--paper);
+    letter-spacing: -1px;
+    margin-bottom: 10px;
+  }
+
+  .footer-desc {
+    font-size: 13px;
+    line-height: 1.65;
+    color: #7a7060;
+  }
+
+  .footer-col-title {
+    font-family: 'Barlow Condensed', sans-serif;
+    font-size: 11px;
+    letter-spacing: 0.22em;
+    text-transform: uppercase;
+    color: var(--gold);
+    margin-bottom: 14px;
+    border-bottom: 1px solid #2a2620;
+    padding-bottom: 8px;
+  }
+
+  .footer-link {
+    display: block;
+    font-size: 13px;
+    color: #9a9080;
+    text-decoration: none;
+    padding: 5px 0;
+    transition: color 0.2s;
+    border-bottom: 1px solid #1f1d18;
+  }
+
+  .footer-link:hover { color: var(--paper); }
+
+  .footer-bottom {
+    border-top: 1px solid #2a2620;
+    padding-top: 18px;
+    text-align: center;
+    font-family: 'Barlow Condensed', sans-serif;
+    font-size: 11px;
+    letter-spacing: 0.1em;
+    color: #5a5248;
+  }
+
+  /* ── ANIMATIONS ── */
+  @keyframes fadeUp {
+    from { opacity: 0; transform: translateY(18px); }
+    to { opacity: 1; transform: translateY(0); }
+  }
+
+  .hero, nav, .masthead { animation: fadeUp 0.5s ease both; }
+  .article-card { animation: fadeUp 0.5s ease both; }
+  .article-card:nth-child(1) { animation-delay: 0.05s; }
+  .article-card:nth-child(2) { animation-delay: 0.1s; }
+  .article-card:nth-child(3) { animation-delay: 0.15s; }
+  .article-card:nth-child(4) { animation-delay: 0.2s; }
+  .article-card:nth-child(5) { animation-delay: 0.25s; }
+  .article-card:nth-child(6) { animation-delay: 0.3s; }
+
+  /* ── BREAKING TAG ── */
+  .breaking {
+    display: inline-flex;
+    align-items: center;
+    gap: 6px;
+    background: var(--red);
+    color: white;
+    font-family: 'Barlow Condensed', sans-serif;
+    font-size: 10.5px;
+    letter-spacing: 0.18em;
+    text-transform: uppercase;
+    padding: 3px 10px;
+    margin-bottom: 10px;
+  }
+
+  .breaking::before {
+    content: '';
+    display: block;
+    width: 6px; height: 6px;
+    background: white;
+    border-radius: 50%;
+    animation: blink 1.2s infinite;
+  }
+
+  @keyframes blink {
+    0%, 100% { opacity: 1; }
+    50% { opacity: 0.2; }
+  }
+
+  /* ── SCROLL TOP ── */
+  #scrollTop {
+    position: fixed;
+    bottom: 28px; right: 28px;
+    width: 42px; height: 42px;
+    background: var(--ink);
+    color: var(--paper);
+    border: none;
+    cursor: pointer;
+    font-size: 18px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    opacity: 0;
+    transition: opacity 0.3s;
+    z-index: 200;
+  }
+
+  #scrollTop.visible { opacity: 1; }
+</style>
+</head>
+<body>
+
+<!-- UTILITY BAR -->
+<div class="util-bar">
+  <span>Lunes, 6 de Abril de 2026 · Asunción, Paraguay</span>
+  <span>USD: 7.740 Gs &nbsp;|&nbsp; <span style="color:#5cb85c">▲</span> IBOV: 128.430 &nbsp;|&nbsp; Temp. ASU: 28°C</span>
+  <span><a href="#">Suscribirse</a> &nbsp;·&nbsp; <a href="#">Boletín</a> &nbsp;·&nbsp; <a href="#">Contacto</a></span>
+</div>
+
+<!-- MASTHEAD -->
+<header class="masthead">
+  <p class="masthead-eyebrow">Análisis Internacional &amp; Local · Paraguay</p>
+  <span class="masthead-name">NOTILEA</span>
+  <div class="masthead-rule">
+    <span class="line"></span>
+    <span class="diamond"></span>
+    <span class="line"></span>
+  </div>
+  <p class="masthead-tagline">Perspectiva · Análisis · Verdad · Fundado en 2024</p>
+</header>
+
+<!-- NAV -->
+<nav>
+  <div class="nav-inner">
+    <a href="#" class="nav-logo">N</a>
+    <a href="#portada" class="active">Portada</a>
+    <a href="#internacional">Internacional</a>
+    <a href="#paraguay">Paraguay</a>
+    <a href="#economia">Economía</a>
+    <a href="#politica">Política</a>
+    <a href="#opinion">Opinión</a>
+  </div>
+</nav>
+
+<!-- ══════════════════════════════════════════
+     PORTADA / HERO
+══════════════════════════════════════════ -->
+<section id="portada">
+<div class="container">
+<div class="hero">
+  <div class="hero-grid">
+
+    <!-- MAIN STORY -->
+    <div class="hero-main">
+      <div class="breaking">Análisis Especial</div>
+      <div class="section-kicker">Oriente Medio</div>
+      <h1 class="hero-headline">El tablero iraní: resistencia estratégica mientras Occidente agota sus defensas</h1>
+      <p class="hero-deck">Irán mantiene capacidad y voluntad para sostener el conflicto; Trump lo usa como palanca económica; Europa y los árabes temen el colapso regional. Nadie quiere escalar, pero todos alimentan el fuego.</p>
+      <div class="hero-body">
+        <p>La estrategia iraní descansa en un cálculo histórico de paciencia y desgaste. Mientras los arsenales occidentales absorben oleadas de ataques proxy y los sistemas antimisiles de Israel y Estados Unidos operan a plena capacidad, Teherán preserva su arquitectura de disuasión y consolida corredores de influencia que se extienden desde el Mediterráneo hasta el Golfo Pérsico.</p>
+        <p>Para la República Islámica, resistir cuesta menos que rendirse. Cada interceptación sobre Tel Aviv vacía arsenales forjados a un costo que Irán no necesita igualar. La victoria no es militar: es la irrelevancia progresiva del orden regional liderado por Washington.</p>
+        <p>En ese contexto, el presidente Trump instrumentaliza el conflicto como herramienta de seguridad nacional: petróleo más barato, acceso a mercados del Golfo, fidelidad israelí asegurada y un relato electoral potente. Mientras tanto, Europa y los Estados árabes moderados leen el mismo tablero como amenaza existencial —refugiados, ataques proxy, colapso de cadenas energéticas.</p>
+      </div>
+      <a href="#" class="read-more">Continuar leyendo el análisis completo →</a>
+    </div>
+
+    <!-- SIDEBAR -->
+    <aside class="hero-sidebar">
+      <div class="sidebar-block">
+        <div class="sidebar-block-title"><span class="dot"></span>Últimas Noticias</div>
+        <div class="sidebar-item">
+          <span class="si-cat">Paraguay · Política</span>
+          <a href="#" class="si-title">Santiago Peña lanza agenda legislativa para el segundo semestre ante tensión en el Congreso</a>
+          <span class="si-time">Hace 2 horas</span>
+        </div>
+        <div class="sidebar-item">
+          <span class="si-cat">Internacional</span>
+          <a href="#" class="si-title">Rusia y Turquía acuerdan zona de influencia transitoria en el norte de Siria</a>
+          <span class="si-time">Hace 4 horas</span>
+        </div>
+        <div class="sidebar-item">
+          <span class="si-cat">Economía · Paraguay</span>
+          <a href="#" class="si-title">BCP mantiene tasa de referencia en 6% ante presión inflacionaria del primer trimestre</a>
+          <span class="si-time">Hace 5 horas</span>
+        </div>
+        <div class="sidebar-item">
+          <span class="si-cat">América del Sur</span>
+          <a href="#" class="si-title">Mercosur retoma negociaciones con la UE; Paraguay exige paridad en acceso agrícola</a>
+          <span class="si-time">Hace 7 horas</span>
+        </div>
+      </div>
+
+      <div class="data-box">
+        <div class="data-box-title">Indicadores Paraguay</div>
+        <div class="data-row"><span class="dr-label">Guaraní / USD</span><span class="dr-value">7.740</span></div>
+        <div class="data-row"><span class="dr-label">Inflación anual</span><span class="dr-value up">3.8%</span></div>
+        <div class="data-row"><span class="dr-label">Desempleo</span><span class="dr-value down">5.9%</span></div>
+        <div class="data-row"><span class="dr-label">Crecimiento PIB</span><span class="dr-value up">3.4%</span></div>
+        <div class="data-row"><span class="dr-label">Riesgo País</span><span class="dr-value">185 pb</span></div>
+      </div>
+    </aside>
+
+  </div>
+</div>
+</div>
+</section>
+
+<!-- ══════════════════════════════════════════
+     ANÁLISIS INTERNACIONAL
+══════════════════════════════════════════ -->
+<section id="internacional">
+<div class="container">
+
+  <div class="section-divider">
+    <span class="sd-accent"></span>
+    <span class="sd-label">Análisis Internacional</span>
+    <span class="sd-line"></span>
+  </div>
+
+  <div class="articles-grid">
+
+    <article class="article-card">
+      <span class="ac-cat">Oriente Medio</span>
+      <span class="ac-tag red">Análisis</span>
+      <a href="#" class="ac-title">Turquía y Rusia: aliados tácticos, rivales estratégicos en el tablero post-conflicto iraní</a>
+      <p class="ac-summary">Ankara y Moscú comparten el objetivo de expulsar a EE. UU. de la región, pero competirán ferozmente por el control del vacío posterior. Ambas cortejan a Teherán sin comprometerse en su defensa.</p>
+      <div class="ac-meta">
+        <span>Por Redacción Internacional</span>
+        <span>·</span>
+        <span>6 Abr 2026</span>
+      </div>
+    </article>
+
+    <article class="article-card">
+      <span class="ac-cat">Europa</span>
+      <span class="ac-tag">Geopolítica</span>
+      <a href="#" class="ac-title">Europa ante la amenaza existencial: refugiados, energía y el colapso de la seguridad periférica</a>
+      <p class="ac-summary">Los gobiernos europeos perciben el conflicto iraní no como una crisis lejana sino como una presión directa sobre sus fronteras, sus mercados energéticos y su cohesión política interna.</p>
+      <div class="ac-meta">
+        <span>Enviada especial: Bruselas</span>
+        <span>·</span>
+        <span>5 Abr 2026</span>
+      </div>
+    </article>
+
+    <article class="article-card">
+      <span class="ac-cat">Estados Unidos</span>
+      <span class="ac-tag gold">Exclusivo</span>
+      <a href="#" class="ac-title">Trump y la guerra como herramienta: petróleo, alianzas y el cálculo electoral de 2028</a>
+      <p class="ac-summary">La administración Trump utiliza la tensión en Oriente Medio para obtener concesiones energéticas, consolidar el apoyo israelí y mantener una narrativa de fuerza frente a sus bases domésticas.</p>
+      <div class="ac-meta">
+        <span>Washington D.C.</span>
+        <span>·</span>
+        <span>5 Abr 2026</span>
+      </div>
+    </article>
+
+    <article class="article-card">
+      <span class="ac-cat">América Latina</span>
+      <a href="#" class="ac-title">Mercosur-UE: el acuerdo vuelve a la mesa con Paraguay como voz disidente en agricultura</a>
+      <p class="ac-summary">Asunción exige cláusulas de protección para su sector ganadero y sojero ante las condiciones europeas. El gobierno Peña amenaza con vetar si no se garantiza paridad de acceso.</p>
+      <div class="ac-meta">
+        <span>Por Redacción Asunción</span>
+        <span>·</span>
+        <span>4 Abr 2026</span>
+      </div>
+    </article>
+
+    <article class="article-card">
+      <span class="ac-cat">Asia</span>
+      <a href="#" class="ac-title">China expande presencia en América del Sur: inversión en infraestructura crece 34% en 2025</a>
+      <p class="ac-summary">Paraguay —sin relaciones con Pekín— observa desde afuera cómo sus vecinos profundizan lazos con China mientras el debate sobre el reconocimiento a Taiwán vuelve a la agenda interna.</p>
+      <div class="ac-meta">
+        <span>Por Redacción Internacional</span>
+        <span>·</span>
+        <span>3 Abr 2026</span>
+      </div>
+    </article>
+
+    <article class="article-card">
+      <span class="ac-cat">ONU / Multilateral</span>
+      <a href="#" class="ac-title">El Consejo de Seguridad, paralizado ante Irán: Rusia y China bloquean toda resolución vinculante</a>
+      <p class="ac-summary">La arquitectura multilateral muestra sus límites más severos desde la invasión de Ucrania. Los aliados occidentales buscan mecanismos alternativos fuera del marco onusiano.</p>
+      <div class="ac-meta">
+        <span>Nueva York</span>
+        <span>·</span>
+        <span>2 Abr 2026</span>
+      </div>
+    </article>
+
+  </div>
+
+</div>
+</section>
+
+<!-- ANALYSIS BAND -->
+<div class="analysis-band">
+  <div class="container">
+    <div>
+      <div class="section-kicker" style="color:#d4a017">
+        <span style="background:#d4a017;width:32px;height:2px;display:block"></span>
+        Análisis de fondo
+      </div>
+      <h2 class="analysis-headline">El escenario más probable no es la rendición iraní: es el conflicto larvado sin horizonte</h2>
+      <p class="analysis-body">Todos los actores buscan contener la crisis sin enfrentarla abiertamente. En ese equilibrio perverso, la escalada sostenida es más probable que cualquier acuerdo, porque cada parte prefiere gestionar sus pérdidas antes que asumir el costo político de ceder. La región entera paga la cuenta.</p>
+      <p class="analysis-author">— Equipo de Análisis Geopolítico, NOTILEA</p>
+    </div>
+    <div>
+      <div class="section-kicker" style="color:#d4a017">
+        <span style="background:#d4a017;width:32px;height:2px;display:block"></span>
+        Contexto Regional
+      </div>
+      <h2 class="analysis-headline">Los países árabes moderados: atrapados entre Irán y la presión de sus propias calles</h2>
+      <p class="analysis-body">Arabia Saudita, los Emiratos y Jordania perciben el conflicto como una amenaza al orden que garantiza su supervivencia política interna. Apoyan a EE. UU. discretamente mientras intentan abrir canales diplomáticos con Teherán para evitar una guerra que desborde sus propias fronteras.</p>
+      <p class="analysis-author">— Corresponsal en El Cairo, NOTILEA</p>
+    </div>
+  </div>
+</div>
+
+<!-- ══════════════════════════════════════════
+     PULSO PARAGUAY
+══════════════════════════════════════════ -->
+<section id="paraguay">
+<div class="container">
+
+  <div class="section-divider">
+    <span class="sd-accent"></span>
+    <span class="sd-label">Pulso Paraguay</span>
+    <span class="sd-line"></span>
+  </div>
+
+  <div class="paraguay-grid">
+
+    <div>
+      <div class="featured-story">
+        <span class="ac-cat">Política Nacional</span>
+        <h3 class="featured-story fs-headline" style="font-family:'Playfair Display',serif;font-size:22px;font-weight:700;line-height:1.25;color:var(--ink);margin:8px 0 10px">Gobierno Peña enfrenta tensión legislativa: agenda de reformas choca con bloque coloradista disidente</h3>
+        <p class="featured-story fs-body">La coalición oficialista muestra grietas ante la propuesta de reforma tributaria que busca ampliar la base imponible de grandes contribuyentes. Sectores agroindustriales aliados con senadores colorados disidentes resisten el proyecto que el Ejecutivo necesita para equilibrar el presupuesto 2027.</p>
+        <br>
+        <a href="#" class="read-more">Leer análisis completo →</a>
+      </div>
+
+      <div class="featured-story">
+        <span class="ac-tag red" style="margin-bottom:10px;display:inline-block">Economía</span>
+        <h3 class="featured-story fs-headline" style="font-family:'Playfair Display',serif;font-size:20px;font-weight:700;line-height:1.25;color:var(--ink);margin:8px 0 10px">Exportaciones de soja caen 12% en el primer trimestre ante sequía y precios internacionales bajos</h3>
+        <p class="featured-story fs-body">El sector agropecuario —columna vertebral de la economía paraguaya— acusa el golpe de una temporada seca que redujo rendimientos en los departamentos de Itapúa y Alto Paraná. El BCP revisa a la baja su proyección de crecimiento para 2026.</p>
+        <br>
+        <a href="#" class="read-more">Ver datos completos →</a>
+      </div>
+
+      <div class="featured-story">
+        <span class="ac-tag" style="margin-bottom:10px;display:inline-block">Sociedad</span>
+        <h3 class="featured-story fs-headline" style="font-family:'Playfair Display',serif;font-size:20px;font-weight:700;line-height:1.25;color:var(--ink);margin:8px 0 10px">Ciudad del Este: tensión en la Triple Frontera mientras operativos de seguridad intensifican controles</h3>
+        <p class="featured-story fs-body">Las fuerzas de seguridad paraguayas refuerzan la presencia en la frontera con Brasil y Argentina en coordinación con Interpol. El comercio informal —que mueve millones de dólares diarios— siente el impacto de los operativos coordinados regionales.</p>
+        <br>
+        <a href="#" class="read-more">Reportaje de campo →</a>
+      </div>
+    </div>
+
+    <aside>
+      <div class="data-box" style="margin-bottom:20px">
+        <div class="data-box-title">Agenda Política</div>
+        <div class="data-row" style="flex-direction:column;align-items:flex-start;gap:3px">
+          <span class="dr-label">7 Abr · Congreso</span>
+          <span style="font-size:12.5px;color:#c8bfae">Debate sobre presupuesto complementario 2026</span>
+        </div>
+        <div class="data-row" style="flex-direction:column;align-items:flex-start;gap:3px;border-bottom:1px solid #2a2620">
+          <span class="dr-label">10 Abr · Ejecutivo</span>
+          <span style="font-size:12.5px;color:#c8bfae">Cita de Peña con inversores del sector energético</span>
+        </div>
+        <div class="data-row" style="flex-direction:column;align-items:flex-start;gap:3px;border-bottom:1px solid #2a2620">
+          <span class="dr-label">15 Abr · Mercosur</span>
+          <span style="font-size:12.5px;color:#c8bfae">Cumbre de cancilleres en Montevideo</span>
+        </div>
+        <div class="data-row" style="flex-direction:column;align-items:flex-start;gap:3px;border:none">
+          <span class="dr-label">22 Abr · Suprema Corte</span>
+          <span style="font-size:12.5px;color:#c8bfae">Fallo esperado sobre caso anticorrupción ANDE</span>
+        </div>
+      </div>
+
+      <div class="sidebar-block">
+        <div class="sidebar-block-title"><span class="dot"></span>Más leídos hoy</div>
+        <div class="sidebar-item">
+          <a href="#" class="si-title">¿Puede Paraguay mantener el crecimiento sin reformas estructurales profundas?</a>
+          <span class="si-time">2.340 lecturas</span>
+        </div>
+        <div class="sidebar-item">
+          <a href="#" class="si-title">La posición de Paraguay ante el conflicto en Oriente Medio y sus implicancias comerciales</a>
+          <span class="si-time">1.870 lecturas</span>
+        </div>
+        <div class="sidebar-item">
+          <a href="#" class="si-title">Itaipú 2026: la renegociación del Anexo C y lo que está en juego para el país</a>
+          <span class="si-time">1.650 lecturas</span>
+        </div>
+      </div>
+    </aside>
+
+  </div>
+
+</div>
+</section>
+
+<!-- ══════════════════════════════════════════
+     ECONOMÍA
+══════════════════════════════════════════ -->
+<section id="economia">
+<div class="container">
+
+  <div class="section-divider">
+    <span class="sd-accent"></span>
+    <span class="sd-label">Economía</span>
+    <span class="sd-line"></span>
+  </div>
+
+  <div class="articles-grid">
+    <article class="article-card">
+      <span class="ac-cat">Energía</span>
+      <a href="#" class="ac-title">Itaipú 2026: lo que significa para Paraguay renegociar el Anexo C con Brasil</a>
+      <p class="ac-summary">La hidroeléctrica representa más del 20% de los ingresos fiscales. La negociación en curso podría duplicar las compensaciones o abrirle a Paraguay el mercado eléctrico brasileño. El gobierno camina sobre el filo.</p>
+      <div class="ac-meta"><span>Redacción Económica</span><span>·</span><span>6 Abr 2026</span></div>
+    </article>
+    <article class="article-card">
+      <span class="ac-cat">Comercio Exterior</span>
+      <a href="#" class="ac-title">El corredor bioceánico: Paraguay apuesta a convertirse en el hub logístico del corazón sudamericano</a>
+      <p class="ac-summary">La ruta que conecta el Atlántico con el Pacífico atraviesa territorio paraguayo. Las inversiones en infraestructura vial y portuaria podrían transformar la economía interior del país en la próxima década.</p>
+      <div class="ac-meta"><span>Reportaje especial</span><span>·</span><span>4 Abr 2026</span></div>
+    </article>
+    <article class="article-card">
+      <span class="ac-cat">Finanzas</span>
+      <a href="#" class="ac-title">Guaraní bajo presión: la divisa acumula 4% de devaluación frente al dólar en lo que va del año</a>
+      <p class="ac-summary">La caída de exportaciones agrícolas y la salida de capitales de mercados emergentes presionan el tipo de cambio. El BCP interviene con ventas de reservas para amortiguar la volatilidad.</p>
+      <div class="ac-meta"><span>Redacción Económica</span><span>·</span><span>3 Abr 2026</span></div>
+    </article>
+  </div>
+
+</div>
+</section>
+
+<!-- ══════════════════════════════════════════
+     OPINIÓN
+══════════════════════════════════════════ -->
+<section id="opinion">
+<div class="container">
+
+  <div class="section-divider">
+    <span class="sd-accent"></span>
+    <span class="sd-label">Opinión &amp; Análisis</span>
+    <span class="sd-line"></span>
+  </div>
+
+  <div class="opinion-strip">
+
+    <div class="opinion-card">
+      <div class="oc-initial">MV</div>
+      <p class="oc-name">María Valentina Orué · Analista Internacional</p>
+      <p class="oc-quote">"Paraguay no puede darse el lujo de observar el conflicto de Oriente Medio como un espectador. Sus consecuencias —precio del petróleo, flujos de capital, estabilidad regional— llegan directamente a nuestro bolsillo y nuestra agenda diplomática."</p>
+    </div>
+
+    <div class="opinion-card">
+      <div class="oc-initial">JR</div>
+      <p class="oc-name">José Ramón Benítez · Economista, UNA</p>
+      <p class="oc-quote">"El crecimiento paraguayo de los últimos años descansa sobre una base frágil: commodities y energía. Sin reformas que diversifiquen la economía, cualquier shock externo nos deja expuestos al mismo lugar de siempre."</p>
+    </div>
+
+    <div class="opinion-card">
+      <div class="oc-initial">LC</div>
+      <p class="oc-name">Laura Cristaldo · Politóloga, FLACSO</p>
+      <p class="oc-quote">"La democracia paraguaya ha resistido presiones autoritarias, pero la corrupción estructural sigue siendo la amenaza más profunda. No habrá desarrollo sostenible mientras el Estado sirva a intereses privados antes que al ciudadano."</p>
+    </div>
+
+  </div>
+
+</div>
+</section>
+
+<!-- FOOTER -->
+<footer>
+  <div class="container">
+    <div class="footer-grid">
+      <div>
+        <div class="footer-brand-name">NOTILEA</div>
+        <p class="footer-desc">Periodismo de análisis para Paraguay y el mundo. Cobertura independiente de política internacional, economía y asuntos nacionales desde Asunción, Paraguay.</p>
+      </div>
+      <div>
+        <div class="footer-col-title">Secciones</div>
+        <a href="#portada" class="footer-link">Portada</a>
+        <a href="#internacional" class="footer-link">Internacional</a>
+        <a href="#paraguay" class="footer-link">Paraguay</a>
+        <a href="#economia" class="footer-link">Economía</a>
+        <a href="#opinion" class="footer-link">Opinión</a>
+      </div>
+      <div>
+        <div class="footer-col-title">Institucional</div>
+        <a href="#" class="footer-link">Quiénes somos</a>
+        <a href="#" class="footer-link">Política editorial</a>
+        <a href="#" class="footer-link">Contacto y redacción</a>
+        <a href="#" class="footer-link">Suscripciones</a>
+        <a href="#" class="footer-link">Aviso legal</a>
+      </div>
+    </div>
+    <div class="footer-bottom">
+      &copy; 2026 NOTILEA · Todos los derechos reservados · Asunción, Paraguay · notilea.github.io
+    </div>
+  </div>
+</footer>
+
+<!-- SCROLL TOP -->
+<button id="scrollTop" onclick="window.scrollTo({top:0,behavior:'smooth'})" title="Volver arriba">↑</button>
+
+<script>
+  window.addEventListener('scroll', () => {
+    const btn = document.getElementById('scrollTop');
+    if (window.scrollY > 400) btn.classList.add('visible');
+    else btn.classList.remove('visible');
+  });
+
+  const navLinks = document.querySelectorAll('nav a[href^="#"]');
+  const sections = document.querySelectorAll('section[id], div[id]');
+
+  window.addEventListener('scroll', () => {
+    let current = '';
+    sections.forEach(s => {
+      if (window.scrollY >= s.offsetTop - 80) current = s.id;
+    });
+    navLinks.forEach(a => {
+      a.classList.remove('active');
+      if (a.getAttribute('href') === '#' + current) a.classList.add('active');
+    });
+  });
+</script>
+
+</body>
+</html>
