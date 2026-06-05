@@ -1,0 +1,1646 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>NOTILEA — Información local y global al instante</title>
+<meta name="description" content="Desde Nueva Asunción. Lo que sucede en tu barrio y lo que sacude al país y al planeta.">
+<meta property="og:title" content="NOTILEA — Información local y global al instante">
+<meta property="og:description" content="Desde Nueva Asunción. Lo que sucede en tu barrio y lo que sacude al país y al planeta.">
+<meta property="og:image" content="https://lrb1977.github.io/notilea.github.io/og-cover.jpg">
+<meta property="og:image:secure_url" content="https://lrb1977.github.io/notilea.github.io/og-cover.jpg">
+<meta property="og:image:width" content="1200">
+<meta property="og:image:height" content="630">
+<meta property="og:image:type" content="image/jpeg">
+<meta property="og:type" content="website">
+<meta property="og:url" content="https://lrb1977.github.io/notilea.github.io/">
+<meta name="twitter:card" content="summary_large_image">
+<meta name="twitter:image" content="https://lrb1977.github.io/notilea.github.io/og-cover.jpg">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Playfair+Display:wght@700;900&family=Source+Sans+3:wght@300;400;600;700&family=Oswald:wght@400;600;700&display=swap" rel="stylesheet">
+<style>
+  :root {
+    --red: #cc0000;
+    --red-dark: #990000;
+    --red-bright: #ff1a1a;
+    --bg: #0d0d0d;
+    --bg2: #141414;
+    --bg3: #1a1a1a;
+    --bg4: #222222;
+    --border: #2a2a2a;
+    --text: #f0f0f0;
+    --text-muted: #888;
+    --text-dim: #555;
+    --gold: #d4a017;
+    --white: #ffffff;
+    --font-display: 'Playfair Display', Georgia, serif;
+    --font-body: 'Source Sans 3', sans-serif;
+    --font-heading: 'Oswald', sans-serif;
+  }
+  * { box-sizing: border-box; margin: 0; padding: 0; }
+  html { scroll-behavior: smooth; }
+  body {
+    background: var(--bg);
+    color: var(--text);
+    font-family: var(--font-body);
+    font-size: 16px;
+    line-height: 1.6;
+    overflow-x: hidden;
+  }
+
+  /* BREAKING TICKER */
+  #ticker-bar {
+    background: var(--red);
+    color: white;
+    display: flex;
+    align-items: center;
+    overflow: hidden;
+    height: 36px;
+    position: sticky;
+    top: 0;
+    z-index: 1000;
+  }
+  #ticker-bar .ticker-label {
+    background: #000;
+    color: var(--red);
+    font-family: var(--font-heading);
+    font-weight: 700;
+    font-size: 13px;
+    letter-spacing: 1px;
+    padding: 0 14px;
+    height: 100%;
+    display: flex;
+    align-items: center;
+    white-space: nowrap;
+    flex-shrink: 0;
+    border-right: 3px solid var(--red);
+  }
+  #ticker-bar .ticker-label span { color: white; margin-right: 6px; }
+  #ticker-wrap { overflow: hidden; flex: 1; height: 100%; display: flex; align-items: center; }
+  #ticker-inner {
+    display: flex;
+    animation: ticker-scroll 40s linear infinite;
+    white-space: nowrap;
+    font-family: var(--font-body);
+    font-size: 13px;
+    font-weight: 600;
+  }
+  #ticker-inner span { margin-right: 60px; }
+  #ticker-inner span::before { content: "●"; margin-right: 10px; opacity: 0.7; }
+  @keyframes ticker-scroll { 0% { transform: translateX(0); } 100% { transform: translateX(-50%); } }
+
+  /* HEADER */
+  header {
+    background: var(--bg2);
+    border-bottom: 3px solid var(--red);
+    position: sticky;
+    top: 36px;
+    z-index: 999;
+  }
+  .header-top {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    padding: 12px 20px;
+    max-width: 1400px;
+    margin: 0 auto;
+    gap: 16px;
+  }
+  .logo {
+    display: flex;
+    flex-direction: column;
+    text-decoration: none;
+    cursor: pointer;
+  }
+  .logo-main {
+    font-family: var(--font-display);
+    font-size: 36px;
+    font-weight: 900;
+    color: white;
+    letter-spacing: -1px;
+    line-height: 1;
+  }
+  .logo-main span { color: var(--red); }
+  .logo-sub {
+    font-family: var(--font-body);
+    font-size: 10px;
+    color: var(--text-muted);
+    letter-spacing: 2px;
+    text-transform: uppercase;
+    margin-top: 2px;
+  }
+  .header-right {
+    display: flex;
+    align-items: center;
+    gap: 20px;
+  }
+  #clock-widget {
+    text-align: right;
+    flex-shrink: 0;
+  }
+  #clock-time {
+    font-family: var(--font-heading);
+    font-size: 22px;
+    font-weight: 700;
+    color: white;
+    letter-spacing: 1px;
+  }
+  #clock-date {
+    font-size: 11px;
+    color: var(--text-muted);
+    text-transform: uppercase;
+    letter-spacing: 1px;
+  }
+  .weather-mini {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    background: var(--bg3);
+    border: 1px solid var(--border);
+    padding: 6px 12px;
+    border-radius: 4px;
+    cursor: pointer;
+    min-width: 90px;
+  }
+  .weather-mini .w-temp {
+    font-family: var(--font-heading);
+    font-size: 20px;
+    font-weight: 700;
+    color: var(--gold);
+  }
+  .weather-mini .w-desc {
+    font-size: 10px;
+    color: var(--text-muted);
+    text-align: center;
+  }
+
+  /* SEARCH */
+  .search-bar {
+    display: flex;
+    flex: 1;
+    max-width: 280px;
+    background: var(--bg3);
+    border: 1px solid var(--border);
+    border-radius: 4px;
+    overflow: hidden;
+  }
+  .search-bar input {
+    background: transparent;
+    border: none;
+    color: var(--text);
+    font-family: var(--font-body);
+    font-size: 14px;
+    padding: 8px 12px;
+    flex: 1;
+    outline: none;
+  }
+  .search-bar input::placeholder { color: var(--text-dim); }
+  .search-bar button {
+    background: var(--red);
+    border: none;
+    color: white;
+    padding: 8px 14px;
+    cursor: pointer;
+    font-size: 14px;
+    transition: background 0.2s;
+  }
+  .search-bar button:hover { background: var(--red-bright); }
+
+  /* NAV */
+  nav {
+    background: var(--bg3);
+    border-bottom: 1px solid var(--border);
+  }
+  .nav-inner {
+    display: flex;
+    max-width: 1400px;
+    margin: 0 auto;
+    padding: 0 20px;
+    overflow-x: auto;
+    scrollbar-width: none;
+  }
+  .nav-inner::-webkit-scrollbar { display: none; }
+  .nav-item {
+    font-family: var(--font-heading);
+    font-size: 13px;
+    font-weight: 600;
+    letter-spacing: 1px;
+    text-transform: uppercase;
+    color: var(--text-muted);
+    padding: 12px 18px;
+    cursor: pointer;
+    border-bottom: 3px solid transparent;
+    transition: all 0.2s;
+    white-space: nowrap;
+    border-top: none;
+    background: none;
+    border-left: none;
+    border-right: none;
+  }
+  .nav-item:hover { color: var(--text); }
+  .nav-item.active { color: var(--red); border-bottom-color: var(--red); }
+
+  /* HAMBURGER MOBILE */
+  .hamburger {
+    display: none;
+    flex-direction: column;
+    gap: 5px;
+    cursor: pointer;
+    padding: 6px;
+    background: none;
+    border: none;
+  }
+  .hamburger span {
+    display: block;
+    width: 24px;
+    height: 2px;
+    background: var(--text);
+    transition: all 0.3s;
+  }
+
+  /* MAIN LAYOUT */
+  .main-wrap {
+    max-width: 1400px;
+    margin: 0 auto;
+    padding: 24px 20px;
+  }
+
+  /* HERO */
+  .hero-grid {
+    display: grid;
+    grid-template-columns: 1fr 340px;
+    grid-template-rows: auto auto;
+    gap: 3px;
+    margin-bottom: 32px;
+  }
+  .hero-main {
+    position: relative;
+    overflow: hidden;
+    cursor: pointer;
+    background: #111;
+    min-height: 440px;
+    grid-row: span 2;
+  }
+  .hero-main img {
+    width: 100%;
+    height: 100%;
+    object-fit: cover;
+    opacity: 0.6;
+    transition: opacity 0.4s, transform 0.5s;
+    position: absolute;
+    top: 0; left: 0;
+  }
+  .hero-main:hover img { opacity: 0.75; transform: scale(1.02); }
+  .hero-main-content {
+    position: absolute;
+    bottom: 0;
+    left: 0;
+    right: 0;
+    padding: 30px;
+    background: linear-gradient(transparent, rgba(0,0,0,0.97));
+  }
+  .hero-category {
+    display: inline-block;
+    background: var(--red);
+    color: white;
+    font-family: var(--font-heading);
+    font-size: 11px;
+    font-weight: 700;
+    letter-spacing: 2px;
+    padding: 4px 12px;
+    margin-bottom: 10px;
+    text-transform: uppercase;
+  }
+  .hero-title {
+    font-family: var(--font-display);
+    font-size: 28px;
+    font-weight: 900;
+    line-height: 1.2;
+    color: white;
+    margin-bottom: 10px;
+  }
+  .hero-excerpt {
+    font-size: 14px;
+    color: #bbb;
+    margin-bottom: 12px;
+    line-height: 1.5;
+    display: -webkit-box;
+    -webkit-line-clamp: 3;
+    -webkit-box-orient: vertical;
+    overflow: hidden;
+  }
+  .hero-meta { font-size: 12px; color: var(--text-dim); display: flex; gap: 12px; align-items: center; }
+  .hero-meta .dot { color: var(--red); }
+
+  .hero-side {
+    display: flex;
+    flex-direction: column;
+    gap: 3px;
+  }
+  .hero-side-item {
+    background: var(--bg2);
+    border-left: 3px solid var(--red);
+    padding: 16px 18px;
+    cursor: pointer;
+    flex: 1;
+    transition: background 0.2s;
+  }
+  .hero-side-item:hover { background: var(--bg3); }
+  .hero-side-cat {
+    font-family: var(--font-heading);
+    font-size: 10px;
+    color: var(--red);
+    letter-spacing: 2px;
+    text-transform: uppercase;
+    margin-bottom: 6px;
+  }
+  .hero-side-title {
+    font-family: var(--font-display);
+    font-size: 16px;
+    font-weight: 700;
+    line-height: 1.3;
+    color: var(--text);
+  }
+  .hero-side-meta { font-size: 11px; color: var(--text-dim); margin-top: 6px; }
+
+  /* SECTION HEADERS */
+  .section-header {
+    display: flex;
+    align-items: center;
+    gap: 14px;
+    margin-bottom: 20px;
+    margin-top: 36px;
+  }
+  .section-header h2 {
+    font-family: var(--font-heading);
+    font-size: 18px;
+    font-weight: 700;
+    letter-spacing: 2px;
+    text-transform: uppercase;
+    color: var(--text);
+  }
+  .section-line { flex: 1; height: 2px; background: var(--border); }
+  .section-dot { width: 6px; height: 6px; background: var(--red); border-radius: 50%; flex-shrink: 0; }
+
+  /* NEWS CARDS GRID */
+  .cards-grid {
+    display: grid;
+    grid-template-columns: repeat(auto-fill, minmax(280px, 1fr));
+    gap: 16px;
+  }
+  .news-card {
+    background: var(--bg2);
+    overflow: hidden;
+    cursor: pointer;
+    transition: transform 0.2s, box-shadow 0.2s;
+    border: 1px solid var(--border);
+    position: relative;
+  }
+  .news-card:hover {
+    transform: translateY(-3px);
+    box-shadow: 0 8px 24px rgba(204,0,0,0.15);
+    border-color: var(--red);
+  }
+  .news-card-img {
+    width: 100%;
+    height: 170px;
+    object-fit: cover;
+    display: block;
+    background: var(--bg3);
+    transition: opacity 0.3s;
+  }
+  .news-card:hover .news-card-img { opacity: 0.85; }
+  .news-card-body { padding: 16px; }
+  .news-card-cat {
+    font-family: var(--font-heading);
+    font-size: 10px;
+    color: var(--red);
+    letter-spacing: 2px;
+    text-transform: uppercase;
+    margin-bottom: 8px;
+  }
+  .news-card-title {
+    font-family: var(--font-display);
+    font-size: 17px;
+    font-weight: 700;
+    line-height: 1.3;
+    color: var(--text);
+    margin-bottom: 8px;
+  }
+  .news-card-excerpt {
+    font-size: 13px;
+    color: var(--text-muted);
+    line-height: 1.5;
+    display: -webkit-box;
+    -webkit-line-clamp: 2;
+    -webkit-box-orient: vertical;
+    overflow: hidden;
+  }
+  .news-card-footer {
+    padding: 10px 16px 14px;
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    border-top: 1px solid var(--border);
+    margin-top: 10px;
+  }
+  .news-card-meta { font-size: 11px; color: var(--text-dim); }
+  .news-card-share { display: flex; gap: 8px; }
+  .share-btn {
+    width: 28px; height: 28px;
+    border-radius: 50%;
+    border: none;
+    cursor: pointer;
+    font-size: 11px;
+    font-weight: 700;
+    transition: transform 0.2s;
+    display: flex; align-items: center; justify-content: center;
+  }
+  .share-btn:hover { transform: scale(1.15); }
+  .share-fb { background: #1877f2; color: white; }
+  .share-wa { background: #25d366; color: white; }
+  .share-x { background: #000; color: white; border: 1px solid #333; }
+  .views-badge {
+    position: absolute;
+    top: 10px; right: 10px;
+    background: rgba(0,0,0,0.75);
+    color: var(--text-muted);
+    font-size: 11px;
+    padding: 3px 8px;
+    border-radius: 20px;
+    display: flex; align-items: center; gap: 4px;
+  }
+
+  /* TRENDING */
+  .trending-row {
+    display: flex;
+    flex-direction: column;
+    gap: 0;
+  }
+  .trending-item {
+    display: flex;
+    align-items: flex-start;
+    gap: 16px;
+    padding: 14px 0;
+    border-bottom: 1px solid var(--border);
+    cursor: pointer;
+    transition: padding-left 0.2s;
+  }
+  .trending-item:hover { padding-left: 8px; }
+  .trending-num {
+    font-family: var(--font-display);
+    font-size: 32px;
+    font-weight: 900;
+    color: var(--red);
+    opacity: 0.3;
+    line-height: 1;
+    flex-shrink: 0;
+    width: 36px;
+    text-align: center;
+  }
+  .trending-item:hover .trending-num { opacity: 1; }
+  .trending-content { flex: 1; }
+  .trending-cat { font-family: var(--font-heading); font-size: 10px; color: var(--red); letter-spacing: 1px; text-transform: uppercase; margin-bottom: 4px; }
+  .trending-title { font-family: var(--font-display); font-size: 15px; font-weight: 700; line-height: 1.3; color: var(--text); }
+  .trending-meta { font-size: 11px; color: var(--text-dim); margin-top: 4px; }
+
+  /* WEATHER SECTION */
+  .weather-full {
+    background: var(--bg2);
+    border: 1px solid var(--border);
+    padding: 24px;
+  }
+  .weather-grid {
+    display: grid;
+    grid-template-columns: 1fr 1fr 1fr 1fr;
+    gap: 16px;
+    margin-top: 16px;
+  }
+  .weather-city {
+    background: var(--bg3);
+    border: 1px solid var(--border);
+    padding: 16px;
+    text-align: center;
+    transition: border-color 0.2s;
+  }
+  .weather-city:hover { border-color: var(--red); }
+  .weather-city-name { font-family: var(--font-heading); font-size: 12px; letter-spacing: 1px; text-transform: uppercase; color: var(--text-muted); margin-bottom: 8px; }
+  .weather-city-temp { font-family: var(--font-heading); font-size: 36px; font-weight: 700; color: white; line-height: 1; }
+  .weather-city-temp sup { font-size: 18px; color: var(--text-muted); }
+  .weather-city-desc { font-size: 12px; color: var(--text-muted); margin-top: 4px; }
+  .weather-city-details { margin-top: 10px; display: flex; justify-content: center; gap: 12px; font-size: 11px; color: var(--text-dim); }
+
+  /* AD SPACE */
+  .ad-space {
+    background: var(--bg3);
+    border: 2px dashed var(--border);
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    color: var(--text-dim);
+    font-size: 12px;
+    letter-spacing: 2px;
+    text-transform: uppercase;
+    font-family: var(--font-heading);
+    padding: 20px;
+    margin: 24px 0;
+  }
+
+  /* TWO COL LAYOUT */
+  .two-col {
+    display: grid;
+    grid-template-columns: 1fr 320px;
+    gap: 32px;
+    margin-top: 8px;
+  }
+
+  /* ULTIMO MOMENTO */
+  .ultimo-list {
+    display: flex;
+    flex-direction: column;
+    gap: 0;
+  }
+  .ultimo-item {
+    display: flex;
+    gap: 12px;
+    padding: 12px 0;
+    border-bottom: 1px solid var(--border);
+    cursor: pointer;
+    transition: padding-left 0.2s;
+  }
+  .ultimo-item:hover { padding-left: 6px; }
+  .ultimo-time {
+    font-family: var(--font-heading);
+    font-size: 12px;
+    color: var(--red);
+    flex-shrink: 0;
+    width: 44px;
+    padding-top: 2px;
+  }
+  .ultimo-title { font-size: 14px; font-weight: 600; line-height: 1.4; color: var(--text); }
+
+  /* SIDEBAR */
+  .sidebar {}
+  .sidebar-widget {
+    background: var(--bg2);
+    border: 1px solid var(--border);
+    margin-bottom: 20px;
+    overflow: hidden;
+  }
+  .sidebar-widget-header {
+    background: var(--red);
+    padding: 10px 16px;
+    font-family: var(--font-heading);
+    font-size: 12px;
+    letter-spacing: 2px;
+    text-transform: uppercase;
+    color: white;
+    font-weight: 700;
+  }
+  .sidebar-widget-body { padding: 12px 16px; }
+  .sidebar-article {
+    display: flex;
+    gap: 10px;
+    padding: 10px 0;
+    border-bottom: 1px solid var(--border);
+    cursor: pointer;
+    transition: opacity 0.2s;
+  }
+  .sidebar-article:last-child { border-bottom: none; }
+  .sidebar-article:hover { opacity: 0.8; }
+  .sidebar-article img { width: 68px; height: 52px; object-fit: cover; flex-shrink: 0; background: var(--bg4); }
+  .sidebar-article-title { font-size: 13px; font-weight: 600; line-height: 1.3; color: var(--text); }
+  .sidebar-article-meta { font-size: 11px; color: var(--text-dim); margin-top: 4px; }
+
+  /* SECTION PAGES */
+  .section-page { display: none; }
+  .section-page.active { display: block; }
+
+  /* ARTICLE MODAL */
+  #article-modal {
+    display: none;
+    position: fixed;
+    inset: 0;
+    background: rgba(0,0,0,0.92);
+    z-index: 2000;
+    overflow-y: auto;
+    padding: 40px 20px;
+  }
+  #article-modal.open { display: flex; justify-content: center; align-items: flex-start; animation: fade-in 0.25s; }
+  @keyframes fade-in { from { opacity: 0; } to { opacity: 1; } }
+  .article-inner {
+    max-width: 760px;
+    width: 100%;
+    background: var(--bg2);
+    border: 1px solid var(--border);
+    position: relative;
+  }
+  .article-close {
+    position: absolute;
+    top: 16px; right: 16px;
+    background: var(--red);
+    border: none;
+    color: white;
+    width: 36px; height: 36px;
+    border-radius: 50%;
+    cursor: pointer;
+    font-size: 18px;
+    font-weight: 700;
+    z-index: 10;
+    display: flex; align-items: center; justify-content: center;
+  }
+  .article-img { width: 100%; height: 300px; object-fit: cover; }
+  .article-body { padding: 28px 32px; }
+  .article-cat-badge {
+    display: inline-block;
+    background: var(--red);
+    color: white;
+    font-family: var(--font-heading);
+    font-size: 11px;
+    letter-spacing: 2px;
+    padding: 4px 12px;
+    margin-bottom: 14px;
+    text-transform: uppercase;
+  }
+  .article-headline {
+    font-family: var(--font-display);
+    font-size: 28px;
+    font-weight: 900;
+    line-height: 1.2;
+    color: white;
+    margin-bottom: 12px;
+  }
+  .article-meta-line { font-size: 13px; color: var(--text-dim); margin-bottom: 18px; border-bottom: 1px solid var(--border); padding-bottom: 14px; }
+  .article-text { font-size: 16px; line-height: 1.75; color: #d0d0d0; }
+  .article-text p { margin-bottom: 16px; }
+  .article-share-row {
+    margin-top: 24px;
+    padding-top: 18px;
+    border-top: 1px solid var(--border);
+    display: flex;
+    gap: 10px;
+    align-items: center;
+  }
+  .article-share-row span { font-family: var(--font-heading); font-size: 12px; letter-spacing: 1px; color: var(--text-muted); text-transform: uppercase; }
+  .share-btn-lg {
+    padding: 8px 16px;
+    border: none;
+    cursor: pointer;
+    font-size: 13px;
+    font-weight: 700;
+    border-radius: 3px;
+    transition: opacity 0.2s;
+  }
+  .share-btn-lg:hover { opacity: 0.85; }
+  .s-fb { background: #1877f2; color: white; }
+  .s-wa { background: #25d366; color: white; }
+  .s-x { background: #000; color: white; border: 1px solid #333; }
+  .article-comments {
+    margin-top: 20px;
+    padding-top: 18px;
+    border-top: 1px solid var(--border);
+  }
+  .article-comments h4 { font-family: var(--font-heading); letter-spacing: 1px; text-transform: uppercase; font-size: 13px; margin-bottom: 12px; color: var(--text-muted); }
+  .comment-input { display: flex; gap: 8px; }
+  .comment-input input {
+    flex: 1;
+    background: var(--bg3);
+    border: 1px solid var(--border);
+    color: var(--text);
+    padding: 9px 14px;
+    font-size: 14px;
+    font-family: var(--font-body);
+    border-radius: 3px;
+    outline: none;
+    transition: border-color 0.2s;
+  }
+  .comment-input input:focus { border-color: var(--red); }
+  .comment-input button {
+    background: var(--red);
+    border: none;
+    color: white;
+    padding: 9px 18px;
+    cursor: pointer;
+    font-family: var(--font-heading);
+    font-size: 13px;
+    letter-spacing: 1px;
+    text-transform: uppercase;
+    border-radius: 3px;
+  }
+  .comment-list { margin-top: 14px; display: flex; flex-direction: column; gap: 10px; }
+  .comment-item {
+    background: var(--bg3);
+    padding: 10px 14px;
+    border-left: 3px solid var(--red);
+    font-size: 14px;
+  }
+  .comment-item strong { color: var(--red); font-size: 12px; margin-right: 8px; }
+
+  /* TAGS */
+  .tags-row { display: flex; flex-wrap: wrap; gap: 8px; margin-top: 16px; }
+  .tag {
+    background: var(--bg3);
+    border: 1px solid var(--border);
+    color: var(--text-muted);
+    font-size: 12px;
+    padding: 4px 12px;
+    cursor: pointer;
+    transition: all 0.2s;
+    font-family: var(--font-body);
+    border-radius: 20px;
+  }
+  .tag:hover, .tag.active { background: var(--red); border-color: var(--red); color: white; }
+
+  /* FILTER ROW */
+  .filter-row { display: flex; gap: 8px; flex-wrap: wrap; margin-bottom: 20px; }
+  .filter-btn {
+    background: var(--bg3);
+    border: 1px solid var(--border);
+    color: var(--text-muted);
+    font-family: var(--font-heading);
+    font-size: 11px;
+    letter-spacing: 1px;
+    text-transform: uppercase;
+    padding: 6px 14px;
+    cursor: pointer;
+    transition: all 0.2s;
+    border-radius: 2px;
+  }
+  .filter-btn:hover, .filter-btn.active { background: var(--red); border-color: var(--red); color: white; }
+
+  /* FOOTER */
+  footer {
+    background: #0a0a0a;
+    border-top: 3px solid var(--red);
+    margin-top: 60px;
+    padding: 40px 20px 20px;
+  }
+  .footer-grid {
+    max-width: 1400px;
+    margin: 0 auto;
+    display: grid;
+    grid-template-columns: 2fr 1fr 1fr 1fr;
+    gap: 32px;
+    margin-bottom: 30px;
+  }
+  .footer-brand .logo-main { font-size: 28px; }
+  .footer-tagline { font-size: 13px; color: var(--text-muted); margin-top: 8px; line-height: 1.5; }
+  .footer-social { display: flex; gap: 10px; margin-top: 14px; }
+  .social-btn {
+    width: 36px; height: 36px;
+    border-radius: 50%;
+    display: flex; align-items: center; justify-content: center;
+    font-size: 13px;
+    font-weight: 700;
+    cursor: pointer;
+    border: none;
+    transition: transform 0.2s;
+    text-decoration: none;
+  }
+  .social-btn:hover { transform: scale(1.1); }
+  .s-fb2 { background: #1877f2; color: white; }
+  .s-wa2 { background: #25d366; color: white; }
+  .s-x2 { background: #1a1a1a; color: white; border: 1px solid #333; }
+  .s-yt2 { background: #ff0000; color: white; }
+  .footer-col h4 { font-family: var(--font-heading); font-size: 13px; letter-spacing: 2px; text-transform: uppercase; color: var(--text-muted); margin-bottom: 14px; padding-bottom: 8px; border-bottom: 1px solid var(--border); }
+  .footer-col ul { list-style: none; display: flex; flex-direction: column; gap: 8px; }
+  .footer-col ul li { font-size: 13px; color: var(--text-dim); cursor: pointer; transition: color 0.2s; }
+  .footer-col ul li:hover { color: var(--red); }
+  .footer-bottom { max-width: 1400px; margin: 0 auto; border-top: 1px solid var(--border); padding-top: 16px; display: flex; justify-content: space-between; align-items: center; flex-wrap: wrap; gap: 10px; }
+  .footer-bottom p { font-size: 12px; color: var(--text-dim); }
+  .footer-bottom .red { color: var(--red); }
+
+  /* ADMIN PANEL */
+  #admin-panel {
+    display: none;
+    position: fixed;
+    inset: 0;
+    background: rgba(0,0,0,0.95);
+    z-index: 3000;
+    overflow-y: auto;
+  }
+  #admin-panel.open { display: flex; justify-content: center; padding: 30px 20px; }
+  .admin-inner { max-width: 700px; width: 100%; background: var(--bg2); border: 2px solid var(--red); padding: 30px; position: relative; }
+  .admin-inner h2 { font-family: var(--font-heading); font-size: 20px; letter-spacing: 2px; color: var(--red); margin-bottom: 24px; text-transform: uppercase; }
+  .admin-form label { display: block; font-family: var(--font-heading); font-size: 11px; letter-spacing: 1px; text-transform: uppercase; color: var(--text-muted); margin-bottom: 6px; margin-top: 14px; }
+  .admin-form input, .admin-form textarea, .admin-form select {
+    width: 100%;
+    background: var(--bg3);
+    border: 1px solid var(--border);
+    color: var(--text);
+    padding: 10px 14px;
+    font-size: 14px;
+    font-family: var(--font-body);
+    outline: none;
+    border-radius: 3px;
+    transition: border-color 0.2s;
+  }
+  .admin-form input:focus, .admin-form textarea:focus { border-color: var(--red); }
+  .admin-form textarea { height: 120px; resize: vertical; }
+  .admin-submit {
+    background: var(--red);
+    border: none;
+    color: white;
+    padding: 12px 28px;
+    font-family: var(--font-heading);
+    font-size: 14px;
+    letter-spacing: 2px;
+    text-transform: uppercase;
+    cursor: pointer;
+    margin-top: 20px;
+    transition: background 0.2s;
+    border-radius: 3px;
+  }
+  .admin-submit:hover { background: var(--red-bright); }
+  .admin-close { position: absolute; top: 16px; right: 16px; background: none; border: 1px solid var(--border); color: var(--text-muted); padding: 6px 12px; cursor: pointer; font-family: var(--font-heading); font-size: 12px; border-radius: 3px; }
+
+  /* MOBILE NAV OVERLAY */
+  #mobile-nav {
+    display: none;
+    position: fixed;
+    inset: 0;
+    background: rgba(0,0,0,0.97);
+    z-index: 1500;
+    flex-direction: column;
+    padding: 30px 24px;
+  }
+  #mobile-nav.open { display: flex; }
+  #mobile-nav .close-nav { align-self: flex-end; background: none; border: none; color: var(--text-muted); font-size: 28px; cursor: pointer; margin-bottom: 24px; }
+  #mobile-nav .m-nav-item {
+    font-family: var(--font-heading);
+    font-size: 24px;
+    font-weight: 700;
+    color: var(--text);
+    padding: 14px 0;
+    border-bottom: 1px solid var(--border);
+    cursor: pointer;
+    letter-spacing: 1px;
+    text-transform: uppercase;
+    transition: color 0.2s;
+  }
+  #mobile-nav .m-nav-item:hover { color: var(--red); }
+
+  /* SEARCH RESULTS */
+  #search-results {
+    display: none;
+    position: absolute;
+    top: 100%;
+    left: 0;
+    right: 0;
+    background: var(--bg2);
+    border: 1px solid var(--border);
+    z-index: 100;
+    max-height: 300px;
+    overflow-y: auto;
+  }
+  .search-result-item {
+    padding: 10px 14px;
+    border-bottom: 1px solid var(--border);
+    cursor: pointer;
+    transition: background 0.15s;
+    font-size: 13px;
+  }
+  .search-result-item:hover { background: var(--bg3); }
+  .search-result-item strong { color: var(--red); }
+
+  /* RESPONSIVE */
+  @media (max-width: 900px) {
+    .hero-grid { grid-template-columns: 1fr; }
+    .hero-main { min-height: 300px; grid-row: span 1; }
+    .hero-side { flex-direction: row; overflow-x: auto; }
+    .hero-side-item { min-width: 220px; }
+    .weather-grid { grid-template-columns: 1fr 1fr; }
+    .two-col { grid-template-columns: 1fr; }
+    .footer-grid { grid-template-columns: 1fr 1fr; }
+    .search-bar { max-width: 180px; }
+  }
+  @media (max-width: 600px) {
+    .header-right { gap: 8px; }
+    .logo-main { font-size: 26px; }
+    .search-bar { max-width: 130px; }
+    #clock-widget { display: none; }
+    .hamburger { display: flex; }
+    nav { display: none; }
+    .weather-grid { grid-template-columns: 1fr 1fr; }
+    .footer-grid { grid-template-columns: 1fr; }
+    .hero-title { font-size: 22px; }
+    .article-headline { font-size: 22px; }
+    .article-body { padding: 20px 18px; }
+  }
+</style>
+</head>
+<body>
+
+<!-- BREAKING NEWS TICKER -->
+<div id="ticker-bar">
+  <div class="ticker-label"><span>⚡</span> ÚLTIMO MOMENTO</div>
+  <div id="ticker-wrap">
+    <div id="ticker-inner">
+      <span>Río Paraguay supera los 3 metros en Asunción — autoridades preparan albergues ante posible crecida por El Niño</span>
+      <span>Paraguay registra temperaturas de hasta 38°C en el Chaco Boreal — alerta por ola de calor extremo</span>
+      <span>Copa América 2026: Paraguay avanza en las eliminatorias con victoria ante Bolivia</span>
+      <span>Municipalidad de Nueva Asunción anuncia plan de obras viales para el segundo semestre</span>
+      <span>Gobierno habilita puente sobre el río Pilcomayo — nuevo acceso al Chaco paraguayo</span>
+      <span>Clan Ríos: fiscalía amplía investigación a nuevos integrantes en Presidente Hayes</span>
+      <span>El Niño 2026: DINAC eleva a nivel rojo la alerta meteorológica para la región occidental</span>
+      <span>Río Paraguay supera los 3 metros en Asunción — autoridades preparan albergues ante posible crecida por El Niño</span>
+      <span>Paraguay registra temperaturas de hasta 38°C en el Chaco Boreal — alerta por ola de calor extremo</span>
+      <span>Copa América 2026: Paraguay avanza en las eliminatorias con victoria ante Bolivia</span>
+      <span>Municipalidad de Nueva Asunción anuncia plan de obras viales para el segundo semestre</span>
+      <span>Gobierno habilita puente sobre el río Pilcomayo — nuevo acceso al Chaco paraguayo</span>
+    </div>
+  </div>
+</div>
+
+<!-- HEADER -->
+<header>
+  <div class="header-top">
+    <div class="logo" onclick="showSection('inicio')">
+      <div class="logo-main">NOTI<span>LEA</span></div>
+      <div class="logo-sub">Información local y global al instante</div>
+    </div>
+    <div style="position:relative;flex:1;max-width:300px;">
+      <div class="search-bar">
+        <input type="text" id="search-input" placeholder="Buscar noticias..." oninput="searchNews(this.value)" onblur="setTimeout(()=>hideSearch(),200)">
+        <button onclick="doSearch()">🔍</button>
+      </div>
+      <div id="search-results"></div>
+    </div>
+    <div class="header-right">
+      <div id="clock-widget">
+        <div id="clock-time">00:00:00</div>
+        <div id="clock-date">Cargando...</div>
+      </div>
+      <div class="weather-mini" id="weather-mini-btn" onclick="showSection('clima')">
+        <div class="w-temp" id="mini-temp">--°</div>
+        <div class="w-desc" id="mini-desc">Cargando...</div>
+      </div>
+      <button class="hamburger" id="ham-btn" onclick="toggleMobileNav()">
+        <span></span><span></span><span></span>
+      </button>
+    </div>
+  </div>
+  <nav>
+    <div class="nav-inner">
+      <button class="nav-item active" onclick="showSection('inicio')">🏠 Inicio</button>
+      <button class="nav-item" onclick="showSection('locales')">📍 Locales</button>
+      <button class="nav-item" onclick="showSection('clima')">🌤 Clima</button>
+      <button class="nav-item" onclick="showSection('politica')">🏛 Política</button>
+      <button class="nav-item" onclick="showSection('deportes')">⚽ Deportes</button>
+      <button class="nav-item" onclick="showSection('mundo')">🌎 Mundo</button>
+      <button class="nav-item" onclick="showSection('editorial')">✍️ Editorial</button>
+      <button class="nav-item" onclick="openAdmin()" style="margin-left:auto;color:var(--red)">⚙ Admin</button>
+    </div>
+  </nav>
+</header>
+
+<!-- MOBILE NAV -->
+<div id="mobile-nav">
+  <button class="close-nav" onclick="toggleMobileNav()">✕</button>
+  <div class="m-nav-item" onclick="showSection('inicio');toggleMobileNav()">🏠 Inicio</div>
+  <div class="m-nav-item" onclick="showSection('locales');toggleMobileNav()">📍 Locales</div>
+  <div class="m-nav-item" onclick="showSection('clima');toggleMobileNav()">🌤 Clima</div>
+  <div class="m-nav-item" onclick="showSection('politica');toggleMobileNav()">🏛 Política</div>
+  <div class="m-nav-item" onclick="showSection('deportes');toggleMobileNav()">⚽ Deportes</div>
+  <div class="m-nav-item" onclick="showSection('mundo');toggleMobileNav()">🌎 Mundo</div>
+  <div class="m-nav-item" onclick="showSection('editorial');toggleMobileNav()">✍️ Editorial</div>
+</div>
+
+<!-- MAIN -->
+<div class="main-wrap">
+
+  <!-- INICIO SECTION -->
+  <div id="sec-inicio" class="section-page active">
+
+    <!-- HERO -->
+    <div class="hero-grid">
+      <div class="hero-main" onclick="openArticle(0)">
+        <img src="https://images.unsplash.com/photo-1504308805006-0f7a5f1adea0?w=900&q=80" alt="Inundación río Paraguay" id="hero-img">
+        <div class="hero-main-content">
+          <div class="hero-category">⚡ Portada Principal</div>
+          <div class="hero-title" id="hero-title">El Niño: Alertan que el río llegaría a un nivel crítico a fin de mes</div>
+          <div class="hero-excerpt" id="hero-excerpt">El nivel del río Paraguay en Asunción ya supera los tres metros por lo que no se descarta una nueva crecida, producto del fenómeno El Niño. Desde distintas instituciones inician la coordinación de acciones preventivas para proteger a familias ribereñas, anunciaron desde la Municipalidad de Asunción.</div>
+          <div class="hero-meta">
+            <span>🕐 Hace 2 horas</span>
+            <span class="dot">●</span>
+            <span>👁 4,821 vistas</span>
+            <span class="dot">●</span>
+            <span>CLIMA / LOCAL</span>
+          </div>
+        </div>
+      </div>
+      <div class="hero-side" id="hero-side-container">
+      </div>
+    </div>
+
+    <!-- AD -->
+    <div class="ad-space" style="height:90px;">
+      📢 Espacio Publicitario — Contacte: notilea@gmail.com
+    </div>
+
+    <!-- ÚLTIMAS NOTICIAS -->
+    <div class="section-header">
+      <div class="section-dot"></div>
+      <h2>Últimas Noticias</h2>
+      <div class="section-line"></div>
+    </div>
+    <div class="filter-row" id="main-filter">
+      <button class="filter-btn active" onclick="filterCards('all',this)">Todas</button>
+      <button class="filter-btn" onclick="filterCards('Locales',this)">Locales</button>
+      <button class="filter-btn" onclick="filterCards('Clima',this)">Clima</button>
+      <button class="filter-btn" onclick="filterCards('Política',this)">Política</button>
+      <button class="filter-btn" onclick="filterCards('Deportes',this)">Deportes</button>
+      <button class="filter-btn" onclick="filterCards('Mundo',this)">Mundo</button>
+    </div>
+    <div class="cards-grid" id="main-cards"></div>
+
+    <!-- TWO COL -->
+    <div class="two-col">
+      <div>
+        <div class="section-header">
+          <div class="section-dot"></div>
+          <h2>Último Momento</h2>
+          <div class="section-line"></div>
+        </div>
+        <div class="ultimo-list" id="ultimo-list"></div>
+      </div>
+      <div class="sidebar">
+        <div class="sidebar-widget">
+          <div class="sidebar-widget-header">🔥 Más Leídas</div>
+          <div class="sidebar-widget-body" id="sidebar-popular"></div>
+        </div>
+        <div class="sidebar-widget">
+          <div class="sidebar-widget-header">🏷 Etiquetas</div>
+          <div class="sidebar-widget-body">
+            <div class="tags-row" id="tags-row"></div>
+          </div>
+        </div>
+        <div class="ad-space" style="height:200px;margin:0;">📢 Publicidad</div>
+      </div>
+    </div>
+
+    <!-- TRENDING -->
+    <div class="section-header" style="margin-top:36px;">
+      <div class="section-dot"></div>
+      <h2>Tendencias</h2>
+      <div class="section-line"></div>
+    </div>
+    <div class="trending-row" id="trending-row"></div>
+
+    <!-- WEATHER PREVIEW -->
+    <div class="section-header" style="margin-top:36px;">
+      <div class="section-dot"></div>
+      <h2>Clima en Tiempo Real</h2>
+      <div class="section-line"></div>
+    </div>
+    <div class="weather-full">
+      <div style="display:flex;justify-content:space-between;align-items:center;flex-wrap:wrap;gap:10px;">
+        <span style="font-size:13px;color:var(--text-muted);">Datos actualizados automáticamente — Open-Meteo API</span>
+        <button onclick="showSection('clima')" style="background:var(--red);border:none;color:white;padding:7px 18px;font-family:var(--font-heading);font-size:12px;letter-spacing:1px;cursor:pointer;border-radius:3px;">VER PRONÓSTICO COMPLETO →</button>
+      </div>
+      <div class="weather-grid" id="weather-grid-home"></div>
+    </div>
+  </div>
+
+  <!-- LOCALES SECTION -->
+  <div id="sec-locales" class="section-page">
+    <div class="section-header" style="margin-top:8px;">
+      <div class="section-dot"></div>
+      <h2>📍 Noticias Locales</h2>
+      <div class="section-line"></div>
+    </div>
+    <p style="color:var(--text-muted);font-size:14px;margin-bottom:20px;">Nueva Asunción · Nanawa · Presidente Hayes · Paraguay</p>
+    <div class="cards-grid" id="locales-cards"></div>
+  </div>
+
+  <!-- CLIMA SECTION -->
+  <div id="sec-clima" class="section-page">
+    <div class="section-header" style="margin-top:8px;">
+      <div class="section-dot"></div>
+      <h2>🌤 Clima Paraguay</h2>
+      <div class="section-line"></div>
+    </div>
+    <div class="weather-full" style="margin-bottom:24px;">
+      <p style="color:var(--text-muted);font-size:13px;margin-bottom:16px;">Datos en tiempo real — actualización automática cada 10 minutos</p>
+      <div class="weather-grid" id="weather-grid-full"></div>
+    </div>
+    <div class="section-header">
+      <div class="section-dot"></div>
+      <h2>Alertas y Reportes</h2>
+      <div class="section-line"></div>
+    </div>
+    <div class="cards-grid" id="clima-cards"></div>
+  </div>
+
+  <!-- POLITICA SECTION -->
+  <div id="sec-politica" class="section-page">
+    <div class="section-header" style="margin-top:8px;">
+      <div class="section-dot"></div>
+      <h2>🏛 Política</h2>
+      <div class="section-line"></div>
+    </div>
+    <div class="cards-grid" id="politica-cards"></div>
+  </div>
+
+  <!-- DEPORTES SECTION -->
+  <div id="sec-deportes" class="section-page">
+    <div class="section-header" style="margin-top:8px;">
+      <div class="section-dot"></div>
+      <h2>⚽ Deportes</h2>
+      <div class="section-line"></div>
+    </div>
+    <div class="cards-grid" id="deportes-cards"></div>
+  </div>
+
+  <!-- MUNDO SECTION -->
+  <div id="sec-mundo" class="section-page">
+    <div class="section-header" style="margin-top:8px;">
+      <div class="section-dot"></div>
+      <h2>🌎 Mundo</h2>
+      <div class="section-line"></div>
+    </div>
+    <div class="cards-grid" id="mundo-cards"></div>
+  </div>
+
+  <!-- EDITORIAL SECTION -->
+  <div id="sec-editorial" class="section-page">
+    <div class="section-header" style="margin-top:8px;">
+      <div class="section-dot"></div>
+      <h2>✍️ Editorial</h2>
+      <div class="section-line"></div>
+    </div>
+    <p style="color:var(--text-muted);font-size:14px;margin-bottom:20px;font-style:italic;">"Desde Nueva Asunción. Lo que sucede en tu barrio y lo que sacude al país y al planeta."</p>
+    <div class="cards-grid" id="editorial-cards"></div>
+  </div>
+
+</div><!-- end main-wrap -->
+
+<!-- FOOTER -->
+<footer>
+  <div class="footer-grid">
+    <div class="footer-brand">
+      <div class="logo-main">NOTI<span style="color:var(--red)">LEA</span></div>
+      <div class="footer-tagline">Desde Nueva Asunción. Lo que sucede en tu barrio y lo que sacude al país y al planeta.<br><br>Nueva Asunción, Presidente Hayes, Paraguay.</div>
+      <div class="footer-social">
+        <a class="social-btn s-fb2" href="https://facebook.com/notilea25" target="_blank">f</a>
+        <a class="social-btn s-wa2" href="https://wa.me/595" target="_blank">✆</a>
+        <a class="social-btn s-x2" href="#" target="_blank">𝕏</a>
+        <a class="social-btn s-yt2" href="#" target="_blank">▶</a>
+      </div>
+    </div>
+    <div class="footer-col">
+      <h4>Secciones</h4>
+      <ul>
+        <li onclick="showSection('locales')">Locales</li>
+        <li onclick="showSection('clima')">Clima</li>
+        <li onclick="showSection('politica')">Política</li>
+        <li onclick="showSection('deportes')">Deportes</li>
+        <li onclick="showSection('mundo')">Mundo</li>
+        <li onclick="showSection('editorial')">Editorial</li>
+      </ul>
+    </div>
+    <div class="footer-col">
+      <h4>Notilea</h4>
+      <ul>
+        <li>Quiénes somos</li>
+        <li>Equipo editorial</li>
+        <li>Publicitar</li>
+        <li>Contacto</li>
+        <li>Política de privacidad</li>
+      </ul>
+    </div>
+    <div class="footer-col">
+      <h4>Contacto</h4>
+      <ul>
+        <li>📧 notilea@gmail.com</li>
+        <li>📱 WhatsApp disponible</li>
+        <li>📍 Nueva Asunción, PY</li>
+        <li>🕐 Cobertura 24/7</li>
+      </ul>
+    </div>
+  </div>
+  <div class="footer-bottom">
+    <p>© 2025 <span class="red">NOTILEA</span> — Todos los derechos reservados.</p>
+    <p>Desarrollado con ❤️ en <span class="red">Nueva Asunción, Paraguay</span></p>
+  </div>
+</footer>
+
+<!-- ARTICLE MODAL -->
+<div id="article-modal">
+  <div class="article-inner">
+    <button class="article-close" onclick="closeArticle()">✕</button>
+    <img id="modal-img" class="article-img" src="" alt="">
+    <div class="article-body">
+      <div class="article-cat-badge" id="modal-cat">Categoría</div>
+      <div class="article-headline" id="modal-title">Título</div>
+      <div class="article-meta-line" id="modal-meta">Fecha · Autor</div>
+      <div class="article-text" id="modal-text"></div>
+      <div class="article-share-row">
+        <span>Compartir:</span>
+        <button class="share-btn-lg s-fb" id="share-fb-btn">Facebook</button>
+        <button class="share-btn-lg s-wa" id="share-wa-btn">WhatsApp</button>
+        <button class="share-btn-lg s-x" id="share-x-btn">𝕏</button>
+      </div>
+      <div class="article-comments">
+        <h4>💬 Comentarios</h4>
+        <div class="comment-input">
+          <input type="text" id="comment-author-input" placeholder="Tu nombre">
+          <input type="text" id="comment-text-input" placeholder="Escribe un comentario...">
+          <button onclick="addComment()">Enviar</button>
+        </div>
+        <div class="comment-list" id="comment-list"></div>
+      </div>
+    </div>
+  </div>
+</div>
+
+<!-- ADMIN PANEL -->
+<div id="admin-panel">
+  <div class="admin-inner">
+    <button class="admin-close" onclick="closeAdmin()">✕ Cerrar</button>
+    <h2>⚙ Panel Administrativo — NOTILEA</h2>
+    <div class="admin-form">
+      <label>Titular de la noticia *</label>
+      <input type="text" id="a-title" placeholder="Escribí el titular...">
+      <label>Categoría *</label>
+      <select id="a-cat">
+        <option>Locales</option>
+        <option>Clima</option>
+        <option>Política</option>
+        <option>Deportes</option>
+        <option>Mundo</option>
+        <option>Editorial</option>
+      </select>
+      <label>Resumen / Copete *</label>
+      <textarea id="a-excerpt" placeholder="Escribí el copete de la noticia..."></textarea>
+      <label>Cuerpo de la nota *</label>
+      <textarea id="a-body" placeholder="Texto completo de la noticia..." style="height:180px;"></textarea>
+      <label>URL de imagen (opcional)</label>
+      <input type="text" id="a-img" placeholder="https://... (opcional)">
+      <label>Etiquetas (separadas por coma)</label>
+      <input type="text" id="a-tags" placeholder="inundación, río, El Niño...">
+      <button class="admin-submit" onclick="publishArticle()">📤 Publicar Noticia</button>
+    </div>
+  </div>
+</div>
+
+<script>
+// ============== DATA ==============
+const CITIES = [
+  { name: "Nueva Asunción", lat: -21.7, lon: -62.0 },
+  { name: "Asunción", lat: -25.2867, lon: -57.647 },
+  { name: "Nanawa", lat: -22.4, lon: -57.9 },
+  { name: "Filadelfia", lat: -22.35, lon: -60.03 },
+];
+
+let articles = [
+  {
+    id: 0, cat: "Locales", title: "El Niño: Alertan que el río llegaría a un nivel crítico a fin de mes",
+    excerpt: "El nivel del río Paraguay en Asunción ya supera los tres metros por lo que no se descarta una nueva crecida, producto del fenómeno El Niño. Desde distintas instituciones inician la coordinación de acciones preventivas para proteger a familias ribereñas.",
+    body: `<p>El nivel del río Paraguay en Asunción ya supera los tres metros y la tendencia indica que podría continuar en ascenso durante las próximas semanas, según datos de la Dirección de Meteorología e Hidrología (DINAC).</p><p>Especialistas del Servicio Nacional de Meteorología e Hidrología alertaron que el fenómeno de El Niño, activo con intensidad moderada, está generando precipitaciones por encima de lo normal en la cuenca del Plata, lo que incrementa el caudal de los principales ríos del país.</p><p>La Municipalidad de Asunción informó que se están preparando albergues en los bañados para familias ribereñas que podrían verse afectadas. Se estima que unas 3.000 familias están en riesgo de desplazamiento si el río alcanza los 4 metros.</p><p>Desde la Secretaría de Emergencia Nacional (SEN) solicitaron a la ciudadanía mantenerse atenta a los comunicados oficiales y evitar construir o acampar cerca de las riberas del río en los próximos días.</p>`,
+    img: "https://images.unsplash.com/photo-1504308805006-0f7a5f1adea0?w=800&q=80",
+    date: "Hoy, 08:30", views: 4821, tags: ["inundación","El Niño","río Paraguay","alerta"],
+  },
+  {
+    id: 1, cat: "Locales", title: "Municipalidad de Nueva Asunción anuncia obras viales para 2025",
+    excerpt: "El intendente presentó el plan de inversión en infraestructura vial para la segunda mitad del año, que incluye pavimentación y mejora de caminos rurales en el departamento.",
+    body: `<p>La Municipalidad de Nueva Asunción presentó un ambicioso plan de obras viales para el segundo semestre de 2025, que contempla la pavimentación de tres kilómetros de vías urbanas principales y la mejora de caminos rurales que conectan comunidades indígenas con el centro urbano.</p><p>El intendente anunció que el financiamiento proviene de fondos del FONACIDE y recursos propios del municipio, con una inversión total que ronda los G. 8.500 millones.</p>`,
+    img: "https://images.unsplash.com/photo-1558618666-fcd25c85cd64?w=800&q=80",
+    date: "Ayer, 14:20", views: 1240, tags: ["Nueva Asunción","obras","municipalidad","vialidad"],
+  },
+  {
+    id: 2, cat: "Clima", title: "DINAC eleva alerta meteorológica a nivel rojo para el Chaco",
+    excerpt: "La Dirección de Meteorología e Hidrología elevó la alerta a nivel rojo por lluvias intensas y posibles inundaciones en el departamento de Presidente Hayes durante las próximas 72 horas.",
+    body: `<p>La DINAC emitió una alerta de nivel rojo para los departamentos del Chaco paraguayo, advirtiendo sobre precipitaciones intensas que podrían superar los 80 mm en 24 horas, acompañadas de tormentas eléctricas y vientos fuertes.</p><p>Se recomienda a la población evitar cruzar cursos de agua crecidos y mantenerse en lugares seguros. Las rutas del Chaco podrían verse afectadas por anegamientos temporales.</p>`,
+    img: "https://images.unsplash.com/photo-1527482937786-6608f6e14c15?w=800&q=80",
+    date: "Hoy, 06:00", views: 3305, tags: ["alerta","DINAC","tormenta","Chaco","lluvia"],
+  },
+  {
+    id: 3, cat: "Política", title: "Presidente Peña firma decreto de ley de etanol: impacto en el sector agroindustrial",
+    excerpt: "El Poder Ejecutivo promulgó la nueva ley que regula la producción y comercialización de etanol en Paraguay, generando debate en el sector productivo.",
+    body: `<p>El presidente Santiago Peña firmó el decreto reglamentario de la Ley de Etanol, que establece nuevas condiciones para la producción, mezcla y comercialización del bioetanol en el país. La medida busca impulsar la industria azucarera nacional y reducir la dependencia de combustibles fósiles.</p><p>Sin embargo, productores del sector alertaron sobre posibles distorsiones en el mercado y pidieron mayor diálogo con el gobierno antes de la implementación plena de la normativa.</p>`,
+    img: "https://images.unsplash.com/photo-1529107386315-e1a2ed48a620?w=800&q=80",
+    date: "Ayer, 10:00", views: 2180, tags: ["Peña","etanol","política","Paraguay"],
+  },
+  {
+    id: 4, cat: "Deportes", title: "Joshua Duerksen brilla en la Copa Libertadores con gran actuación",
+    excerpt: "El defensor paraguayo fue figura indiscutida en la victoria de su equipo en la Copa Libertadores, cosechando elogios de la prensa internacional.",
+    body: `<p>Joshua Duerksen tuvo una actuación soberbia en el partido correspondiente a los cuartos de final de la Copa Libertadores, siendo elegido el jugador del partido por su sólida actuación defensiva y su participación en la salida limpia del balón desde el fondo.</p><p>El defensor paraguayo, quien milita en el fútbol europeo, regresó a la Copa para reforzar a su club y demostró por qué es considerado uno de los mejores defensores paraguayos de su generación.</p>`,
+    img: "https://images.unsplash.com/photo-1560272564-c83b66b1ad12?w=800&q=80",
+    date: "Hace 3 horas", views: 5632, tags: ["Duerksen","fútbol","Libertadores","Paraguay"],
+  },
+  {
+    id: 5, cat: "Mundo", title: "ONU advierte sobre impacto del cambio climático en América del Sur",
+    excerpt: "Un nuevo informe de las Naciones Unidas señala que la región sudamericana es una de las más vulnerables ante los efectos del cambio climático global.",
+    body: `<p>El Panel Intergubernamental sobre Cambio Climático (IPCC) publicó su último informe de evaluación, señalando que América del Sur enfrenta riesgos crecientes de sequías extremas, inundaciones y pérdida de biodiversidad en los próximos 30 años.</p><p>Paraguay aparece entre los países más vulnerables de la región, especialmente por su dependencia de la agricultura y su exposición a fenómenos como El Niño y La Niña, que se volverán más intensos e impredecibles.</p>`,
+    img: "https://images.unsplash.com/photo-1569163139394-de44cb13d3a2?w=800&q=80",
+    date: "Hace 5 horas", views: 1870, tags: ["ONU","cambio climático","América Sur","IPCC"],
+  },
+  {
+    id: 6, cat: "Editorial", title: "El río no olvida: reflexión sobre las inundaciones y la política de prevención",
+    excerpt: "Cada año el río crece, cada año las familias pierden sus hogares. ¿Cuándo la planificación urbana será una realidad y no solo un discurso electoral?",
+    body: `<p>Vivimos en un país donde el río define el ritmo de la vida. Cuando crece, crece también la angustia de miles de familias que construyeron sus hogares a la orilla del agua, porque era el único lugar que podían permitirse.</p><p>Y cada año, con la misma puntualidad de quien nunca falla, el río los desplaza. Las imágenes de colchones flotando y niños cargando sus mochilas rumbo a albergues improvisados se repiten en los noticieros, y luego el mundo sigue girando.</p><p>En Notilea creemos que informar no alcanza. Hay que señalar, preguntar, exigir. ¿Por qué después de décadas de inundaciones no existe un plan serio de relocalización de familias ribereñas? ¿Dónde están los fondos internacionales de adaptación climática?</p>`,
+    img: "https://images.unsplash.com/photo-1504308805006-0f7a5f1adea0?w=800&q=80",
+    date: "Hoy, 09:00", views: 2100, tags: ["editorial","opinión","inundaciones","política"],
+  },
+  {
+    id: 7, cat: "Locales", title: "Operativo policial desmantela red de narcotráfico en Presidente Hayes",
+    excerpt: "Efectivos de la SENAD y la Policía Nacional realizaron un megaoperativo que resultó en 8 detenidos y el decomiso de cargamentos de drogas en el departamento.",
+    body: `<p>Un operativo conjunto de la Secretaría Nacional Antidrogas (SENAD) y la Policía Nacional en coordinación con la Fiscalía Regional de Presidente Hayes resultó en la detención de 8 personas vinculadas al Clan Ríos, una organización dedicada al narcotráfico que operaba en la zona del Chaco paraguayo.</p><p>Se incautó más de 200 kilos de marihuana prensada y rastros de lo que sería fentanilo, una droga sintética que está comenzando a aparecer en Paraguay.</p>`,
+    img: "https://images.unsplash.com/photo-1587300003388-59208cc962cb?w=800&q=80",
+    date: "Hace 6 horas", views: 4100, tags: ["narcotráfico","SENAD","Presidente Hayes","Clan Ríos"],
+  },
+];
+
+let currentArticleId = null;
+let articleComments = {};
+
+// ============== CLOCK ==============
+function updateClock() {
+  const now = new Date();
+  const opts = { timeZone: 'America/Asuncion', hour: '2-digit', minute: '2-digit', second: '2-digit', hour12: false };
+  const dateOpts = { timeZone: 'America/Asuncion', weekday: 'long', day: '2-digit', month: 'short', year: 'numeric' };
+  document.getElementById('clock-time').textContent = now.toLocaleTimeString('es-PY', opts);
+  document.getElementById('clock-date').textContent = now.toLocaleDateString('es-PY', dateOpts);
+}
+setInterval(updateClock, 1000);
+updateClock();
+
+// ============== WEATHER ==============
+async function fetchWeather(lat, lon) {
+  try {
+    const url = `https://api.open-meteo.com/v1/forecast?latitude=${lat}&longitude=${lon}&current=temperature_2m,relative_humidity_2m,wind_speed_10m,weather_code&wind_speed_unit=kmh`;
+    const res = await fetch(url);
+    const d = await res.json();
+    return d.current;
+  } catch(e) { return null; }
+}
+
+function weatherIcon(code) {
+  if (code === 0) return '☀️';
+  if (code <= 2) return '⛅';
+  if (code <= 3) return '☁️';
+  if (code <= 50) return '🌫';
+  if (code <= 67) return '🌧';
+  if (code <= 77) return '❄️';
+  if (code <= 82) return '🌧';
+  if (code <= 99) return '⛈';
+  return '🌡';
+}
+
+function weatherDesc(code) {
+  if (code === 0) return 'Despejado';
+  if (code <= 2) return 'Parcialmente nublado';
+  if (code <= 3) return 'Nublado';
+  if (code <= 50) return 'Neblina';
+  if (code <= 67) return 'Lluvias';
+  if (code <= 77) return 'Nevada';
+  if (code <= 82) return 'Lluvias fuertes';
+  if (code <= 99) return 'Tormenta eléctrica';
+  return 'Variable';
+}
+
+function buildWeatherCard(city, data) {
+  if (!data) return `<div class="weather-city"><div class="weather-city-name">${city}</div><div style="color:var(--text-dim);font-size:12px;">Sin datos</div></div>`;
+  const icon = weatherIcon(data.weather_code);
+  const desc = weatherDesc(data.weather_code);
+  return `
+    <div class="weather-city">
+      <div class="weather-city-name">${city}</div>
+      <div style="font-size:28px;margin:4px 0;">${icon}</div>
+      <div class="weather-city-temp">${Math.round(data.temperature_2m)}<sup>°C</sup></div>
+      <div class="weather-city-desc">${desc}</div>
+      <div class="weather-city-details">
+        <span>💧 ${data.relative_humidity_2m}%</span>
+        <span>💨 ${Math.round(data.wind_speed_10m)} km/h</span>
+      </div>
+    </div>`;
+}
+
+async function loadWeather() {
+  const gridHome = document.getElementById('weather-grid-home');
+  const gridFull = document.getElementById('weather-grid-full');
+  gridHome.innerHTML = '<div style="color:var(--text-dim);font-size:13px;grid-column:1/-1;padding:16px;">Cargando datos climáticos...</div>';
+  
+  const results = await Promise.all(CITIES.map(c => fetchWeather(c.lat, c.lon)));
+  
+  let html = '';
+  CITIES.forEach((c, i) => { html += buildWeatherCard(c.name, results[i]); });
+  gridHome.innerHTML = html;
+  if (gridFull) gridFull.innerHTML = html;
+
+  // Mini widget
+  if (results[0]) {
+    document.getElementById('mini-temp').textContent = Math.round(results[0].temperature_2m) + '°';
+    document.getElementById('mini-desc').textContent = weatherDesc(results[0].weather_code);
+  }
+}
+loadWeather();
+setInterval(loadWeather, 600000);
+
+// ============== RENDER CARDS ==============
+function renderCard(a) {
+  const url = encodeURIComponent(window.location.href + '#art-' + a.id);
+  const text = encodeURIComponent(a.title);
+  return `
+    <div class="news-card" id="card-${a.id}" data-cat="${a.cat}" onclick="openArticle(${a.id})">
+      <div class="views-badge">👁 ${a.views.toLocaleString()}</div>
+      <img class="news-card-img" src="${a.img}" alt="${a.title}" onerror="this.style.display='none'">
+      <div class="news-card-body">
+        <div class="news-card-cat">${a.cat}</div>
+        <div class="news-card-title">${a.title}</div>
+        <div class="news-card-excerpt">${a.excerpt}</div>
+      </div>
+      <div class="news-card-footer">
+        <div class="news-card-meta">${a.date}</div>
+        <div class="news-card-share" onclick="event.stopPropagation()">
+          <button class="share-btn share-fb" onclick="shareArticle('fb','${url}','${text}')">f</button>
+          <button class="share-btn share-wa" onclick="shareArticle('wa','${url}','${text}')">✆</button>
+          <button class="share-btn share-x" onclick="shareArticle('x','${url}','${text}')">𝕏</button>
+        </div>
+      </div>
+    </div>`;
+}
+
+function renderAll() {
+  // Main cards (latest)
+  document.getElementById('main-cards').innerHTML = articles.map(renderCard).join('');
+  // Hero side
+  document.getElementById('hero-side-container').innerHTML = articles.slice(1,4).map(a => `
+    <div class="hero-side-item" onclick="openArticle(${a.id})">
+      <div class="hero-side-cat">${a.cat}</div>
+      <div class="hero-side-title">${a.title}</div>
+      <div class="hero-side-meta">${a.date} · 👁 ${a.views.toLocaleString()}</div>
+    </div>`).join('');
+  // Section cards
+  ['Locales','Clima','Política','Deportes','Mundo','Editorial'].forEach(cat => {
+    const key = cat.toLowerCase().replace('é','e').replace('í','i');
+    const el = document.getElementById(key+'-cards');
+    if (el) el.innerHTML = articles.filter(a=>a.cat===cat).map(renderCard).join('') || `<p style="color:var(--text-dim);grid-column:1/-1">Sin noticias en esta sección aún.</p>`;
+  });
+  // Sidebar popular
+  document.getElementById('sidebar-popular').innerHTML = articles.sort((a,b)=>b.views-a.views).slice(0,5).map(a=>`
+    <div class="sidebar-article" onclick="openArticle(${a.id})">
+      <img src="${a.img}" alt="" onerror="this.style.display='none'">
+      <div><div class="sidebar-article-title">${a.title}</div><div class="sidebar-article-meta">👁 ${a.views.toLocaleString()}</div></div>
+    </div>`).join('');
+  // Tags
+  const allTags = [...new Set(articles.flatMap(a=>a.tags||[]))];
+  document.getElementById('tags-row').innerHTML = allTags.map(t=>`<span class="tag" onclick="filterByTag('${t}')">#${t}</span>`).join('');
+  // Ultimo momento
+  document.getElementById('ultimo-list').innerHTML = articles.slice(0,6).map(a=>`
+    <div class="ultimo-item" onclick="openArticle(${a.id})">
+      <div class="ultimo-time">${a.date.split(',')[0]}</div>
+      <div class="ultimo-title">${a.title}</div>
+    </div>`).join('');
+  // Trending
+  document.getElementById('trending-row').innerHTML = articles.sort((a,b)=>b.views-a.views).slice(0,6).map((a,i)=>`
+    <div class="trending-item" onclick="openArticle(${a.id})">
+      <div class="trending-num">${i+1}</div>
+      <div class="trending-content">
+        <div class="trending-cat">${a.cat}</div>
+        <div class="trending-title">${a.title}</div>
+        <div class="trending-meta">👁 ${a.views.toLocaleString()} · ${a.date}</div>
+      </div>
+    </div>`).join('');
+}
+renderAll();
+
+// ============== NAVIGATION ==============
+const sections = ['inicio','locales','clima','politica','deportes','mundo','editorial'];
+function showSection(name) {
+  sections.forEach(s => {
+    document.getElementById('sec-'+s).classList.remove('active');
+    document.querySelectorAll('.nav-item').forEach(b => { if(b.textContent.toLowerCase().includes(s === 'inicio' ? 'inicio' : s)) b.classList.remove('active'); });
+  });
+  document.getElementById('sec-'+name).classList.add('active');
+  document.querySelectorAll('.nav-item').forEach(b => {
+    const txt = b.textContent.toLowerCase();
+    if ((name==='inicio' && txt.includes('inicio')) || txt.includes(name)) b.classList.add('active');
+  });
+  window.scrollTo({top:0,behavior:'smooth'});
+}
+
+// ============== ARTICLE MODAL ==============
+function openArticle(id) {
+  const a = articles.find(x=>x.id===id);
+  if (!a) return;
+  a.views++;
+  currentArticleId = id;
+  document.getElementById('modal-img').src = a.img;
+  document.getElementById('modal-cat').textContent = a.cat;
+  document.getElementById('modal-title').textContent = a.title;
+  document.getElementById('modal-meta').textContent = `${a.date} · 👁 ${a.views.toLocaleString()} vistas`;
+  document.getElementById('modal-text').innerHTML = a.body;
+  const url = encodeURIComponent(window.location.href);
+  const text = encodeURIComponent(a.title);
+  document.getElementById('share-fb-btn').onclick = () => shareArticle('fb',url,text);
+  document.getElementById('share-wa-btn').onclick = () => shareArticle('wa',url,text);
+  document.getElementById('share-x-btn').onclick = () => shareArticle('x',url,text);
+  // Comments
+  const comments = articleComments[id] || [];
+  document.getElementById('comment-list').innerHTML = comments.map(c=>`<div class="comment-item"><strong>${c.author}:</strong>${c.text}</div>`).join('');
+  document.getElementById('article-modal').classList.add('open');
+  document.body.style.overflow = 'hidden';
+}
+function closeArticle() {
+  document.getElementById('article-modal').classList.remove('open');
+  document.body.style.overflow = '';
+  renderAll();
+}
+document.getElementById('article-modal').addEventListener('click', function(e) {
+  if (e.target === this) closeArticle();
+});
+
+// ============== COMMENTS ==============
+function addComment() {
+  const author = document.getElementById('comment-author-input').value.trim() || 'Lector';
+  const text = document.getElementById('comment-text-input').value.trim();
+  if (!text) return;
+  if (!articleComments[currentArticleId]) articleComments[currentArticleId] = [];
+  articleComments[currentArticleId].push({ author, text });
+  document.getElementById('comment-text-input').value = '';
+  const comments = articleComments[currentArticleId];
+  document.getElementById('comment-list').innerHTML = comments.map(c=>`<div class="comment-item"><strong>${c.author}:</strong> ${c.text}</div>`).join('');
+}
+
+// ============== SHARE ==============
+function shareArticle(platform, url, text) {
+  let link = '';
+  if (platform === 'fb') link = `https://www.facebook.com/sharer/sharer.php?u=${url}`;
+  if (platform === 'wa') link = `https://wa.me/?text=${text}%20${url}`;
+  if (platform === 'x') link = `https://twitter.com/intent/tweet?text=${text}&url=${url}`;
+  window.open(link, '_blank', 'width=600,height=400');
+}
+
+// ============== FILTER ==============
+function filterCards(cat, btn) {
+  document.querySelectorAll('#main-filter .filter-btn').forEach(b=>b.classList.remove('active'));
+  btn.classList.add('active');
+  document.querySelectorAll('#main-cards .news-card').forEach(card => {
+    if (cat === 'all' || card.dataset.cat === cat) {
+      card.style.display = '';
+    } else {
+      card.style.display = 'none';
+    }
+  });
+}
+function filterByTag(tag) {
+  document.querySelectorAll('#main-filter .filter-btn').forEach(b=>b.classList.remove('active'));
+  document.querySelectorAll('#main-cards .news-card').forEach(card => {
+    const id = parseInt(card.id.replace('card-',''));
+    const a = articles.find(x=>x.id===id);
+    card.style.display = (a && a.tags && a.tags.includes(tag)) ? '' : 'none';
+  });
+  showSection('inicio');
+}
+
+// ============== SEARCH ==============
+function searchNews(q) {
+  const box = document.getElementById('search-results');
+  if (!q || q.length < 2) { box.style.display = 'none'; return; }
+  const res = articles.filter(a => a.title.toLowerCase().includes(q.toLowerCase()) || a.excerpt.toLowerCase().includes(q.toLowerCase()));
+  if (res.length === 0) { box.style.display = 'none'; return; }
+  box.innerHTML = res.map(a=>`<div class="search-result-item" onclick="openArticle(${a.id});document.getElementById('search-results').style.display='none'"><strong>[${a.cat}]</strong> ${a.title}</div>`).join('');
+  box.style.display = 'block';
+}
+function hideSearch() { document.getElementById('search-results').style.display = 'none'; }
+function doSearch() {
+  const q = document.getElementById('search-input').value;
+  searchNews(q);
+}
+
+// ============== MOBILE NAV ==============
+function toggleMobileNav() {
+  document.getElementById('mobile-nav').classList.toggle('open');
+  document.body.style.overflow = document.getElementById('mobile-nav').classList.contains('open') ? 'hidden' : '';
+}
+
+// ============== ADMIN ==============
+function openAdmin() { document.getElementById('admin-panel').classList.add('open'); document.body.style.overflow='hidden'; }
+function closeAdmin() { document.getElementById('admin-panel').classList.remove('open'); document.body.style.overflow=''; }
+
+function publishArticle() {
+  const title = document.getElementById('a-title').value.trim();
+  const cat = document.getElementById('a-cat').value;
+  const excerpt = document.getElementById('a-excerpt').value.trim();
+  const body = document.getElementById('a-body').value.trim();
+  const img = document.getElementById('a-img').value.trim() || 'https://images.unsplash.com/photo-1504308805006-0f7a5f1adea0?w=800&q=80';
+  const tagsRaw = document.getElementById('a-tags').value.trim();
+  if (!title || !excerpt || !body) { alert('Completá los campos obligatorios.'); return; }
+  const newArt = {
+    id: Date.now(), cat, title, excerpt,
+    body: body.split('\n').filter(p=>p.trim()).map(p=>`<p>${p}</p>`).join(''),
+    img, date: 'Ahora mismo', views: 0,
+    tags: tagsRaw ? tagsRaw.split(',').map(t=>t.trim()) : []
+  };
+  articles.unshift(newArt);
+  renderAll();
+  closeAdmin();
+  ['a-title','a-excerpt','a-body','a-img','a-tags'].forEach(id=>document.getElementById(id).value='');
+  alert('✅ Noticia publicada con éxito.');
+}
+</script>
+</body>
+</html>
