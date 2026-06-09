@@ -863,14 +863,14 @@ function locateMe(){
   showToast('📍 Buscando ubicación GPS...');
   if(!navigator.geolocation){showToast('GPS no disponible');return;}
   navigator.geolocation.getCurrentPosition(
-    p=>{
-      S.lat=p.coords.latitude;S.lon=p.coords.longitude;
-      S.name='Mi ubicación';S.country='PY';
-      document.getElementById('locBadge').textContent='GPS';
-      showToast('📍 GPS obtenido — actualizando...');
-      fetchWeather();
-      revGeo(p.coords.latitude,p.coords.longitude);
-    },
+  (pos) => {
+    console.log(pos.coords.latitude, pos.coords.longitude);
+  },
+  (err) => {
+    console.error(err);
+  },
+  { enableHighAccuracy: true, timeout: 10000 }
+);
     err=>{
       const msgs={1:'Permiso GPS denegado',2:'GPS no disponible',3:'Tiempo agotado'};
       showToast('⚠️ '+(msgs[err.code]||'Error GPS')+' — mostrando Asunción');
