@@ -65,21 +65,33 @@
   .t-sep { color:#1e3a5f; padding:0 4px; font-size:14px; }
   .ticker-fade-l { position:absolute; left:0; top:0; bottom:0; width:24px; background:linear-gradient(90deg,#070c18,transparent); z-index:2; pointer-events:none; }
   .ticker-fade-r { position:absolute; right:0; top:0; bottom:0; width:50px; background:linear-gradient(270deg,#070c18,transparent); z-index:2; pointer-events:none; }
-  .btn-loc { background:var(--bg-card2); border:1px solid rgba(0,198,255,0.3); color:var(--accent); border-radius:8px; padding:6px 12px; font-size:12px; cursor:pointer; box-shadow:0 0 0 1px rgba(0,198,255,0.05) inset; transition:box-shadow 0.2s; }
-  .btn-loc:active { box-shadow:0 0 12px rgba(0,198,255,0.5); }
+  .btn-loc { background:linear-gradient(160deg,var(--bg-card2),#0a1424); border:1px solid rgba(0,198,255,0.3); color:var(--accent); border-radius:9px; padding:7px 13px; font-size:12px; font-weight:600; cursor:pointer; display:inline-flex; align-items:center; box-shadow:0 0 0 1px rgba(0,198,255,0.05) inset, 0 2px 10px rgba(0,198,255,0.08); transition:box-shadow 0.2s; }
+  .btn-loc:active { box-shadow:0 0 14px rgba(0,198,255,0.5); }
+  .icon-btn { width:40px; height:40px; border-radius:10px; background:linear-gradient(160deg,var(--bg-card2),#0a1424); border:1px solid; cursor:pointer; position:relative; display:flex; align-items:center; justify-content:center; flex-shrink:0; }
+  .icon-btn svg { width:18px; height:18px; }
+  .icon-btn-gold { color:#f59e0b; border-color:rgba(245,158,11,0.4); box-shadow:0 0 0 1px rgba(245,158,11,0.06) inset, 0 2px 10px rgba(245,158,11,0.12); }
+  .icon-btn-gold:active { box-shadow:0 0 16px rgba(245,158,11,0.5); }
   .search-row { margin-top:8px; display:flex; gap:8px; }
   .search-input { flex:1; background:var(--bg-card2); border:1px solid var(--border); border-radius:8px; padding:8px 12px; color:var(--text); font-size:13px; outline:none; transition:border-color 0.2s, box-shadow 0.2s; }
   .search-input:focus { border-color:rgba(0,198,255,0.5); box-shadow:0 0 0 3px rgba(0,198,255,0.1); }
   .search-input::placeholder { color:var(--muted); }
-  .btn-search { background:linear-gradient(135deg,var(--accent2),var(--accent)); border:none; border-radius:8px; padding:8px 14px; color:#fff; font-size:13px; cursor:pointer; font-weight:600; box-shadow:0 2px 12px rgba(0,114,255,0.35); }
+  .btn-search { background:linear-gradient(135deg,var(--accent2),var(--accent)); border:none; border-radius:8px; padding:8px 14px; color:#fff; font-size:13px; cursor:pointer; font-weight:600; box-shadow:0 2px 12px rgba(0,114,255,0.35); display:inline-flex; align-items:center; }
 
   /* TABS */
-  .tabs { display:flex; background:var(--bg-card); border-bottom:1px solid var(--border); overflow-x:auto; -webkit-overflow-scrolling:touch; scrollbar-width:none; position:relative; }
+  .tabs { display:flex; background:var(--bg-card); border-bottom:1px solid var(--border); overflow-x:auto; -webkit-overflow-scrolling:touch; scrollbar-width:none; padding:8px 6px; gap:4px; position:relative; }
   .tabs::after { content:''; position:absolute; bottom:0; left:0; right:0; height:1px; background:linear-gradient(90deg,transparent,rgba(0,198,255,0.3),transparent); }
   .tabs::-webkit-scrollbar { display:none; }
-  .tab { flex-shrink:0; padding:10px 14px; font-size:12px; color:var(--muted); cursor:pointer; border-bottom:2px solid transparent; transition:all 0.2s; white-space:nowrap; position:relative; }
-  .tab.active { color:var(--accent); border-bottom-color:var(--accent); text-shadow:0 0 10px rgba(0,198,255,0.6); }
-  .tab.active::before { content:''; position:absolute; top:0; left:50%; transform:translateX(-50%); width:60%; height:1px; background:var(--accent); box-shadow:0 0 8px var(--accent); }
+  .tab { flex-shrink:0; display:flex; flex-direction:column; align-items:center; gap:4px; padding:8px 12px; font-size:10px; color:var(--muted); cursor:pointer; white-space:nowrap; border-radius:10px; border:1px solid transparent; background:rgba(255,255,255,0.015); transition:all 0.2s; position:relative; }
+  .tab.active { color:var(--text); border-color:rgba(0,198,255,0.35); background:linear-gradient(160deg,rgba(0,198,255,0.10),rgba(0,114,255,0.03)); box-shadow:0 0 14px rgba(0,198,255,0.15), inset 0 0 12px rgba(0,198,255,0.05); }
+  .tab-ico { width:30px; height:30px; border-radius:9px; display:flex; align-items:center; justify-content:center; background:rgba(255,255,255,0.03); border:1px solid currentColor; opacity:0.55; transition:all 0.25s; }
+  .tab-ico svg { width:16px; height:16px; }
+  .tab.active .tab-ico { opacity:1; box-shadow:0 0 12px currentColor, inset 0 0 8px rgba(255,255,255,0.08); }
+  .tab-ico-cyan   { color:#00c6ff; }
+  .tab-ico-red    { color:#ef4444; }
+  .tab-ico-gold   { color:#f59e0b; }
+  .tab-ico-blue   { color:#3b82f6; }
+  .tab-ico-green  { color:#22c55e; }
+  .tab-ico-orange { color:#f97316; }
 
   /* SECTIONS */
   .section { display:none; padding:12px; animation:fadeIn 0.3s ease; }
@@ -268,8 +280,8 @@
   .cache-bar-text { font-size:10px; color:var(--muted); }
   .btn-refresh { background:transparent; border:1px solid var(--border); border-radius:6px; padding:4px 10px; font-size:10px; color:var(--accent); cursor:pointer; }
   /* Layer buttons */
-  .lbtn { background:var(--bg-card2); border:1px solid var(--border); border-radius:7px; padding:5px 10px; font-size:11px; color:var(--muted); cursor:pointer; white-space:nowrap; }
-  .lbtn-active { background:var(--accent2); color:#fff; border-color:var(--accent2); }
+  .lbtn { background:linear-gradient(160deg,var(--bg-card2),#0a1424); border:1px solid var(--border); border-radius:8px; padding:6px 11px; font-size:11px; color:var(--muted); cursor:pointer; white-space:nowrap; transition:all 0.2s; }
+  .lbtn-active { background:linear-gradient(135deg,var(--accent2),var(--accent)); color:#fff; border-color:var(--accent); box-shadow:0 0 12px rgba(0,198,255,0.4); }
   /* Leaflet dark override */
   .leaflet-container { background:#0a0e1a !important; font-family:'Segoe UI',system-ui,sans-serif; }
   .leaflet-popup-content-wrapper { background:var(--bg-card); color:var(--text); border:1px solid var(--border); border-radius:10px; box-shadow:var(--shadow); }
@@ -346,11 +358,13 @@
       </div>
     </div>
     <div style="display:flex;gap:8px;align-items:center">
-      <button id="btn-notif" onclick="toggleNotifPanel()" style="background:var(--bg-card2);border:1px solid var(--border);color:var(--muted);border-radius:8px;padding:6px 10px;font-size:16px;cursor:pointer;position:relative" title="Alertas push">
-        🔔
-        <span id="notif-badge" style="display:none;position:absolute;top:-4px;right:-4px;width:10px;height:10px;background:#ef4444;border-radius:50%;border:2px solid var(--bg-deep)"></span>
+      <button id="btn-notif" onclick="toggleNotifPanel()" class="icon-btn icon-btn-gold" title="Alertas push">
+        <svg viewBox="0 0 24 24"><path d="M12 2a6 6 0 0 0-6 6v4l-2 4h16l-2-4V8a6 6 0 0 0-6-6z" fill="none" stroke="currentColor" stroke-width="2" stroke-linejoin="round"/><path d="M9 19a3 3 0 0 0 6 0" fill="none" stroke="currentColor" stroke-width="2"/></svg>
+        <span id="notif-badge" style="display:none;position:absolute;top:-3px;right:-3px;width:9px;height:9px;background:#ef4444;border-radius:50%;border:2px solid var(--bg-deep);box-shadow:0 0 6px #ef4444"></span>
       </button>
-      <button class="btn-loc" onclick="getGPS()">📍 GPS</button>
+      <button class="btn-loc" onclick="getGPS()">
+        <svg viewBox="0 0 24 24" width="14" height="14" style="vertical-align:-2px;margin-right:3px"><circle cx="12" cy="12" r="3" fill="currentColor"/><circle cx="12" cy="12" r="8" fill="none" stroke="currentColor" stroke-width="1.5"/><line x1="12" y1="1" x2="12" y2="4" stroke="currentColor" stroke-width="1.5"/><line x1="12" y1="20" x2="12" y2="23" stroke="currentColor" stroke-width="1.5"/><line x1="1" y1="12" x2="4" y2="12" stroke="currentColor" stroke-width="1.5"/><line x1="20" y1="12" x2="23" y2="12" stroke="currentColor" stroke-width="1.5"/></svg>GPS
+      </button>
     </div>
   </div>
   <div class="search-row" style="position:relative">
@@ -359,7 +373,7 @@
       autocomplete="off"
       oninput="onSearchInput()"
       onkeydown="onSearchKey(event)">
-    <button class="btn-search" onclick="searchCity()">Buscar</button>
+    <button class="btn-search" onclick="searchCity()"><svg viewBox="0 0 24 24" width="14" height="14" style="vertical-align:-2px;margin-right:4px"><circle cx="10" cy="10" r="6" fill="none" stroke="currentColor" stroke-width="2.2"/><line x1="15" y1="15" x2="20" y2="20" stroke="currentColor" stroke-width="2.2" stroke-linecap="round"/></svg>Buscar</button>
   </div>
   <div id="autocomplete-list" style="
     position:absolute;left:16px;right:16px;top:100%;
@@ -442,14 +456,38 @@
 </div>
 
 <div class="tabs" id="tabs">
-  <div class="tab active" onclick="showTab('actual')">Actual</div>
-  <div class="tab" onclick="showTab('alertas')" id="tab-alertas">Alertas</div>
-  <div class="tab" onclick="showTab('noticias')">Noticias</div>
-  <div class="tab" onclick="showTab('horas')">Por Horas</div>
-  <div class="tab" onclick="showTab('dias')">7 Dias</div>
-  <div class="tab" onclick="showTab('dias15')">15 Dias</div>
-  <div class="tab" onclick="showTab('mapa')">Mapa</div>
-  <div class="tab" onclick="showTab('enso')">El Nino IA</div>
+  <div class="tab active" onclick="showTab('actual')">
+    <span class="tab-ico tab-ico-cyan"><svg viewBox="0 0 24 24"><circle cx="12" cy="12" r="5" fill="none" stroke="currentColor" stroke-width="2"/><line x1="12" y1="1" x2="12" y2="4" stroke="currentColor" stroke-width="2"/><line x1="12" y1="20" x2="12" y2="23" stroke="currentColor" stroke-width="2"/><line x1="1" y1="12" x2="4" y2="12" stroke="currentColor" stroke-width="2"/><line x1="20" y1="12" x2="23" y2="12" stroke="currentColor" stroke-width="2"/></svg></span>
+    Actual
+  </div>
+  <div class="tab" onclick="showTab('alertas')" id="tab-alertas">
+    <span class="tab-ico tab-ico-red"><svg viewBox="0 0 24 24"><path d="M12 2L2 20h20L12 2z" fill="none" stroke="currentColor" stroke-width="2" stroke-linejoin="round"/><line x1="12" y1="9" x2="12" y2="14" stroke="currentColor" stroke-width="2"/><circle cx="12" cy="17" r="1" fill="currentColor"/></svg></span>
+    Alertas
+  </div>
+  <div class="tab" onclick="showTab('noticias')">
+    <span class="tab-ico tab-ico-gold"><svg viewBox="0 0 24 24"><rect x="3" y="5" width="18" height="14" rx="1.5" fill="none" stroke="currentColor" stroke-width="2"/><line x1="6" y1="9" x2="14" y2="9" stroke="currentColor" stroke-width="1.5"/><line x1="6" y1="12" x2="18" y2="12" stroke="currentColor" stroke-width="1.5"/><line x1="6" y1="15" x2="18" y2="15" stroke="currentColor" stroke-width="1.5"/></svg></span>
+    Noticias
+  </div>
+  <div class="tab" onclick="showTab('horas')">
+    <span class="tab-ico tab-ico-blue"><svg viewBox="0 0 24 24"><circle cx="12" cy="12" r="9" fill="none" stroke="currentColor" stroke-width="2"/><line x1="12" y1="12" x2="12" y2="7" stroke="currentColor" stroke-width="2"/><line x1="12" y1="12" x2="16" y2="14" stroke="currentColor" stroke-width="2"/></svg></span>
+    Por Horas
+  </div>
+  <div class="tab" onclick="showTab('dias')">
+    <span class="tab-ico tab-ico-green"><svg viewBox="0 0 24 24"><rect x="3" y="4" width="18" height="17" rx="1.5" fill="none" stroke="currentColor" stroke-width="2"/><line x1="3" y1="9" x2="21" y2="9" stroke="currentColor" stroke-width="2"/><line x1="8" y1="2" x2="8" y2="6" stroke="currentColor" stroke-width="2"/><line x1="16" y1="2" x2="16" y2="6" stroke="currentColor" stroke-width="2"/></svg></span>
+    7 Dias
+  </div>
+  <div class="tab" onclick="showTab('dias15')">
+    <span class="tab-ico tab-ico-green"><svg viewBox="0 0 24 24"><rect x="3" y="4" width="18" height="17" rx="1.5" fill="none" stroke="currentColor" stroke-width="2"/><line x1="3" y1="9" x2="21" y2="9" stroke="currentColor" stroke-width="2"/><circle cx="12" cy="15" r="2.5" fill="currentColor"/></svg></span>
+    15 Dias
+  </div>
+  <div class="tab" onclick="showTab('mapa')">
+    <span class="tab-ico tab-ico-orange"><svg viewBox="0 0 24 24"><polygon points="12,2 3,7 3,17 12,22 21,17 21,7" fill="none" stroke="currentColor" stroke-width="2" stroke-linejoin="round"/><circle cx="12" cy="12" r="3" fill="none" stroke="currentColor" stroke-width="1.5"/></svg></span>
+    Mapa
+  </div>
+  <div class="tab" onclick="showTab('enso')">
+    <span class="tab-ico tab-ico-cyan"><svg viewBox="0 0 24 24"><path d="M2 16q2.5-4 5-0t5-4 5 4 5-4" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"/><path d="M2 12q2.5-4 5-0t5-4 5 4 5-4" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" opacity="0.5"/></svg></span>
+    El Nino IA
+  </div>
 </div>
 
 <!-- ACTUAL -->
@@ -516,11 +554,11 @@
       <div id="leaflet-map" style="height:360px;border-radius:10px;overflow:hidden;border:1px solid var(--border)"></div>
       <!-- Controls -->
       <div style="display:flex;gap:6px;margin-top:8px;flex-wrap:wrap">
-        <button onclick="setRadarLayer('rain')" id="lbtn-rain" class="lbtn lbtn-active">🌧 Lluvia</button>
-        <button onclick="setRadarLayer('clouds')" id="lbtn-clouds" class="lbtn">☁ Nubes</button>
-        <button onclick="setRadarLayer('wind')" id="lbtn-wind" class="lbtn">💨 Viento</button>
-        <button onclick="setRadarLayer('temp')" id="lbtn-temp" class="lbtn">🌡 Temp.</button>
-        <button onclick="centerMap()" class="lbtn" style="margin-left:auto">📍 Centrar</button>
+        <button onclick="setRadarLayer('rain')" id="lbtn-rain" class="lbtn lbtn-active"><svg viewBox="0 0 24 24" width="12" height="12" style="vertical-align:-1px;margin-right:3px"><path d="M6 14a4 4 0 1 1 1-7.9A5 5 0 0 1 17 8a3.5 3.5 0 0 1-1 6.9" fill="none" stroke="currentColor" stroke-width="1.8"/><line x1="8" y1="18" x2="8" y2="21" stroke="currentColor" stroke-width="1.8" stroke-linecap="round"/><line x1="12" y1="18" x2="12" y2="21" stroke="currentColor" stroke-width="1.8" stroke-linecap="round"/><line x1="16" y1="18" x2="16" y2="21" stroke="currentColor" stroke-width="1.8" stroke-linecap="round"/></svg>Lluvia</button>
+        <button onclick="setRadarLayer('clouds')" id="lbtn-clouds" class="lbtn"><svg viewBox="0 0 24 24" width="12" height="12" style="vertical-align:-1px;margin-right:3px"><path d="M6 16a4 4 0 1 1 1-7.9A5 5 0 0 1 17 10a3.5 3.5 0 0 1-1 6.9" fill="none" stroke="currentColor" stroke-width="1.8"/></svg>Nubes</button>
+        <button onclick="setRadarLayer('wind')" id="lbtn-wind" class="lbtn"><svg viewBox="0 0 24 24" width="12" height="12" style="vertical-align:-1px;margin-right:3px"><path d="M3 8h11a2.5 2.5 0 1 0-2-4" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round"/><path d="M3 14h15a2.5 2.5 0 1 1-2 4" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round"/></svg>Viento</button>
+        <button onclick="setRadarLayer('temp')" id="lbtn-temp" class="lbtn"><svg viewBox="0 0 24 24" width="12" height="12" style="vertical-align:-1px;margin-right:3px"><rect x="10" y="3" width="4" height="12" rx="2" fill="none" stroke="currentColor" stroke-width="1.8"/><circle cx="12" cy="18" r="3" fill="none" stroke="currentColor" stroke-width="1.8"/></svg>Temp.</button>
+        <button onclick="centerMap()" class="lbtn" style="margin-left:auto"><svg viewBox="0 0 24 24" width="12" height="12" style="vertical-align:-1px;margin-right:3px"><circle cx="12" cy="12" r="3" fill="currentColor"/><circle cx="12" cy="12" r="8" fill="none" stroke="currentColor" stroke-width="1.5"/><line x1="12" y1="1" x2="12" y2="4" stroke="currentColor" stroke-width="1.5"/><line x1="12" y1="20" x2="12" y2="23" stroke="currentColor" stroke-width="1.5"/><line x1="1" y1="12" x2="4" y2="12" stroke="currentColor" stroke-width="1.5"/><line x1="20" y1="12" x2="23" y2="12" stroke="currentColor" stroke-width="1.5"/></svg>Centrar</button>
       </div>
       <div id="anim-controls" style="display:flex;align-items:center;gap:8px;margin-top:8px;padding:8px;background:var(--bg-card2);border-radius:8px">
         <button onclick="togglePlay()" id="btn-play" style="background:var(--accent2);border:none;border-radius:6px;padding:5px 12px;color:#fff;font-size:12px;cursor:pointer;white-space:nowrap">▶ Actualizar</button>
