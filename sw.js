@@ -40,10 +40,10 @@ self.addEventListener('push', e => {
   const title   = data.title   || '⚠️ Alerta Meteorológica — Noticlima';
   const body    = data.body    || 'Se ha detectado tiempo severo en tu área.';
   const level   = data.level   || 'MODERATE';
-  const icon    = data.icon    || '/noticlima/icon-192.png';
-  const badge   = data.badge   || '/noticlima/badge-72.png';
+  const icon    = data.icon    || './icon-192.png';
+  const badge   = data.badge   || './badge-72.png';
   const tag     = data.tag     || 'noticlima-alert';
-  const url     = data.url     || '/noticlima/';
+  const url     = data.url     || './';
 
   const sv = SEVERITY_LEVELS[level] || SEVERITY_LEVELS.MODERATE;
 
@@ -70,7 +70,7 @@ self.addEventListener('notificationclick', e => {
   e.notification.close();
   if (e.action === 'dismiss') return;
 
-  const url = (e.notification.data && e.notification.data.url) || '/noticlima/';
+  const url = (e.notification.data && e.notification.data.url) || './';
   e.waitUntil(
     self.clients.matchAll({ type: 'window', includeUncontrolled: true }).then(clients => {
       for (const client of clients) {
@@ -122,13 +122,13 @@ async function checkWeatherBackground(lat, lon, location) {
     for (const alert of alerts) {
       await self.registration.showNotification(alert.title, {
         body:             alert.body,
-        icon:             '/noticlima/icon-192.png',
-        badge:            '/noticlima/badge-72.png',
+        icon:             './icon-192.png',
+        badge:            './badge-72.png',
         tag:              alert.tag,
         renotify:         true,
         requireInteraction: alert.priority >= 3,
         vibrate:          alert.priority >= 3 ? [300,100,300,100,600] : [200,100,200],
-        data:             { url: '/noticlima/#alertas', level: alert.level },
+        data:             { url: './#alertas', level: alert.level },
         actions: [
           { action: 'ver', title: 'Ver alerta' },
           { action: 'dismiss', title: 'OK' },

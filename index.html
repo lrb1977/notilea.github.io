@@ -5,6 +5,17 @@
 <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
 <meta name="theme-color" content="#0a0e1a">
 <title>Noticlima de Notilea</title>
+
+<!-- PWA / Iconos -->
+<link rel="manifest" href="./manifest.json">
+<link rel="icon" type="image/png" sizes="32x32" href="./favicon.png">
+<link rel="icon" type="image/png" sizes="192x192" href="./icon-192.png">
+<link rel="apple-touch-icon" href="./apple-touch-icon.png">
+<meta name="apple-mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+<meta name="apple-mobile-web-app-title" content="Noticlima">
+<meta name="mobile-web-app-capable" content="yes">
+
 <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/leaflet/1.9.4/leaflet.min.css"/>
 <style>
 
@@ -212,6 +223,26 @@
   .notif-history-item { display:flex; gap:10px; padding:8px 0; border-bottom:1px solid var(--border); align-items:flex-start; }
   .notif-history-item:last-child { border-bottom:none; }
   .notif-level-dot { width:8px; height:8px; border-radius:50%; flex-shrink:0; margin-top:4px; }
+  /* SPLASH SCREEN */
+  #splash-screen { position:fixed; inset:0; background:radial-gradient(circle at 50% 38%, #0d1f3d 0%, #0a0e1a 65%); z-index:9999; display:flex; flex-direction:column; align-items:center; justify-content:center; transition:opacity 0.5s ease, visibility 0.5s; }
+  #splash-screen.hidden { opacity:0; visibility:hidden; pointer-events:none; }
+  .splash-rings { position:relative; width:200px; height:200px; margin-bottom:24px; }
+  .splash-ring { position:absolute; border:1.5px solid rgba(0,198,255,0.5); border-radius:50%; box-shadow:0 0 12px rgba(0,198,255,0.3); }
+  .splash-ring-1 { width:200px; height:200px; top:0; left:0; animation:splashSpin 8s linear infinite; }
+  .splash-ring-2 { width:155px; height:155px; top:22px; left:22px; animation:splashSpin 6s linear infinite reverse; }
+  .splash-ring-3 { width:115px; height:115px; top:42px; left:42px; animation:splashSpin 4s linear infinite; }
+  .splash-node { position:absolute; width:10px; height:10px; background:#00c6ff; border-radius:50%; box-shadow:0 0 10px #00c6ff; }
+  @keyframes splashSpin { from{transform:rotate(0deg)} to{transform:rotate(360deg)} }
+  .splash-hex { position:absolute; top:50%; left:50%; transform:translate(-50%,-50%); width:78px; height:78px; display:flex; align-items:center; justify-content:center; }
+  .splash-hex svg { width:100%; height:100%; }
+  .splash-title { font-size:22px; font-weight:800; color:#e2e8f0; letter-spacing:0.5px; text-align:center; }
+  .splash-title .accent { color:#00c6ff; display:block; }
+  .splash-sub { font-size:11px; color:#475569; letter-spacing:1px; text-transform:uppercase; margin-top:6px; text-align:center; }
+  .splash-dots { display:flex; gap:8px; margin-top:28px; }
+  .splash-dot { width:7px; height:7px; border-radius:50%; background:#00c6ff; opacity:0.3; animation:splashPulse 1.4s ease-in-out infinite; }
+  .splash-dot:nth-child(2) { animation-delay:0.2s; }
+  .splash-dot:nth-child(3) { animation-delay:0.4s; }
+  @keyframes splashPulse { 0%,100%{opacity:0.25;transform:scale(0.85)} 50%{opacity:1;transform:scale(1.15)} }
   .cache-bar { display:flex; align-items:center; justify-content:space-between; padding:8px 12px; background:var(--bg-card2); border-radius:8px; margin-bottom:10px; }
   .cache-bar-text { font-size:10px; color:var(--muted); }
   .btn-refresh { background:transparent; border:1px solid var(--border); border-radius:6px; padding:4px 10px; font-size:10px; color:var(--accent); cursor:pointer; }
@@ -232,6 +263,39 @@
 </style>
 </head>
 <body>
+
+<!-- SPLASH SCREEN -->
+<div id="splash-screen">
+  <div class="splash-rings">
+    <div class="splash-ring splash-ring-1"></div>
+    <div class="splash-ring splash-ring-2">
+      <div class="splash-node" style="top:-5px;left:50%;margin-left:-5px"></div>
+    </div>
+    <div class="splash-ring splash-ring-3">
+      <div class="splash-node" style="bottom:-5px;right:10px"></div>
+    </div>
+    <div class="splash-hex">
+      <svg viewBox="0 0 100 100">
+        <polygon points="50,8 86,29 86,71 50,92 14,71 14,29" fill="#06101f" stroke="#00c6ff" stroke-width="3"/>
+        <line x1="50" y1="50" x2="50" y2="22" stroke="#00b4ff" stroke-width="1.5" opacity="0.5"/>
+        <line x1="50" y1="50" x2="74" y2="36" stroke="#00b4ff" stroke-width="1.5" opacity="0.5"/>
+        <line x1="50" y1="50" x2="74" y2="64" stroke="#00b4ff" stroke-width="1.5" opacity="0.5"/>
+        <line x1="50" y1="50" x2="50" y2="78" stroke="#00b4ff" stroke-width="1.5" opacity="0.5"/>
+        <line x1="50" y1="50" x2="26" y2="64" stroke="#00b4ff" stroke-width="1.5" opacity="0.5"/>
+        <line x1="50" y1="50" x2="26" y2="36" stroke="#00b4ff" stroke-width="1.5" opacity="0.5"/>
+        <polygon points="56,14 38,52 48,52 42,86 68,46 56,46" fill="#fff4d6"/>
+      </svg>
+    </div>
+  </div>
+  <div class="splash-title">NOTICLIMA<span class="accent">DE NOTILEA</span></div>
+  <div class="splash-sub">Meteorologia Inteligente · Paraguay</div>
+  <div class="splash-dots">
+    <div class="splash-dot"></div>
+    <div class="splash-dot"></div>
+    <div class="splash-dot"></div>
+  </div>
+</div>
+
 
 <header>
   <div class="header-top">
@@ -1218,9 +1282,18 @@ function renderAlertas() {
 // =============================================
 // RENDER CURRENT
 // =============================================
+function hideSplash() {
+  const splash = document.getElementById('splash-screen');
+  if (splash && !splash.classList.contains('hidden')) {
+    splash.classList.add('hidden');
+    setTimeout(() => splash.remove(), 600);
+  }
+}
+
 function renderCurrent() {
   const c = state.weather;
   if (!c) return;
+  hideSplash();
   const alerts = getSevereAlerts(c, state.hourly);
   const alertsHtml = alerts.map(a => `
     <div class="alert-banner alert-${a.level}">
@@ -2424,6 +2497,9 @@ window.addEventListener('load', () => {
   renderENSO();
   setTimeout(initTicker, 600);
   setTimeout(initNotifications, 1000);
+
+  // Fallback: ocultar splash a los 6s aunque el clima no haya cargado
+  setTimeout(hideSplash, 6000);
 
   if (navigator.geolocation) {
     navigator.geolocation.getCurrentPosition(
