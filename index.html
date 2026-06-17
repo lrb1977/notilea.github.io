@@ -293,6 +293,21 @@
   .leaflet-control-attribution a { color:var(--accent) !important; }
   .rv-tip { background:var(--bg-card); color:var(--text); border:1px solid var(--border); border-radius:6px; font-size:11px; padding:3px 8px; }
 
+  /* LAYER TOGGLES — estilo Windy */
+  .layer-toggle-row { display:flex; align-items:center; gap:10px; padding:11px 4px; border-bottom:1px solid var(--border); }
+  .layer-toggle-row:last-child { border-bottom:none; }
+  .layer-toggle-icon { width:28px; height:28px; border-radius:8px; background:rgba(255,255,255,0.04); display:flex; align-items:center; justify-content:center; flex-shrink:0; }
+  .layer-toggle-label { flex:1; font-size:13px; color:var(--text); font-weight:500; }
+  .layer-toggle-switch { width:44px; height:24px; border-radius:12px; background:var(--bg-card2); border:1px solid var(--border); position:relative; cursor:pointer; flex-shrink:0; transition:background 0.2s, border-color 0.2s; }
+  .layer-toggle-switch.active { background:linear-gradient(135deg,var(--accent2),var(--accent)); border-color:var(--accent); box-shadow:0 0 10px rgba(0,198,255,0.4); }
+  .layer-toggle-knob { width:18px; height:18px; border-radius:50%; background:#fff; position:absolute; top:2px; left:2px; transition:left 0.2s; box-shadow:0 1px 3px rgba(0,0,0,0.4); }
+  .layer-toggle-switch.active .layer-toggle-knob { left:23px; }
+
+  /* Leaflet zoom controls — estilo HUD */
+  .leaflet-control-zoom { border:1px solid rgba(0,198,255,0.25) !important; border-radius:9px !important; overflow:hidden; }
+  .leaflet-control-zoom a { background:rgba(8,14,26,0.92) !important; color:#00c6ff !important; border-color:rgba(0,198,255,0.2) !important; font-size:18px !important; }
+  .leaflet-control-zoom a:hover { background:rgba(0,198,255,0.15) !important; }
+
   /* SCROLLBAR FUTURISTA */
   ::-webkit-scrollbar { width:5px; height:5px; }
   ::-webkit-scrollbar-track { background:transparent; }
@@ -539,38 +554,130 @@
 <div class="section" id="sec-mapa">
   <!-- Radar Tab -->
   <div style="display:flex;gap:0;margin-bottom:10px;border-radius:10px;overflow:hidden;border:1px solid var(--border)">
-    <button id="btn-radar" onclick="switchMapView('radar')" style="flex:1;padding:9px;font-size:12px;font-weight:600;background:var(--accent2);color:#fff;border:none;cursor:pointer">🛰 Radar Lluvia</button>
+    <button id="btn-radar" onclick="switchMapView('radar')" style="flex:1;padding:9px;font-size:12px;font-weight:600;background:var(--accent2);color:#fff;border:none;cursor:pointer">🛰 Radar Satelital</button>
     <button id="btn-depts" onclick="switchMapView('depts')" style="flex:1;padding:9px;font-size:12px;font-weight:600;background:var(--bg-card2);color:var(--muted);border:none;cursor:pointer">🗺 Departamentos</button>
   </div>
 
-  <!-- RADAR PANEL -->
+  <!-- RADAR PANEL — estilo Windy -->
   <div id="radar-panel">
-    <div class="card" style="padding:10px">
-      <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:8px">
-        <div class="card-title" style="margin:0">🛰 Radar Satelital — Lluvia en Tiempo Real</div>
-        <span id="radar-time" style="font-size:10px;color:var(--accent)">Cargando…</span>
+    <div class="card" style="padding:0;overflow:hidden">
+      <!-- Header del radar -->
+      <div style="display:flex;align-items:center;justify-content:space-between;padding:12px 14px;border-bottom:1px solid var(--border)">
+        <div style="display:flex;align-items:center;gap:8px">
+          <span style="color:var(--accent);display:flex"><svg width="18" height="18" viewBox="0 0 24 24"><path d="M2 12a10 10 0 0 1 10-10" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"/><path d="M5 12a7 7 0 0 1 7-7" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" opacity="0.6"/><circle cx="12" cy="12" r="2.5" fill="currentColor"/></svg></span>
+          <span style="font-size:12px;font-weight:700;letter-spacing:0.5px;text-transform:uppercase;color:var(--text)">Radar Satelital</span>
+        </div>
+        <button onclick="toggleLayersPanel()" id="btn-layers-toggle" style="background:var(--bg-card2);border:1px solid var(--border);border-radius:8px;width:32px;height:32px;display:flex;align-items:center;justify-content:center;color:var(--accent);cursor:pointer">
+          <svg width="16" height="16" viewBox="0 0 24 24"><line x1="4" y1="6" x2="20" y2="6" stroke="currentColor" stroke-width="2"/><line x1="4" y1="12" x2="20" y2="12" stroke="currentColor" stroke-width="2"/><line x1="4" y1="18" x2="20" y2="18" stroke="currentColor" stroke-width="2"/><circle cx="9" cy="6" r="2" fill="var(--bg-card)" stroke="currentColor" stroke-width="2"/><circle cx="16" cy="12" r="2" fill="var(--bg-card)" stroke="currentColor" stroke-width="2"/><circle cx="11" cy="18" r="2" fill="var(--bg-card)" stroke="currentColor" stroke-width="2"/></svg>
+        </button>
       </div>
-      <!-- Leaflet map -->
-      <div id="leaflet-map" style="height:360px;border-radius:10px;overflow:hidden;border:1px solid var(--border)"></div>
-      <!-- Controls -->
-      <div style="display:flex;gap:6px;margin-top:8px;flex-wrap:wrap">
-        <button onclick="setRadarLayer('rain')" id="lbtn-rain" class="lbtn lbtn-active"><svg viewBox="0 0 24 24" width="12" height="12" style="vertical-align:-1px;margin-right:3px"><path d="M6 14a4 4 0 1 1 1-7.9A5 5 0 0 1 17 8a3.5 3.5 0 0 1-1 6.9" fill="none" stroke="currentColor" stroke-width="1.8"/><line x1="8" y1="18" x2="8" y2="21" stroke="currentColor" stroke-width="1.8" stroke-linecap="round"/><line x1="12" y1="18" x2="12" y2="21" stroke="currentColor" stroke-width="1.8" stroke-linecap="round"/><line x1="16" y1="18" x2="16" y2="21" stroke="currentColor" stroke-width="1.8" stroke-linecap="round"/></svg>Lluvia</button>
-        <button onclick="setRadarLayer('clouds')" id="lbtn-clouds" class="lbtn"><svg viewBox="0 0 24 24" width="12" height="12" style="vertical-align:-1px;margin-right:3px"><path d="M6 16a4 4 0 1 1 1-7.9A5 5 0 0 1 17 10a3.5 3.5 0 0 1-1 6.9" fill="none" stroke="currentColor" stroke-width="1.8"/></svg>Nubes</button>
-        <button onclick="setRadarLayer('wind')" id="lbtn-wind" class="lbtn"><svg viewBox="0 0 24 24" width="12" height="12" style="vertical-align:-1px;margin-right:3px"><path d="M3 8h11a2.5 2.5 0 1 0-2-4" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round"/><path d="M3 14h15a2.5 2.5 0 1 1-2 4" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round"/></svg>Viento</button>
-        <button onclick="setRadarLayer('temp')" id="lbtn-temp" class="lbtn"><svg viewBox="0 0 24 24" width="12" height="12" style="vertical-align:-1px;margin-right:3px"><rect x="10" y="3" width="4" height="12" rx="2" fill="none" stroke="currentColor" stroke-width="1.8"/><circle cx="12" cy="18" r="3" fill="none" stroke="currentColor" stroke-width="1.8"/></svg>Temp.</button>
-        <button onclick="centerMap()" class="lbtn" style="margin-left:auto"><svg viewBox="0 0 24 24" width="12" height="12" style="vertical-align:-1px;margin-right:3px"><circle cx="12" cy="12" r="3" fill="currentColor"/><circle cx="12" cy="12" r="8" fill="none" stroke="currentColor" stroke-width="1.5"/><line x1="12" y1="1" x2="12" y2="4" stroke="currentColor" stroke-width="1.5"/><line x1="12" y1="20" x2="12" y2="23" stroke="currentColor" stroke-width="1.5"/><line x1="1" y1="12" x2="4" y2="12" stroke="currentColor" stroke-width="1.5"/><line x1="20" y1="12" x2="23" y2="12" stroke="currentColor" stroke-width="1.5"/></svg>Centrar</button>
+
+      <!-- Buscador flotante sobre el mapa + contenedor mapa -->
+      <div style="position:relative">
+        <div style="position:absolute;top:10px;left:10px;right:54px;z-index:50">
+          <div style="display:flex;align-items:center;gap:8px;background:rgba(8,14,26,0.92);border:1px solid var(--border);border-radius:10px;padding:8px 12px;box-shadow:0 4px 16px rgba(0,0,0,0.4)">
+            <svg width="15" height="15" viewBox="0 0 24 24" style="flex-shrink:0;color:var(--accent)"><circle cx="10" cy="10" r="6" fill="none" stroke="currentColor" stroke-width="2.2"/><line x1="15" y1="15" x2="20" y2="20" stroke="currentColor" stroke-width="2.2" stroke-linecap="round"/></svg>
+            <span id="radar-loc-label" style="font-size:12.5px;color:var(--text);font-weight:600;white-space:nowrap;overflow:hidden;text-overflow:ellipsis">Asunción, Paraguay</span>
+          </div>
+        </div>
+
+        <div id="leaflet-map" style="height:420px;width:100%"></div>
+
+        <!-- Timestamp flotante inferior -->
+        <div style="position:absolute;bottom:10px;left:10px;z-index:50;background:rgba(8,14,26,0.92);border:1px solid var(--border);border-radius:9px;padding:6px 12px;display:flex;align-items:center;gap:6px;box-shadow:0 4px 16px rgba(0,0,0,0.4)">
+          <svg width="13" height="13" viewBox="0 0 24 24" style="color:var(--accent)"><circle cx="12" cy="12" r="9" fill="none" stroke="currentColor" stroke-width="2"/><line x1="12" y1="12" x2="12" y2="7" stroke="currentColor" stroke-width="2"/><line x1="12" y1="12" x2="16" y2="14" stroke="currentColor" stroke-width="2"/></svg>
+          <span id="radar-time" style="font-size:11px;color:var(--text);font-weight:600;font-family:'Courier New',monospace">Cargando…</span>
+        </div>
       </div>
-      <div id="anim-controls" style="display:flex;align-items:center;gap:8px;margin-top:8px;padding:8px;background:var(--bg-card2);border-radius:8px">
-        <button onclick="togglePlay()" id="btn-play" style="background:var(--accent2);border:none;border-radius:6px;padding:5px 12px;color:#fff;font-size:12px;cursor:pointer;white-space:nowrap">▶ Actualizar</button>
-        <span style="font-size:10px;color:var(--muted)">Datos Open-Meteo en tiempo real · Toca el mapa para consultar un punto</span>
-      </div>
-      <!-- Legend -->
-      <div id="radar-legend" style="display:flex;gap:6px;align-items:center;margin-top:8px;padding:6px 8px;background:var(--bg-card2);border-radius:8px">
+
+      <!-- Leyenda -->
+      <div id="radar-legend" style="display:flex;gap:6px;align-items:center;margin:0;padding:10px 14px;border-top:1px solid var(--border)">
         <span style="font-size:10px;color:var(--muted)">Sin lluvia</span>
-        <div style="flex:1;height:8px;border-radius:4px;background:linear-gradient(90deg,rgba(100,149,237,0.6),rgba(0,255,127,0.7),rgba(255,215,0,0.8),rgba(255,0,0,0.9),rgba(148,0,211,0.9))"></div>
+        <div style="flex:1;height:7px;border-radius:4px;background:linear-gradient(90deg,rgba(100,149,237,0.6),rgba(0,255,127,0.7),rgba(255,215,0,0.8),rgba(255,0,0,0.9),rgba(148,0,211,0.9))"></div>
         <span style="font-size:10px;color:var(--muted)">Extrema</span>
       </div>
     </div>
+
+    <!-- PANEL DESLIZANTE DE CAPAS (overlay tipo Windy) -->
+    <div id="layers-overlay" onclick="if(event.target===this) toggleLayersPanel()" style="display:none;position:fixed;inset:0;background:rgba(0,0,0,0.55);z-index:550"></div>
+    <div id="layers-panel" style="display:none;position:fixed;top:0;right:0;bottom:0;width:min(320px,86vw);background:linear-gradient(165deg,#0d1424 0%,#060a14 100%);border-left:1px solid rgba(0,198,255,0.2);z-index:551;overflow-y:auto;box-shadow:-8px 0 32px rgba(0,0,0,0.7);transform:translateX(100%);transition:transform 0.3s ease">
+
+      <div style="padding:16px">
+        <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:16px">
+          <div style="font-size:15px;font-weight:700">Configuración del Radar</div>
+          <button onclick="toggleLayersPanel()" style="background:var(--bg-card2);border:1px solid var(--border);border-radius:6px;width:30px;height:30px;color:var(--muted);cursor:pointer;font-size:16px">✕</button>
+        </div>
+
+        <!-- LÍNEA DE TIEMPO -->
+        <div class="card">
+          <div class="card-title">
+            <svg width="13" height="13" viewBox="0 0 24 24"><path d="M3 12a9 9 0 1 0 3-6.7" fill="none" stroke="currentColor" stroke-width="2"/><polyline points="3,4 3,9 8,9" fill="none" stroke="currentColor" stroke-width="2"/></svg>
+            Línea de Tiempo
+          </div>
+          <button onclick="togglePlay()" id="btn-play" style="width:100%;background:linear-gradient(135deg,var(--accent2),var(--accent));border:none;border-radius:10px;padding:11px;color:#fff;font-size:13px;font-weight:700;cursor:pointer;display:flex;align-items:center;justify-content:center;gap:8px;box-shadow:0 2px 14px rgba(0,198,255,0.3)">
+            <svg width="13" height="13" viewBox="0 0 24 24" id="play-icon"><polygon points="6,4 20,12 6,20" fill="#fff"/></svg>
+            Reproducir Animación
+          </button>
+          <div style="display:flex;align-items:center;gap:6px;margin-top:12px;font-size:12px;color:var(--accent);font-weight:600">
+            <svg width="13" height="13" viewBox="0 0 24 24"><circle cx="12" cy="12" r="9" fill="none" stroke="currentColor" stroke-width="2"/><line x1="12" y1="12" x2="12" y2="7" stroke="currentColor" stroke-width="2"/><line x1="12" y1="12" x2="16" y2="14" stroke="currentColor" stroke-width="2"/></svg>
+            <span id="frame-label-text">Hace 0 horas (Ahora)</span>
+          </div>
+          <input type="range" id="frame-slider" min="0" max="12" value="12" style="width:100%;margin-top:10px;accent-color:var(--accent)" oninput="goToFrame(this.value)">
+          <div style="display:flex;justify-content:space-between;font-size:10px;color:var(--muted);margin-top:2px">
+            <span>-2h</span><span>Ahora</span>
+          </div>
+        </div>
+
+        <!-- CAPAS DE INFORMACIÓN -->
+        <div class="card">
+          <div class="card-title">
+            <svg width="13" height="13" viewBox="0 0 24 24"><polygon points="12,3 21,8 12,13 3,8" fill="none" stroke="currentColor" stroke-width="1.8"/><polyline points="3,13 12,18 21,13" fill="none" stroke="currentColor" stroke-width="1.8"/><polyline points="3,18 12,23 21,18" fill="none" stroke="currentColor" stroke-width="1.8"/></svg>
+            Capas de Información
+          </div>
+
+          <div class="layer-toggle-row" data-layer="rain">
+            <span class="layer-toggle-icon" style="color:#60a5fa"><svg width="16" height="16" viewBox="0 0 24 24"><path d="M6 14a4 4 0 1 1 1-7.9A5 5 0 0 1 17 8a3.5 3.5 0 0 1-1 6.9" fill="none" stroke="currentColor" stroke-width="1.8"/><line x1="8" y1="18" x2="8" y2="21" stroke="currentColor" stroke-width="1.8" stroke-linecap="round"/><line x1="12" y1="18" x2="12" y2="21" stroke="currentColor" stroke-width="1.8" stroke-linecap="round"/><line x1="16" y1="18" x2="16" y2="21" stroke="currentColor" stroke-width="1.8" stroke-linecap="round"/></svg></span>
+            <span class="layer-toggle-label">Lluvia en Tiempo Real</span>
+            <div class="layer-toggle-switch active" onclick="setRadarLayer('rain')" id="toggle-rain"><div class="layer-toggle-knob"></div></div>
+          </div>
+
+          <div class="layer-toggle-row" data-layer="clouds">
+            <span class="layer-toggle-icon" style="color:#94a3b8"><svg width="16" height="16" viewBox="0 0 24 24"><path d="M6 16a4 4 0 1 1 1-7.9A5 5 0 0 1 17 10a3.5 3.5 0 0 1-1 6.9" fill="none" stroke="currentColor" stroke-width="1.8"/></svg></span>
+            <span class="layer-toggle-label">Nubosidad / Satélite IR</span>
+            <div class="layer-toggle-switch" onclick="setRadarLayer('clouds')" id="toggle-clouds"><div class="layer-toggle-knob"></div></div>
+          </div>
+
+          <div class="layer-toggle-row" data-layer="wind">
+            <span class="layer-toggle-icon" style="color:#22c55e"><svg width="16" height="16" viewBox="0 0 24 24"><path d="M3 8h11a2.5 2.5 0 1 0-2-4" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round"/><path d="M3 14h15a2.5 2.5 0 1 1-2 4" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round"/></svg></span>
+            <span class="layer-toggle-label">Viento</span>
+            <div class="layer-toggle-switch" onclick="setRadarLayer('wind')" id="toggle-wind"><div class="layer-toggle-knob"></div></div>
+          </div>
+
+          <div class="layer-toggle-row" data-layer="temp">
+            <span class="layer-toggle-icon" style="color:#f97316"><svg width="16" height="16" viewBox="0 0 24 24"><rect x="10" y="3" width="4" height="12" rx="2" fill="none" stroke="currentColor" stroke-width="1.8"/><circle cx="12" cy="18" r="3" fill="none" stroke="currentColor" stroke-width="1.8"/></svg></span>
+            <span class="layer-toggle-label">Temperatura</span>
+            <div class="layer-toggle-switch" onclick="setRadarLayer('temp')" id="toggle-temp"><div class="layer-toggle-knob"></div></div>
+          </div>
+        </div>
+
+        <!-- ACCIONES -->
+        <div class="card">
+          <div class="card-title">
+            <svg width="13" height="13" viewBox="0 0 24 24"><circle cx="12" cy="12" r="3" fill="currentColor"/><circle cx="12" cy="12" r="8" fill="none" stroke="currentColor" stroke-width="1.5"/></svg>
+            Acciones
+          </div>
+          <button onclick="centerMap();toggleLayersPanel()" style="width:100%;background:var(--bg-card2);border:1px solid var(--border);border-radius:9px;padding:10px;color:var(--text);font-size:12.5px;font-weight:600;cursor:pointer;display:flex;align-items:center;justify-content:center;gap:7px">
+            <svg width="14" height="14" viewBox="0 0 24 24"><circle cx="12" cy="12" r="3" fill="currentColor"/><circle cx="12" cy="12" r="8" fill="none" stroke="currentColor" stroke-width="1.5"/></svg>
+            Centrar en mi ubicación
+          </button>
+        </div>
+
+        <div style="font-size:10px;color:var(--muted);text-align:center;padding:6px">
+          Toca el mapa para consultar cualquier punto · Datos Open-Meteo en tiempo real
+        </div>
+      </div>
+    </div>
+
     <!-- Weather popup for tapped location -->
     <div id="tap-weather" style="display:none" class="card">
       <div class="card-title">📍 Ubicación seleccionada</div>
@@ -2761,6 +2868,20 @@ const RAIN_COLORS = [
   {mm:80,  color:'rgba(180,0,180,0.90)'},
 ];
 
+function toggleLayersPanel() {
+  const panel = document.getElementById('layers-panel');
+  const overlay = document.getElementById('layers-overlay');
+  const isOpen = panel.style.transform === 'translateX(0px)';
+  if (isOpen) {
+    panel.style.transform = 'translateX(100%)';
+    setTimeout(() => { panel.style.display = 'none'; overlay.style.display = 'none'; }, 300);
+  } else {
+    panel.style.display = 'block';
+    overlay.style.display = 'block';
+    requestAnimationFrame(() => { panel.style.transform = 'translateX(0px)'; });
+  }
+}
+
 function switchMapView(view) {
   document.getElementById('radar-panel').style.display  = view==='radar' ? 'block':'none';
   document.getElementById('depts-panel').style.display  = view==='depts' ? 'block':'none';
@@ -2771,22 +2892,28 @@ function switchMapView(view) {
   if (view === 'radar') initRadarMap();
 }
 
+let satelliteFrames = [];
+let satelliteLayer = null;
+let satelliteFrameIdx = 0;
+
 function initRadarMap() {
+  const locLabel = document.getElementById('radar-loc-label');
+  if (locLabel) locLabel.textContent = state.locationName;
+
   if (radarMap) {
     setTimeout(()=> radarMap.invalidateSize(), 150);
     return;
   }
   radarMap = L.map('leaflet-map', {
-    center: [-23.5, -58.0],
+    center: [state.lat || -23.5, state.lon || -58.0],
     zoom: 6,
     zoomControl: true,
     attributionControl: true
   });
 
   // Mapa base sin tiles externos — evita bloqueo en WebView Android
-  // Usamos Esri World Gray Canvas (no restringe WebViews)
   const baseTile = L.tileLayer('https://server.arcgisonline.com/ArcGIS/rest/services/Canvas/World_Dark_Gray_Base/MapServer/tile/{z}/{y}/{x}', {
-    attribution: '© Esri · © OpenStreetMap',
+    attribution: '© Esri · RainViewer · Open-Meteo',
     maxZoom: 16
   });
 
@@ -2794,13 +2921,11 @@ function initRadarMap() {
   baseTile.on('tileerror', function() {
     if (baseFailed) return;
     baseFailed = true;
-    // Fallback 1: CartoDB Dark
     baseTile.remove();
     const fallback1 = L.tileLayer('https://a.basemaps.cartocdn.com/dark_all/{z}/{x}/{y}.png', {
       attribution: '© CARTO', maxZoom: 18
     });
     fallback1.on('tileerror', function() {
-      // Fallback 2: fondo CSS puro sin tiles
       document.getElementById('leaflet-map').style.background = '#0d1117';
       fallback1.remove();
     });
@@ -2809,17 +2934,64 @@ function initRadarMap() {
 
   baseTile.addTo(radarMap);
 
-  updateLocationMarker();
+  // Cargar timestamps reales de RainViewer para la linea de tiempo
+  loadSatelliteFrames();
 
+  updateLocationMarker();
   radarMap.on('click', (e) => fetchTapWeather(e.latlng.lat, e.latlng.lng));
 
   setInterval(() => {
     const el = document.getElementById('radar-time');
-    if (el) el.textContent = new Date().toLocaleTimeString('es-PY',{hour:'2-digit',minute:'2-digit'}) + ' PY';
+    if (el && satelliteFrameIdx === satelliteFrames.length - 1) {
+      el.textContent = new Date().toLocaleTimeString('es-PY',{hour:'2-digit',minute:'2-digit'}) + ' · Actual';
+    }
   }, 1000);
 
-  // Cargar capa de lluvia
   setRadarLayer('rain');
+}
+
+// Carga los timestamps de imagenes satelitales reales (RainViewer infrared)
+async function loadSatelliteFrames() {
+  try {
+    const r = await fetch('https://api.rainviewer.com/public/weather-maps.json');
+    const d = await r.json();
+    const past = (d.satellite && d.satellite.infrared) ? d.satellite.infrared : [];
+    satelliteFrames = past.slice(-13); // ultimos ~2h cada 10 min aprox
+    if (satelliteFrames.length) {
+      satelliteFrameIdx = satelliteFrames.length - 1;
+      const slider = document.getElementById('frame-slider');
+      if (slider) { slider.max = satelliteFrames.length - 1; slider.value = satelliteFrameIdx; }
+      applySatelliteFrame(satelliteFrameIdx);
+    }
+  } catch(e) { /* silencioso, queda solo la grilla de datos */ }
+}
+
+function applySatelliteFrame(idx) {
+  if (!radarMap || !satelliteFrames.length) return;
+  idx = Math.max(0, Math.min(idx, satelliteFrames.length-1));
+  const frame = satelliteFrames[idx];
+  if (!frame) return;
+
+  if (satelliteLayer) { satelliteLayer.remove(); satelliteLayer = null; }
+  satelliteLayer = L.tileLayer(
+    `https://tilecache.rainviewer.com/v2/satellite/infrared/${frame.time}/256/{z}/{x}/{y}/0/0_0.png`,
+    { opacity:0.55, zIndex:5, attribution:'RainViewer', crossOrigin:true }
+  );
+  satelliteLayer.on('tileerror', () => {}); // silencioso si falla
+  satelliteLayer.addTo(radarMap);
+
+  const isNow = idx === satelliteFrames.length - 1;
+  const d = new Date(frame.time * 1000);
+  const label = isNow ? 'Hace 0 horas (Ahora)' : `${d.toLocaleTimeString('es-PY',{hour:'2-digit',minute:'2-digit'})} hs`;
+  const lt = document.getElementById('frame-label-text');
+  if (lt) lt.textContent = label;
+  const rt = document.getElementById('radar-time');
+  if (rt) rt.textContent = isNow ? (new Date().toLocaleTimeString('es-PY',{hour:'2-digit',minute:'2-digit'}) + ' · Actual') : (d.toLocaleTimeString('es-PY',{hour:'2-digit',minute:'2-digit'}) + ' PY');
+  satelliteFrameIdx = idx;
+}
+
+function goToFrame(val) {
+  applySatelliteFrame(parseInt(val));
 }
 
 function updateLocationMarker() {
@@ -2831,6 +3003,8 @@ function updateLocationMarker() {
   });
   locationMarker = L.marker([state.lat, state.lon], {icon}).addTo(radarMap);
   locationMarker.bindPopup(`<b>📍 ${state.locationName}</b>`);
+  const lbl = document.getElementById('radar-loc-label');
+  if (lbl) lbl.textContent = state.locationName;
 }
 
 // =============================================
@@ -3001,17 +3175,23 @@ async function renderGridLayer(variable) {
 
 function setRadarLayer(type) {
   currentLayerType = type;
-  document.querySelectorAll('.lbtn').forEach(b => b.classList.remove('lbtn-active'));
-  const el = document.getElementById('lbtn-'+type);
-  if (el) el.classList.add('lbtn-active');
+  document.querySelectorAll('.layer-toggle-switch').forEach(s => s.classList.remove('active'));
+  const el = document.getElementById('toggle-'+type);
+  if (el) el.classList.add('active');
 
-  document.getElementById('anim-controls').style.display = type === 'rain' ? 'flex' : 'none';
+  // El slider de linea de tiempo solo aplica a lluvia/satelite
+  const sliderCard = document.getElementById('frame-slider');
+  if (sliderCard) sliderCard.closest('.card').style.opacity = type === 'rain' ? '1' : '0.4';
+
   stopPlay();
-
-  // Leyenda dinámica
   updateLegend(type);
-
   renderGridLayer(type);
+
+  // Mostrar/ocultar overlay satelital solo en modo lluvia
+  if (satelliteLayer) {
+    if (type === 'rain') { if (!radarMap.hasLayer(satelliteLayer)) satelliteLayer.addTo(radarMap); }
+    else { satelliteLayer.remove(); }
+  }
 }
 
 function updateLegend(type) {
@@ -3025,31 +3205,51 @@ function updateLegend(type) {
   };
   const l = legends[type];
   el.innerHTML = `<span style="font-size:10px;color:var(--muted)">${l.from}</span>
-    <div style="flex:1;height:8px;border-radius:4px;background:${l.grad}"></div>
+    <div style="flex:1;height:7px;border-radius:4px;background:${l.grad}"></div>
     <span style="font-size:10px;color:var(--muted)">${l.to}</span>`;
 }
-
-// Animación lluvia: recargar cada 5 min
-function goToFrame(val) {}  // slider no aplica en grilla, pero conservar para compatibilidad HTML
 
 function togglePlay() {
   if (isPlaying) {
     stopPlay();
   } else {
+    if (!satelliteFrames.length) {
+      // Sin frames satelitales — solo refrescar grilla de datos
+      isPlaying = true;
+      setPlayButtonState(true);
+      renderGridLayer(currentLayerType).then(() => { isPlaying = false; setPlayButtonState(false); });
+      return;
+    }
     isPlaying = true;
-    document.getElementById('btn-play').textContent = '🔄 Actualizando…';
-    renderGridLayer('rain').then(() => {
-      document.getElementById('btn-play').textContent = '▶ Play';
-      isPlaying = false;
-    });
+    setPlayButtonState(true);
+    let idx = 0;
+    animTimer = setInterval(() => {
+      applySatelliteFrame(idx);
+      idx++;
+      if (idx >= satelliteFrames.length) {
+        clearInterval(animTimer);
+        isPlaying = false;
+        setPlayButtonState(false);
+        applySatelliteFrame(satelliteFrames.length - 1); // volver a "ahora"
+      }
+    }, 500);
+  }
+}
+
+function setPlayButtonState(playing) {
+  const btn = document.getElementById('btn-play');
+  if (!btn) return;
+  if (playing) {
+    btn.innerHTML = `<svg width="13" height="13" viewBox="0 0 24 24"><rect x="6" y="5" width="4" height="14" fill="#fff"/><rect x="14" y="5" width="4" height="14" fill="#fff"/></svg> Reproduciendo…`;
+  } else {
+    btn.innerHTML = `<svg width="13" height="13" viewBox="0 0 24 24"><polygon points="6,4 20,12 6,20" fill="#fff"/></svg> Reproducir Animación`;
   }
 }
 
 function stopPlay() {
   isPlaying = false;
   clearInterval(animTimer);
-  const btn = document.getElementById('btn-play');
-  if (btn) btn.textContent = '▶ Actualizar';
+  setPlayButtonState(false);
 }
 
 function centerMap() {
