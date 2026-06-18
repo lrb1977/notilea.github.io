@@ -1478,7 +1478,10 @@ function renderAlertas() {
 // busca en la web si hay un aviso meteorologico vigente.
 // =============================================
 const DMH_CACHE_KEY = 'noticlima_dmh_v1';
-const DMH_CACHE_MINUTES = 30;
+const DMH_CACHE_MINUTES = 10;
+// URL de tu Worker propio (Cloudflare) que tiene la API key de Anthropic guardada.
+// CAMBIAR esta URL por la tuya real despues de desplegar el Worker.
+const DMH_WORKER_URL = 'https://noticlima-dmh-worker.TU-SUBDOMINIO.workers.dev';
 
 function loadDMHCache() {
   try {
@@ -1505,36 +1508,24 @@ async function checkDMHAlert(forzar = false) {
   }
 
   try {
-    const today = new Date().toLocaleDateString('es-PY', {weekday:'long', day:'numeric', month:'long', year:'numeric'});
-    const loc = state.locationName.split(',')[0];
-    const resp = await fetch('https://api.anthropic.com/v1/messages', {
-      method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({
-        model: 'claude-sonnet-4-6',
-        max_tokens: 700,
-        tools: [{ type: 'web_search_20250305', name: 'web_search' }],
-        messages: [{ role: 'user', content:
-          `Busca en meteorologia.gov.py y noticias paraguayas recientes (hoy ${today}) si la Direccion de Meteorologia e Hidrologia (DMH) de Paraguay tiene actualmente un Aviso Meteorologico o Boletin Especial VIGENTE. ` +
-          `Presta atencion especial a si afecta la zona de ${loc} o departamentos cercanos. ` +
-          `Responde SOLO con JSON, sin markdown, con este formato exacto: ` +
-          `{"vigente": true|false, "numero": "numero de aviso o null", "titulo": "titulo corto del aviso o null", "resumen": "resumen de 2 lineas o null", "departamentos": "lista de departamentos afectados o null", "nivel": "ALERTA|VIGILANCIA|null", "fuente_url": "url de la fuente o null"}`
-        }]
-      })
-    });
-    const data = await resp.json();
-    const textBlock = (data.content || []).filter(b => b.type === 'text').map(b => b.text).join('');
-    const match = textBlock.replace(/```json|```/g, '').match(/\{[\s\S]*\}/);
-    if (!match) throw new Error('Sin respuesta JSON valida');
-    const result = JSON.parse(match[0]);
+    // El Worker propio ya consultó a Claude+web_search en su cron cada 15 min.
+    // Aquí solo leemos el resultado guardado (rapido, gratis, sin exponer API key).
+    const endpoint = forzar ? '/force-check' : '/check';
+    const controller = new AbortController();
+    setTimeout(() => controller.abort(), 10000);
+    const resp = await fetch(DMH_WORKER_URL + endpoint, { signal: controller.signal });
+    if (!resp.ok) throw new Error('Worker respondio ' + resp.status);
+    const result = await resp.json();
+
+    if (!result.checked) throw new Error('Worker aun sin datos validos');
 
     saveDMHCache(result);
     renderDMHAlertHTML(result);
 
-    // Si hay un aviso vigente nuevo (no notificado aun), disparar push
-    if (result.vigente && Notification.permission === 'granted') {
-      const lastNotified = localStorage.getItem('dmh_last_notified');
+    // Si hay un aviso vigente nuevo (no notificado aun en este navegador), disparar push local
+    if (result.vigente && result.isNew && Notification.permission === 'granted') {
       const avisoId = result.numero || result.titulo || 'aviso';
+      const lastNotified = localStorage.getItem('dmh_last_notified');
       if (lastNotified !== avisoId) {
         await showLocalNotif(
           '📡 Aviso Oficial DMH Paraguay',
@@ -1551,7 +1542,7 @@ async function checkDMHAlert(forzar = false) {
       }
     }
   } catch(e) {
-    body.innerHTML = `<span style="font-size:11px;color:var(--muted)">No se pudo verificar el aviso DMH en este momento. <a href="https://www.meteorologia.gov.py/avisos/" target="_blank" style="color:var(--accent)">Ver sitio oficial →</a></span>`;
+    body.innerHTML = `<span style="font-size:11px;color:var(--muted)">No se pudo conectar con el servicio de verificación DMH. <a href="https://www.meteorologia.gov.py/avisos/" target="_blank" style="color:var(--accent)">Ver sitio oficial →</a></span>`;
   }
 }
 
@@ -2449,6 +2440,24 @@ async function initNotifications() {
       navigator.serviceWorker.addEventListener('message', e => {
         if (e.data && e.data.type === 'SHOW_ALERTS') showTab('alertas');
       });
+
+      // Registrar periodicSync para que Android verifique el DMH
+      // aunque la app este cerrada (requiere permiso y soporte del navegador;
+      // si no esta disponible, el setInterval en checkWeatherForAlerts sigue funcionando
+      // mientras la app este abierta)
+      if ('periodicSync' in swRegistration) {
+        try {
+          const status = await navigator.permissions.query({ name: 'periodic-background-sync' });
+          if (status.state === 'granted') {
+            await swRegistration.periodicSync.register('noticlima-check', {
+              minInterval: 15 * 60 * 1000, // 15 minutos, igual que el cron del Worker
+            });
+            console.log('[Notif] periodicSync registrado');
+          }
+        } catch(e) {
+          console.log('[Notif] periodicSync no disponible en este navegador:', e.message);
+        }
+      }
     } catch(e) {
       console.warn('[Notif] SW no disponible:', e);
     }
@@ -2575,6 +2584,7 @@ function stopPeriodicCheck() {
 async function checkNow() {
   showToast('🔍 Verificando condiciones meteorológicas...');
   await checkWeatherForAlerts();
+  await checkDMHAlert(true); // forzar verificacion del aviso DMH tambien
 }
 
 async function checkWeatherForAlerts() {

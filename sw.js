@@ -1,9 +1,13 @@
 // ============================================================
-// Noticlima de Notilea — Service Worker v1.0
-// Maneja notificaciones push de tiempo severo (CAP/WMO)
+// Noticlima de Notilea — Service Worker v1.1
+// Maneja notificaciones push de tiempo severo (CAP/WMO) + DMH
 // ============================================================
 const CACHE_NAME = 'noticlima-v1';
 const CHECK_INTERVAL = 10 * 60 * 1000; // cada 10 min
+
+// URL del Worker propio que vigila los avisos DMH con Claude IA.
+// CAMBIAR esta URL por la tuya real despues de desplegar el Worker.
+const DMH_WORKER_URL = 'https://noticlima-dmh-worker.TU-SUBDOMINIO.workers.dev';
 
 // Niveles de alerta según WMO/CAP
 const SEVERITY_LEVELS = {
@@ -88,13 +92,17 @@ self.addEventListener('notificationclick', e => {
 // ── Background sync — verificación periódica ─────────────
 self.addEventListener('periodicsync', e => {
   if (e.tag === 'noticlima-check') {
-    e.waitUntil(checkWeatherBackground());
+    e.waitUntil(Promise.all([
+      checkWeatherBackground(),
+      checkDMHBackground(),
+    ]));
   }
 });
 
 self.addEventListener('message', e => {
   if (e.data && e.data.type === 'CHECK_NOW') {
     checkWeatherBackground(e.data.lat, e.data.lon, e.data.location);
+    checkDMHBackground();
   }
   if (e.data && e.data.type === 'STORE_LOCATION') {
     // Guardar ubicación para checks en background
@@ -103,6 +111,47 @@ self.addEventListener('message', e => {
     self._location = e.data.location;
   }
 });
+
+// ── Verificación de Aviso Oficial DMH via Worker propio ────
+// El Worker ya consultó a Claude con web_search en su propio cron;
+// aquí solo leemos el resultado guardado — es instantáneo y gratis.
+let _dmhLastNotifiedId = null;
+
+async function checkDMHBackground() {
+  try {
+    const resp = await fetch(DMH_WORKER_URL + '/check');
+    if (!resp.ok) return;
+    const result = await resp.json();
+
+    if (result.vigente && result.isNew) {
+      const avisoId = result.numero || result.titulo || 'aviso';
+      if (_dmhLastNotifiedId === avisoId) return; // ya notificado en esta sesión del SW
+
+      const nivel = result.nivel === 'ALERTA' ? 'EXTREME' : 'SEVERE';
+      const sv = SEVERITY_LEVELS[nivel] || SEVERITY_LEVELS.SEVERE;
+      const body = (result.titulo || 'Aviso meteorológico vigente') +
+        (result.departamentos ? ' — ' + result.departamentos : '');
+
+      await self.registration.showNotification('📡 Aviso Oficial DMH Paraguay', {
+        body,
+        icon: './icon-192.png',
+        badge: './badge-72.png',
+        tag: 'dmh-' + avisoId,
+        renotify: true,
+        requireInteraction: sv.priority >= 3,
+        vibrate: sv.sound ? [300,100,300,100,600] : [200,100,200],
+        data: { url: './#alertas', level: nivel, fuente: result.fuente_url || null },
+        actions: [
+          { action: 'ver', title: 'Ver aviso' },
+          { action: 'dismiss', title: 'OK' },
+        ],
+      });
+      _dmhLastNotifiedId = avisoId;
+    }
+  } catch(err) {
+    console.log('[SW] Error consultando Worker DMH:', err);
+  }
+}
 
 async function checkWeatherBackground(lat, lon, location) {
   const la = lat || self._lat || -25.2867;

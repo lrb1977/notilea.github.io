@@ -1,0 +1,18 @@
+name = "noticlima-dmh-worker"
+main = "worker.js"
+compatibility_date = "2026-06-01"
+
+# Cron: corre cada 15 minutos, 24/7, automaticamente en el servidor de Cloudflare
+# (no depende de que el usuario tenga la app abierta)
+[triggers]
+crons = ["*/15 * * * *"]
+
+# KV Namespace para guardar el ultimo resultado del DMH
+# Se crea con: npx wrangler kv namespace create DMH_KV
+# y el id que te devuelva va aqui abajo
+[[kv_namespaces]]
+binding = "DMH_KV"
+id = "REEMPLAZAR_CON_EL_ID_QUE_TE_DE_WRANGLER"
+
+# La API key de Anthropic se configura como secret (NO va en este archivo)
+# con: npx wrangler secret put ANTHROPIC_API_KEY
