@@ -1454,12 +1454,131 @@ function renderAlertas() {
     </div>`;
 
   document.getElementById('alertas-content').innerHTML = `
+    <div class="card" id="dmh-alert-card">
+      <div class="card-title">📡 Aviso Oficial DMH Paraguay</div>
+      <div id="dmh-alert-body" style="display:flex;align-items:center;gap:10px;padding:6px 0">
+        <div class="spinner" style="width:20px;height:20px;margin:0"></div>
+        <span style="font-size:12px;color:var(--muted)">Verificando avisos vigentes…</span>
+      </div>
+    </div>
     <div class="card">${semaHtml}</div>
     ${alertCardsHtml}
     ${forecastSection}
     ${summaryHtml}
     <div style="font-size:10px;color:var(--muted);text-align:center;padding:8px;background:var(--bg-card);border-radius:8px;margin-bottom:12px">
       Fuente: Open-Meteo · DMH Paraguay · Análisis automático Noticlima de <span class="notilea-tag">Notilea</span>
+    </div>`;
+
+  checkDMHAlert();
+}
+
+// =============================================
+// AVISO OFICIAL DMH — verificado via IA + busqueda web
+// El DMH no tiene API publica con CAP/XML, asi que Claude
+// busca en la web si hay un aviso meteorologico vigente.
+// =============================================
+const DMH_CACHE_KEY = 'noticlima_dmh_v1';
+const DMH_CACHE_MINUTES = 30;
+
+function loadDMHCache() {
+  try {
+    const raw = localStorage.getItem(DMH_CACHE_KEY);
+    if (!raw) return null;
+    const obj = JSON.parse(raw);
+    const ageMin = (Date.now() - obj.ts) / 60000;
+    if (ageMin > DMH_CACHE_MINUTES) return null;
+    return obj;
+  } catch(e) { return null; }
+}
+
+function saveDMHCache(data) {
+  try { localStorage.setItem(DMH_CACHE_KEY, JSON.stringify({ ...data, ts: Date.now() })); } catch(e) {}
+}
+
+async function checkDMHAlert(forzar = false) {
+  const body = document.getElementById('dmh-alert-body');
+  if (!body) return;
+
+  if (!forzar) {
+    const cached = loadDMHCache();
+    if (cached) { renderDMHAlertHTML(cached); return; }
+  }
+
+  try {
+    const today = new Date().toLocaleDateString('es-PY', {weekday:'long', day:'numeric', month:'long', year:'numeric'});
+    const loc = state.locationName.split(',')[0];
+    const resp = await fetch('https://api.anthropic.com/v1/messages', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({
+        model: 'claude-sonnet-4-6',
+        max_tokens: 700,
+        tools: [{ type: 'web_search_20250305', name: 'web_search' }],
+        messages: [{ role: 'user', content:
+          `Busca en meteorologia.gov.py y noticias paraguayas recientes (hoy ${today}) si la Direccion de Meteorologia e Hidrologia (DMH) de Paraguay tiene actualmente un Aviso Meteorologico o Boletin Especial VIGENTE. ` +
+          `Presta atencion especial a si afecta la zona de ${loc} o departamentos cercanos. ` +
+          `Responde SOLO con JSON, sin markdown, con este formato exacto: ` +
+          `{"vigente": true|false, "numero": "numero de aviso o null", "titulo": "titulo corto del aviso o null", "resumen": "resumen de 2 lineas o null", "departamentos": "lista de departamentos afectados o null", "nivel": "ALERTA|VIGILANCIA|null", "fuente_url": "url de la fuente o null"}`
+        }]
+      })
+    });
+    const data = await resp.json();
+    const textBlock = (data.content || []).filter(b => b.type === 'text').map(b => b.text).join('');
+    const match = textBlock.replace(/```json|```/g, '').match(/\{[\s\S]*\}/);
+    if (!match) throw new Error('Sin respuesta JSON valida');
+    const result = JSON.parse(match[0]);
+
+    saveDMHCache(result);
+    renderDMHAlertHTML(result);
+
+    // Si hay un aviso vigente nuevo (no notificado aun), disparar push
+    if (result.vigente && Notification.permission === 'granted') {
+      const lastNotified = localStorage.getItem('dmh_last_notified');
+      const avisoId = result.numero || result.titulo || 'aviso';
+      if (lastNotified !== avisoId) {
+        await showLocalNotif(
+          '📡 Aviso Oficial DMH Paraguay',
+          (result.titulo || 'Aviso meteorológico vigente') + (result.departamentos ? ' — ' + result.departamentos : ''),
+          result.nivel === 'ALERTA' ? 'SEVERE' : 'MODERATE'
+        );
+        localStorage.setItem('dmh_last_notified', avisoId);
+        addToHistory && addToHistory({
+          title: '📡 Aviso DMH: ' + (result.titulo || 'Vigente'),
+          body: result.resumen || '',
+          level: result.nivel === 'ALERTA' ? 'SEVERE' : 'MODERATE',
+          tag: 'dmh-' + avisoId
+        });
+      }
+    }
+  } catch(e) {
+    body.innerHTML = `<span style="font-size:11px;color:var(--muted)">No se pudo verificar el aviso DMH en este momento. <a href="https://www.meteorologia.gov.py/avisos/" target="_blank" style="color:var(--accent)">Ver sitio oficial →</a></span>`;
+  }
+}
+
+function renderDMHAlertHTML(r) {
+  const body = document.getElementById('dmh-alert-body');
+  if (!body) return;
+
+  if (!r.vigente) {
+    body.innerHTML = `
+      <div style="display:flex;align-items:center;gap:8px;width:100%">
+        <span style="color:#22c55e;font-size:18px">✓</span>
+        <span style="font-size:12px;color:var(--muted)">Sin avisos oficiales vigentes del DMH en este momento.</span>
+      </div>`;
+    return;
+  }
+
+  const nivelColor = r.nivel === 'ALERTA' ? '#ef4444' : '#f59e0b';
+  body.innerHTML = `
+    <div style="width:100%">
+      <div style="display:flex;align-items:center;gap:8px;margin-bottom:6px">
+        <span style="font-size:18px">⚠️</span>
+        <span style="font-size:13px;font-weight:700;color:${nivelColor}">${r.titulo || 'Aviso Meteorológico Vigente'}</span>
+        ${r.numero ? `<span class="badge" style="margin-left:auto">N° ${r.numero}</span>` : ''}
+      </div>
+      ${r.resumen ? `<div style="font-size:12px;color:var(--text);line-height:1.5;margin-bottom:6px">${r.resumen}</div>` : ''}
+      ${r.departamentos ? `<div style="font-size:11px;color:var(--accent);margin-bottom:6px">📍 Departamentos: ${r.departamentos}</div>` : ''}
+      ${r.fuente_url ? `<a href="${r.fuente_url}" target="_blank" style="font-size:11px;color:var(--accent);text-decoration:none">Ver aviso oficial completo →</a>` : ''}
     </div>`;
 }
 
@@ -2490,6 +2609,9 @@ async function checkWeatherForAlerts() {
 
     // También enviar al SW para background
     sendLocationToSW();
+
+    // Verificar tambien si hay aviso oficial DMH vigente (cache 30 min, no se repite cada vez)
+    checkDMHAlert();
 
   } catch(e) { /* silencioso */ }
 }
