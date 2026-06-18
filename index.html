@@ -643,7 +643,7 @@
 
           <div class="layer-toggle-row" data-layer="clouds">
             <span class="layer-toggle-icon" style="color:#94a3b8"><svg width="16" height="16" viewBox="0 0 24 24"><path d="M6 16a4 4 0 1 1 1-7.9A5 5 0 0 1 17 10a3.5 3.5 0 0 1-1 6.9" fill="none" stroke="currentColor" stroke-width="1.8"/></svg></span>
-            <span class="layer-toggle-label">Nubosidad / Satélite IR</span>
+            <span class="layer-toggle-label">Nubosidad (Satélite NASA)</span>
             <div class="layer-toggle-switch" onclick="setRadarLayer('clouds')" id="toggle-clouds"><div class="layer-toggle-knob"></div></div>
           </div>
 
@@ -2953,76 +2953,83 @@ function initRadarMap() {
   setRadarLayer('rain');
 }
 
-// Carga los timestamps de imagenes satelitales reales (RainViewer infrared + radar)
+// Carga los timestamps reales del radar de lluvia RainViewer
+// NOTA: el endpoint publico de satelite fue descontinuado por RainViewer,
+// por eso usamos solo radar de precipitacion (que si sigue activo)
+let rvHost = '';
 async function loadSatelliteFrames() {
   try {
     const r = await fetch('https://api.rainviewer.com/public/weather-maps.json');
+    if (!r.ok) throw new Error('HTTP ' + r.status);
     const d = await r.json();
-    const satPast = (d.satellite && d.satellite.infrared) ? d.satellite.infrared : [];
+    rvHost = d.host || 'https://tilecache.rainviewer.com';
     const radarPast = (d.radar && d.radar.past) ? d.radar.past : [];
-    satelliteFrames = satPast.slice(-13);
     radarFrames = radarPast.slice(-13);
+    console.log('[RainViewer] host:', rvHost, 'frames:', radarFrames.length);
 
-    if (satelliteFrames.length) {
-      satelliteFrameIdx = satelliteFrames.length - 1;
-      const slider = document.getElementById('frame-slider');
-      if (slider) { slider.max = satelliteFrames.length - 1; slider.value = satelliteFrameIdx; }
-      applySatelliteFrame(satelliteFrameIdx);
-    }
     if (radarFrames.length) {
       rainFrameIdx = radarFrames.length - 1;
+      const slider = document.getElementById('frame-slider');
+      if (slider) { slider.max = radarFrames.length - 1; slider.value = rainFrameIdx; }
+      updateFrameLabel(rainFrameIdx);
+      if (currentLayerType === 'rain') applyRainFrame(rainFrameIdx);
+    } else {
+      console.warn('[RainViewer] Sin frames de radar disponibles');
     }
-  } catch(e) { /* silencioso */ }
+  } catch(e) {
+    console.warn('[RainViewer] Error cargando frames:', e.message);
+    const rt = document.getElementById('radar-time');
+    if (rt) rt.textContent = 'Radar no disponible';
+  }
 }
 
-// Capa de SATÉLITE (nubes reales) — siempre visible de fondo
-function applySatelliteFrame(idx) {
-  if (!radarMap || !satelliteFrames.length) return;
-  idx = Math.max(0, Math.min(idx, satelliteFrames.length-1));
-  const frame = satelliteFrames[idx];
+function updateFrameLabel(idx) {
+  if (!radarFrames.length) return;
+  const frame = radarFrames[idx];
   if (!frame) return;
-
-  if (satelliteLayer) { satelliteLayer.remove(); satelliteLayer = null; }
-  satelliteLayer = L.tileLayer(
-    `https://tilecache.rainviewer.com/v2/satellite/infrared/${frame.time}/256/{z}/{x}/{y}/2/0_0.png`,
-    { opacity:0.85, zIndex:4, attribution:'RainViewer', crossOrigin:true }
-  );
-  satelliteLayer.on('tileerror', () => {});
-  satelliteLayer.addTo(radarMap);
-
-  const isNow = idx === satelliteFrames.length - 1;
+  const isNow = idx === radarFrames.length - 1;
   const d = new Date(frame.time * 1000);
   const label = isNow ? 'Hace 0 horas (Ahora)' : `${d.toLocaleTimeString('es-PY',{hour:'2-digit',minute:'2-digit'})} hs`;
   const lt = document.getElementById('frame-label-text');
   if (lt) lt.textContent = label;
   const rt = document.getElementById('radar-time');
   if (rt) rt.textContent = isNow ? (new Date().toLocaleTimeString('es-PY',{hour:'2-digit',minute:'2-digit'}) + ' · Actual') : (d.toLocaleTimeString('es-PY',{hour:'2-digit',minute:'2-digit'}) + ' PY');
-  satelliteFrameIdx = idx;
-
-  // Sincronizar capa de lluvia con el mismo timestamp si esta activa
-  if (currentLayerType === 'rain' && radarFrames.length) {
-    const ratio = idx / Math.max(1, satelliteFrames.length - 1);
-    const rIdx = Math.round(ratio * (radarFrames.length - 1));
-    applyRainFrame(rIdx);
-  }
 }
 
-// Capa de LLUVIA real (radar RainViewer, estilo Windy con colores)
+// Compatibilidad: ya no hay capa satelital separada, el "frame" controla el radar de lluvia
+function applySatelliteFrame(idx) {
+  applyRainFrame(idx);
+  updateFrameLabel(idx);
+}
+
+// Capa de LLUVIA real (radar RainViewer, estilo Windy con colores) — zoom maximo real: 7
 function applyRainFrame(idx) {
-  if (!radarMap || !radarFrames.length) return;
+  if (!radarMap || !radarFrames.length || !rvHost) {
+    console.warn('[RainViewer] applyRainFrame: faltan datos', {hasMap:!!radarMap, frames:radarFrames.length, host:rvHost});
+    return;
+  }
   idx = Math.max(0, Math.min(idx, radarFrames.length-1));
   const frame = radarFrames[idx];
   if (!frame) return;
 
   if (rainLayer) { rainLayer.remove(); rainLayer = null; }
+  const tileUrl = `${rvHost}${frame.path}/256/{z}/{x}/{y}/4/1_1.png`;
+  console.log('[RainViewer] tile url:', tileUrl);
   // Paleta 4 = "Universal Blue" estilo Windy; 1_1 = suavizado + mostrar valores bajos
-  rainLayer = L.tileLayer(
-    `https://tilecache.rainviewer.com/v2/radar/${frame.time}/256/{z}/{x}/{y}/4/1_1.png`,
-    { opacity:0.75, zIndex:6, attribution:'RainViewer', crossOrigin:true }
-  );
-  rainLayer.on('tileerror', () => {});
+  // host + frame.path son dinamicos segun la API — NUNCA hardcodear el dominio
+  // SIN crossOrigin: RainViewer no envia headers CORS para <img>, forzarlo bloquea la carga
+  rainLayer = L.tileLayer(tileUrl, {
+    opacity:0.75, zIndex:6, attribution:'RainViewer', maxNativeZoom:7, maxZoom:18
+  });
+  let errCount = 0;
+  rainLayer.on('tileerror', (e) => {
+    errCount++;
+    if (errCount <= 2) console.warn('[RainViewer] tile error:', e.tile && e.tile.src);
+  });
+  rainLayer.on('load', () => console.log('[RainViewer] tiles cargados OK'));
   rainLayer.addTo(radarMap);
   rainFrameIdx = idx;
+  updateFrameLabel(idx);
 }
 
 function goToFrame(val) {
@@ -3068,11 +3075,12 @@ async function fetchSparseData(variable) {
   const grid = buildSparseGrid();
   const BATCH = 10;
   const results = [];
+  const varMap = { wind:'wind_speed_10m,wind_direction_10m', temp:'temperature_2m', clouds:'cloud_cover' };
+  const varParam = varMap[variable] || 'temperature_2m';
   for (let i = 0; i < grid.length; i += BATCH) {
     const batch = grid.slice(i, i + BATCH);
     const bLats = batch.map(p=>p[0]).join(',');
     const bLons = batch.map(p=>p[1]).join(',');
-    const varParam = variable === 'wind' ? 'wind_speed_10m,wind_direction_10m' : 'temperature_2m';
     const url = `https://api.open-meteo.com/v1/forecast?latitude=${bLats}&longitude=${bLons}&current=${varParam}&timezone=America%2FAsuncion&forecast_days=1`;
     try {
       const r = await fetch(url);
@@ -3082,6 +3090,13 @@ async function fetchSparseData(variable) {
     } catch(e) {}
   }
   return results;
+}
+
+function cloudColor(pct) {
+  if (pct == null) return 'rgba(150,170,195,0.25)';
+  if (pct < 15) return null; // despejado: no pintar, deja ver el mapa base
+  const a = 0.18 + (pct/100)*0.45;
+  return `rgba(180,195,215,${a.toFixed(2)})`;
 }
 
 function windColor(spd) {
@@ -3118,10 +3133,14 @@ async function renderWindTempLayer(variable) {
     if (variable === 'wind') {
       color = windColor(c.wind_speed_10m || 0);
       tooltip = `💨 ${Math.round(c.wind_speed_10m||0)} km/h`;
+    } else if (variable === 'clouds') {
+      color = cloudColor(c.cloud_cover);
+      tooltip = `☁️ ${Math.round(c.cloud_cover ?? 0)}%`;
     } else {
       color = tempColor(c.temperature_2m ?? 20);
       tooltip = `🌡 ${Math.round(c.temperature_2m)}°C`;
     }
+    if (!color) return; // ej: cielo despejado, no pintar nada
     const circle = L.circle([pt.lat, pt.lon], {
       radius: pointRadius(radarMap.getZoom()), color:'transparent',
       fillColor: color, fillOpacity: 0.8, weight: 0
@@ -3137,6 +3156,33 @@ async function renderWindTempLayer(variable) {
   });
 }
 
+// Capa de NUBOSIDAD — imagen satelital real (NASA GIBS, gratis, sin API key)
+let cloudSatLayer = null;
+function applyCloudSatLayer() {
+  if (!radarMap) return;
+  if (cloudSatLayer) { cloudSatLayer.remove(); cloudSatLayer = null; }
+
+  // GIBS publica con ~1 dia de retraso confiable; usamos ayer para asegurar cobertura completa
+  const d = new Date();
+  d.setDate(d.getDate() - 1);
+  const dateStr = d.toISOString().split('T')[0];
+
+  cloudSatLayer = L.tileLayer(
+    `https://gibs.earthdata.nasa.gov/wmts/epsg3857/best/MODIS_Terra_CorrectedReflectance_TrueColor/default/${dateStr}/GoogleMapsCompatible_Level9/{z}/{y}/{x}.jpg`,
+    { opacity:0.9, zIndex:4, attribution:'NASA GIBS / MODIS', maxNativeZoom:9, maxZoom:18 }
+  );
+  let errs = 0;
+  cloudSatLayer.on('tileerror', () => { errs++; if (errs<=2) console.warn('[GIBS] tile error'); });
+  cloudSatLayer.addTo(radarMap);
+
+  const rt = document.getElementById('radar-time');
+  if (rt) rt.textContent = 'Satélite ' + d.toLocaleDateString('es-PY');
+}
+
+function removeCloudSatLayer() {
+  if (cloudSatLayer) { cloudSatLayer.remove(); cloudSatLayer = null; }
+}
+
 function setRadarLayer(type) {
   currentLayerType = type;
   document.querySelectorAll('.layer-toggle-switch').forEach(s => s.classList.remove('active'));
@@ -3150,26 +3196,35 @@ function setRadarLayer(type) {
   updateLegend(type);
   clearWindTempCircles();
 
-  // Lluvia: radar real RainViewer (no grilla de puntos)
+  // Lluvia: radar real RainViewer (manchas de color reales, no puntos)
   if (rainLayer) { rainLayer.remove(); rainLayer = null; }
   if (type === 'rain' && radarFrames.length) {
     applyRainFrame(rainFrameIdx);
+  } else if (type === 'rain' && !radarFrames.length) {
+    // Reintentar carga si aun no llego la respuesta de RainViewer
+    loadSatelliteFrames();
   }
 
-  // Viento/Temperatura: grilla ligera opcional (no lluvia ni nubes)
+  // Nubosidad: imagen satelital real NASA GIBS (sin puntos)
+  if (type === 'clouds') {
+    applyCloudSatLayer();
+  } else {
+    removeCloudSatLayer();
+  }
+
+  // Viento/Temperatura: grilla ligera opcional con datos Open-Meteo
   if (type === 'wind' || type === 'temp') {
     renderWindTempLayer(type);
-  }
-
-  // El satélite de nubes permanece SIEMPRE visible de fondo en cualquier capa
-  if (satelliteLayer && radarMap && !radarMap.hasLayer(satelliteLayer)) {
-    satelliteLayer.addTo(radarMap);
   }
 }
 
 function updateLegend(type) {
   const el = document.getElementById('radar-legend');
   if (!el) return;
+  if (type === 'clouds') {
+    el.innerHTML = `<span style="font-size:10px;color:var(--muted)">🛰️ Imagen satelital real · NASA MODIS (actualización diaria)</span>`;
+    return;
+  }
   const legends = {
     rain:   {grad:'linear-gradient(90deg,rgba(100,149,237,0.6),rgba(0,255,127,0.7),rgba(255,215,0,0.8),rgba(255,0,0,0.9),rgba(148,0,211,0.9))', from:'Sin lluvia', to:'Extrema'},
     clouds: {grad:'linear-gradient(90deg,rgba(255,255,255,0.1),rgba(180,200,220,0.4),rgba(150,180,210,0.7))', from:'Despejado', to:'Nublado'},
