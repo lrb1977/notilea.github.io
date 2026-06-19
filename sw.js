@@ -7,7 +7,7 @@ const CHECK_INTERVAL = 10 * 60 * 1000; // cada 10 min
 
 // URL del Worker propio que vigila los avisos DMH con Claude IA.
 // CAMBIAR esta URL por la tuya real despues de desplegar el Worker.
-const DMH_WORKER_URL = 'https://noticlima-dmh-worker.TU-SUBDOMINIO.workers.dev';
+const DMH_WORKER_URL = 'https://noticlima-dmh-worker.lromero585.workers.dev';
 
 // Niveles de alerta según WMO/CAP
 const SEVERITY_LEVELS = {
