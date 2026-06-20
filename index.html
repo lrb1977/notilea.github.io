@@ -514,6 +514,10 @@
     <span class="tab-ico tab-ico-cyan"><svg viewBox="0 0 24 24"><path d="M2 16q2.5-4 5-0t5-4 5 4 5-4" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"/><path d="M2 12q2.5-4 5-0t5-4 5 4 5-4" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" opacity="0.5"/></svg></span>
     El Nino IA
   </div>
+  <div class="tab" onclick="showTab('eventos')">
+    <span class="tab-ico tab-ico-red"><svg viewBox="0 0 24 24"><path d="M12 2L2 20h20L12 2z" fill="none" stroke="currentColor" stroke-width="2" stroke-linejoin="round"/><line x1="12" y1="9" x2="12" y2="14" stroke="currentColor" stroke-width="2"/><circle cx="12" cy="17.5" r="1" fill="currentColor"/></svg></span>
+    Eventos
+  </div>
 </div>
 
 <!-- ACTUAL -->
@@ -781,6 +785,23 @@
   </div>
 </div>
 
+<!-- EVENTOS SEVEROS -->
+<div class="section" id="sec-eventos">
+  <div class="card" style="margin-bottom:10px">
+    <div style="display:flex;align-items:center;justify-content:space-between">
+      <div class="card-title">
+        <svg width="13" height="13" viewBox="0 0 24 24"><path d="M12 2L2 20h20L12 2z" fill="none" stroke="currentColor" stroke-width="2"/><line x1="12" y1="9" x2="12" y2="14" stroke="currentColor" stroke-width="2"/><circle cx="12" cy="17.5" r="1" fill="currentColor"/></svg>
+        Eventos Severos en Paraguay
+      </div>
+      <button onclick="renderEventos(true)" style="background:var(--bg-card2);border:1px solid var(--border);border-radius:7px;padding:5px 10px;font-size:11px;color:var(--accent);cursor:pointer">🔄 Actualizar</button>
+    </div>
+    <div style="font-size:11px;color:var(--muted)">Noticias recientes de tormentas, inundaciones y eventos meteorológicos en el país · Actualización IA</div>
+  </div>
+  <div id="eventos-content">
+    <div class="loading"><div class="spinner"></div><div class="loading-text">Buscando eventos recientes...</div></div>
+  </div>
+</div>
+
 
 <footer>
   <span class="notilea-tag">Notilea</span> · Desde Nueva Asunción · <a href="#">notilea.com.py</a><br>
@@ -807,13 +828,14 @@ let state = {
 // =============================================
 function showTab(id) {
   document.querySelectorAll('.tab').forEach((t,i) => {
-    const ids = ['actual','alertas','noticias','horas','dias','dias15','mapa','enso'];
+    const ids = ['actual','alertas','noticias','horas','dias','dias15','mapa','enso','eventos'];
     t.classList.toggle('active', ids[i] === id);
   });
   document.querySelectorAll('.section').forEach(s => s.classList.remove('active'));
   document.getElementById('sec-'+id).classList.add('active');
   if (id === 'enso') renderENSO();
   if (id === 'noticias') renderNoticias();
+  if (id === 'eventos') renderEventos();
   if (id === 'mapa') { 
     renderMapWeather(); 
     document.getElementById('radar-panel').style.display = 'block';
@@ -2842,6 +2864,123 @@ window.addEventListener('load', () => {
     );
   }
 });
+
+// =============================================
+// EVENTOS SEVEROS — búsqueda IA en tiempo real
+// =============================================
+const EVENTOS_CACHE_KEY = 'noticlima_eventos_v1';
+const EVENTOS_CACHE_MIN = 60; // actualizar cada hora
+
+async function renderEventos(forzar = false) {
+  const el = document.getElementById('eventos-content');
+  if (!el) return;
+
+  // Verificar caché
+  if (!forzar) {
+    try {
+      const raw = localStorage.getItem(EVENTOS_CACHE_KEY);
+      if (raw) {
+        const obj = JSON.parse(raw);
+        const ageMin = (Date.now() - obj.ts) / 60000;
+        if (ageMin < EVENTOS_CACHE_MIN) {
+          renderEventosHTML(obj.eventos, obj.ts);
+          return;
+        }
+      }
+    } catch(e) {}
+  }
+
+  el.innerHTML = `<div class="loading"><div class="spinner"></div><div class="loading-text">Buscando eventos meteorológicos severos en Paraguay...</div></div>`;
+
+  try {
+    const today = new Date().toLocaleDateString('es-PY', { day:'numeric', month:'long', year:'numeric' });
+    const resp = await fetch('https://api.anthropic.com/v1/messages', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({
+        model: 'claude-sonnet-4-6',
+        max_tokens: 1500,
+        tools: [{ type: 'web_search_20250305', name: 'web_search' }],
+        messages: [{ role: 'user', content:
+          `Busca noticias recientes (últimos 7 días, hoy es ${today}) sobre eventos meteorológicos severos ocurridos en Paraguay: tormentas eléctricas, inundaciones, granizo, viento fuerte, lluvia torrencial, daños a cultivos o viviendas, emergencias climáticas. ` +
+          `Busca en medios paraguayos como ABC Color, Última Hora, La Nación Paraguay, IP Paraguay. ` +
+          `Responde SOLO con un array JSON, sin markdown, con hasta 8 eventos, formato: ` +
+          `[{"titulo":"título del evento","lugar":"ciudad o departamento afectado","fecha":"fecha en formato corto como '19 jun'","tipo":"TORMENTA|INUNDACION|GRANIZO|VIENTO|LLUVIA|CALOR|OTRO","severidad":"EXTREMO|SEVERO|MODERADO","resumen":"descripción de 1-2 oraciones","fuente_url":"url de la noticia o null"}]`
+        }]
+      })
+    });
+
+    const data = await resp.json();
+    const text = (data.content || []).filter(b => b.type === 'text').map(b => b.text).join('');
+    const match = text.replace(/```json|```/g, '').match(/\[[\s\S]*\]/);
+    if (!match) throw new Error('Sin datos');
+
+    const eventos = JSON.parse(match[0]);
+    localStorage.setItem(EVENTOS_CACHE_KEY, JSON.stringify({ eventos, ts: Date.now() }));
+    renderEventosHTML(eventos, Date.now());
+
+    // Notif push si hay evento EXTREMO nuevo
+    if (Notification.permission === 'granted') {
+      const extremos = eventos.filter(e => e.severidad === 'EXTREMO');
+      for (const ev of extremos) {
+        const lastKey = 'ev_notif_' + (ev.titulo || '').slice(0,20).replace(/\s/g,'_');
+        if (!localStorage.getItem(lastKey)) {
+          await showLocalNotif('⚠️ Evento severo: ' + ev.lugar, ev.resumen, 'SEVERE');
+          localStorage.setItem(lastKey, '1');
+        }
+      }
+    }
+  } catch(e) {
+    el.innerHTML = `
+      <div class="card" style="text-align:center;padding:20px">
+        <div style="font-size:32px;margin-bottom:8px">📡</div>
+        <div style="font-size:12px;color:var(--muted)">No se pudieron cargar los eventos en este momento.</div>
+        <button onclick="renderEventos(true)" class="btn-search" style="margin-top:12px;font-size:12px">🔄 Reintentar</button>
+      </div>`;
+  }
+}
+
+function renderEventosHTML(eventos, ts) {
+  const el = document.getElementById('eventos-content');
+  if (!el || !Array.isArray(eventos)) return;
+
+  const tipoIcon = { TORMENTA:'⛈️', INUNDACION:'🌊', GRANIZO:'🌨️', VIENTO:'💨', LLUVIA:'🌧️', CALOR:'🌡️', OTRO:'⚠️' };
+  const nivColor = { EXTREMO:'#ef4444', SEVERO:'#f97316', MODERADO:'#f59e0b' };
+  const updated = new Date(ts).toLocaleTimeString('es-PY', { hour:'2-digit', minute:'2-digit' });
+
+  if (!eventos.length) {
+    el.innerHTML = `<div class="card" style="text-align:center;padding:20px">
+      <div style="font-size:32px;margin-bottom:8px">✅</div>
+      <div style="font-size:13px;color:var(--muted)">No se reportaron eventos meteorológicos severos en los últimos 7 días.</div>
+    </div>`;
+    return;
+  }
+
+  el.innerHTML = eventos.map(ev => {
+    const icon = tipoIcon[ev.tipo] || '⚠️';
+    const color = nivColor[ev.severidad] || '#f59e0b';
+    return `
+    <div class="card" style="margin-bottom:10px;border-left:3px solid ${color}">
+      <div style="display:flex;align-items:flex-start;gap:10px">
+        <span style="font-size:24px;flex-shrink:0;filter:drop-shadow(0 0 6px ${color})">${icon}</span>
+        <div style="flex:1">
+          <div style="display:flex;align-items:center;gap:6px;flex-wrap:wrap;margin-bottom:4px">
+            <span style="font-size:13px;font-weight:700;color:var(--text)">${ev.titulo || ev.tipo}</span>
+            <span style="font-size:10px;font-weight:700;background:${color}22;color:${color};border:1px solid ${color}55;border-radius:4px;padding:1px 6px">${ev.severidad}</span>
+          </div>
+          <div style="display:flex;align-items:center;gap:8px;margin-bottom:6px">
+            <span style="font-size:11px;color:var(--accent)">📍 ${ev.lugar || 'Paraguay'}</span>
+            <span style="font-size:11px;color:var(--muted)">· ${ev.fecha || ''}</span>
+          </div>
+          <div style="font-size:12px;color:var(--muted);line-height:1.5;margin-bottom:6px">${ev.resumen || ''}</div>
+          ${ev.fuente_url ? `<a href="${ev.fuente_url}" target="_blank" style="font-size:11px;color:var(--accent);text-decoration:none">Ver noticia completa →</a>` : ''}
+        </div>
+      </div>
+    </div>`;
+  }).join('') + `
+  <div style="font-size:10px;color:var(--muted);text-align:center;padding:8px">
+    Actualizado ${updated} · Fuentes: ABC Color, Última Hora, La Nación · IA Noticlima de <span class="notilea-tag">Notilea</span>
+  </div>`;}
 
 // =============================================
 // TICKER — setInterval marquee (máxima compatibilidad Android)
