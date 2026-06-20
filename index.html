@@ -2893,29 +2893,14 @@ async function renderEventos(forzar = false) {
   el.innerHTML = `<div class="loading"><div class="spinner"></div><div class="loading-text">Buscando eventos meteorológicos severos en Paraguay...</div></div>`;
 
   try {
-    const today = new Date().toLocaleDateString('es-PY', { day:'numeric', month:'long', year:'numeric' });
-    const resp = await fetch('https://api.anthropic.com/v1/messages', {
-      method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({
-        model: 'claude-sonnet-4-6',
-        max_tokens: 1500,
-        tools: [{ type: 'web_search_20250305', name: 'web_search' }],
-        messages: [{ role: 'user', content:
-          `Busca noticias recientes (últimos 7 días, hoy es ${today}) sobre eventos meteorológicos severos ocurridos en Paraguay: tormentas eléctricas, inundaciones, granizo, viento fuerte, lluvia torrencial, daños a cultivos o viviendas, emergencias climáticas. ` +
-          `Busca en medios paraguayos como ABC Color, Última Hora, La Nación Paraguay, IP Paraguay. ` +
-          `Responde SOLO con un array JSON, sin markdown, con hasta 8 eventos, formato: ` +
-          `[{"titulo":"título del evento","lugar":"ciudad o departamento afectado","fecha":"fecha en formato corto como '19 jun'","tipo":"TORMENTA|INUNDACION|GRANIZO|VIENTO|LLUVIA|CALOR|OTRO","severidad":"EXTREMO|SEVERO|MODERADO","resumen":"descripción de 1-2 oraciones","fuente_url":"url de la noticia o null"}]`
-        }]
-      })
-    });
+    // Consulta al Worker propio (RSS gratuito, sin API key)
+    const endpoint = forzar ? '/force-eventos' : '/eventos';
+    const controller = new AbortController();
+    setTimeout(() => controller.abort(), 12000);
+    const resp = await fetch(DMH_WORKER_URL + endpoint, { signal: controller.signal });
+    if (!resp.ok) throw new Error('Worker respondio ' + resp.status);
+    const eventos = await resp.json();
 
-    const data = await resp.json();
-    const text = (data.content || []).filter(b => b.type === 'text').map(b => b.text).join('');
-    const match = text.replace(/```json|```/g, '').match(/\[[\s\S]*\]/);
-    if (!match) throw new Error('Sin datos');
-
-    const eventos = JSON.parse(match[0]);
     localStorage.setItem(EVENTOS_CACHE_KEY, JSON.stringify({ eventos, ts: Date.now() }));
     renderEventosHTML(eventos, Date.now());
 

@@ -1,128 +1,189 @@
-/**
- * ============================================================
- * Noticlima de Notilea — Worker de Avisos DMH
- * ============================================================
- * Este Worker corre en Cloudflare (gratis) y hace 2 cosas:
- *
- * 1. CRON (automático, cada 15 min): consulta a Claude con
- *    web_search si el DMH Paraguay tiene un aviso vigente,
- *    y guarda el resultado en KV storage.
- *
- * 2. HTTP GET /check: el Service Worker de tu app consulta
- *    este endpoint periódicamente. Es instantáneo porque no
- *    llama a Claude en cada request, solo lee lo que el cron
- *    ya guardó.
- *
- * Tu API key de Anthropic vive SOLO aquí, nunca en el HTML.
- * ============================================================
- */
-
-const DMH_KV_KEY = "dmh_latest";
-const NOTIFIED_KV_KEY = "dmh_last_notified_id";
-
 export default {
-  // Se ejecuta automáticamente según el cron configurado en wrangler.toml
   async scheduled(event, env, ctx) {
-    await checkAndStoreAlert(env);
+    await checkAndStore(env);
+    await fetchAndStoreEventos(env);
   },
 
-  // Maneja peticiones HTTP desde tu app / Service Worker
   async fetch(request, env, ctx) {
     const url = new URL(request.url);
-
-    // CORS — permite que GitHub Pages le pregunte a este Worker
-    const corsHeaders = {
+    const cors = {
       "Access-Control-Allow-Origin": "*",
-      "Access-Control-Allow-Methods": "GET, OPTIONS",
-      "Access-Control-Allow-Headers": "Content-Type",
+      "Content-Type": "application/json"
     };
 
     if (request.method === "OPTIONS") {
-      return new Response(null, { headers: corsHeaders });
+      return new Response(null, { headers: { "Access-Control-Allow-Origin": "*", "Access-Control-Allow-Methods": "GET,OPTIONS" } });
     }
 
-    // GET /check — devuelve el último aviso guardado (instantáneo, sin llamar a Claude)
+    // DMH alertas
     if (url.pathname === "/check") {
-      const stored = await env.DMH_KV.get(DMH_KV_KEY, { type: "json" });
-      return new Response(JSON.stringify(stored || { vigente: false, checked: false }), {
-        headers: { "Content-Type": "application/json", ...corsHeaders },
-      });
+      let data = await env.DMH_KV.get("dmh_latest", { type: "json" });
+      return new Response(JSON.stringify(data || { vigente: false, checked: false }), { headers: cors });
     }
-
-    // GET /force-check — fuerza una verificación inmediata (botón "Revisar ahora")
     if (url.pathname === "/force-check") {
-      const result = await checkAndStoreAlert(env);
-      return new Response(JSON.stringify(result), {
-        headers: { "Content-Type": "application/json", ...corsHeaders },
-      });
+      let result = await checkAndStore(env);
+      return new Response(JSON.stringify(result), { headers: cors });
     }
 
-    return new Response("Noticlima DMH Worker — endpoints: /check, /force-check", {
-      headers: corsHeaders,
-    });
-  },
+    // Eventos severos
+    if (url.pathname === "/eventos") {
+      let data = await env.DMH_KV.get("eventos_latest", { type: "json" });
+      return new Response(JSON.stringify(data || []), { headers: cors });
+    }
+    if (url.pathname === "/force-eventos") {
+      let result = await fetchAndStoreEventos(env);
+      return new Response(JSON.stringify(result), { headers: cors });
+    }
+
+    return new Response(JSON.stringify({ ok: true, msg: "Noticlima Worker OK — /check /force-check /eventos /force-eventos" }), { headers: cors });
+  }
 };
 
-async function checkAndStoreAlert(env) {
-  const today = new Date().toLocaleDateString("es-PY", {
-    weekday: "long", day: "numeric", month: "long", year: "numeric",
-  });
-
-  try {
-    const resp = await fetch("https://api.anthropic.com/v1/messages", {
-      method: "POST",
-      headers: {
-        "Content-Type": "application/json",
-        "x-api-key": env.ANTHROPIC_API_KEY,
-        "anthropic-version": "2023-06-01",
-      },
-      body: JSON.stringify({
-        model: "claude-sonnet-4-6",
-        max_tokens: 700,
-        tools: [{ type: "web_search_20250305", name: "web_search" }],
-        messages: [{
-          role: "user",
-          content:
-            `Busca en meteorologia.gov.py y noticias paraguayas recientes (hoy ${today}) si la ` +
-            `Direccion de Meteorologia e Hidrologia (DMH) de Paraguay tiene actualmente un Aviso ` +
-            `Meteorologico o Boletin Especial VIGENTE para cualquier zona del pais. ` +
-            `Responde SOLO con JSON, sin markdown, con este formato exacto: ` +
-            `{"vigente": true|false, "numero": "numero de aviso o null", "titulo": "titulo corto o null", ` +
-            `"resumen": "resumen de 2 lineas o null", "departamentos": "lista de departamentos afectados o null", ` +
-            `"nivel": "ALERTA|VIGILANCIA|null", "fuente_url": "url de la fuente o null"}`,
-        }],
-      }),
-    });
-
-    const data = await resp.json();
-    const textBlock = (data.content || [])
-      .filter((b) => b.type === "text")
-      .map((b) => b.text)
-      .join("");
-    const match = textBlock.replace(/```json|```/g, "").match(/\{[\s\S]*\}/);
-    if (!match) throw new Error("Respuesta sin JSON valido");
-
-    const result = JSON.parse(match[0]);
-    result.checked = true;
-    result.checkedAt = new Date().toISOString();
-
-    // Marcamos si este aviso es "nuevo" comparando con el ultimo notificado
-    const avisoId = result.vigente ? (result.numero || result.titulo || "aviso") : null;
-    const lastNotified = await env.DMH_KV.get(NOTIFIED_KV_KEY);
-    result.isNew = result.vigente && avisoId !== lastNotified;
-
-    await env.DMH_KV.put(DMH_KV_KEY, JSON.stringify(result), {
-      expirationTtl: 3600, // se renueva cada hora aunque el cron falle
-    });
-
-    if (result.vigente && result.isNew) {
-      await env.DMH_KV.put(NOTIFIED_KV_KEY, avisoId);
-    }
-
-    return result;
-  } catch (e) {
-    const fallback = { vigente: false, checked: false, error: e.message, checkedAt: new Date().toISOString() };
-    return fallback;
+// ── DMH — Avisos oficiales via RSS ─────────────────────────
+async function checkAndStore(env) {
+  const KEYWORDS = [
+    "aviso meteorologico", "aviso meteorológico",
+    "boletin especial", "boletín especial",
+    "alerta meteorologica", "alerta meteorológica",
+    "tiempo severo", "tormenta severa",
+    "dmh paraguay", "viento fuerte",
+    "lluvia intensa", "granizo", "tornado"
+  ];
+  const FEEDS = [
+    "https://www.abc.com.py/rss/nacionales/",
+    "https://www.ultimahora.com/rss/",
+    "https://www.lanacion.com.py/rss/"
+  ];
+  let found = null;
+  for (let feedUrl of FEEDS) {
+    try {
+      let resp = await fetch(feedUrl, { headers: { "User-Agent": "Noticlima/1.0" } });
+      if (!resp.ok) continue;
+      let xml = await resp.text();
+      let items = xml.match(/<item>([\s\S]*?)<\/item>/gi) || [];
+      for (let item of items) {
+        let title = extractTag(item, 'title');
+        let link  = extractTag(item, 'link');
+        let desc  = extractTag(item, 'description');
+        let pub   = extractTag(item, 'pubDate');
+        let age = pub ? Date.now() - new Date(pub).getTime() : 0;
+        if (age > 86400000) continue;
+        let text = (title + " " + desc).toLowerCase();
+        if (KEYWORDS.find(kw => text.includes(kw))) {
+          found = { title, link, desc: desc.replace(/<[^>]*>/g,'').trim().slice(0,200), feedUrl };
+          break;
+        }
+      }
+      if (found) break;
+    } catch(e) {}
   }
+
+  let result;
+  if (found) {
+    let avisoId = found.link || found.title;
+    let last = await env.DMH_KV.get("dmh_last_id");
+    result = {
+      vigente: true,
+      titulo: found.title,
+      resumen: found.desc,
+      fuente_url: found.link,
+      nivel: "VIGILANCIA",
+      isNew: last !== avisoId,
+      checked: true,
+      checkedAt: new Date().toISOString()
+    };
+    if (result.isNew) await env.DMH_KV.put("dmh_last_id", avisoId);
+  } else {
+    result = { vigente: false, checked: true, checkedAt: new Date().toISOString(), isNew: false };
+  }
+  await env.DMH_KV.put("dmh_latest", JSON.stringify(result), { expirationTtl: 3600 });
+  return result;
 }
 
+// ── EVENTOS SEVEROS — busca en RSS y clasifica ─────────────
+async function fetchAndStoreEventos(env) {
+  const EVENTO_KEYWORDS = [
+    { kw: ["tormenta", "tormenta eléctrica", "trueno", "rayo"], tipo: "TORMENTA" },
+    { kw: ["inundacion", "inundación", "anegamiento", "crecida", "desborde"], tipo: "INUNDACION" },
+    { kw: ["granizo"], tipo: "GRANIZO" },
+    { kw: ["viento fuerte", "ráfaga", "rafaga", "viento intenso", "tornado", "tromba"], tipo: "VIENTO" },
+    { kw: ["lluvia torrencial", "lluvia intensa", "diluvio", "precipitacion intensa"], tipo: "LLUVIA" },
+    { kw: ["calor extremo", "ola de calor", "temperatura record", "42 grados", "43 grados", "44 grados"], tipo: "CALOR" },
+  ];
+  const EXTREME_KW = ["tornado", "tromba", "granizo", "evacuacion", "evacuación", "emergencia", "victima", "víctima", "muerto", "herido"];
+  const DEPTS = ["Concepción","San Pedro","Cordillera","Guairá","Guaira","Caaguazú","Caaguazu","Caazapá","Caazapa","Itapúa","Itapua","Misiones","Paraguarí","Paraguari","Alto Paraná","Alto Parana","Central","Ñeembucú","Neembucu","Amambay","Canindeyú","Canindeyú","Presidente Hayes","Boquerón","Boqueron","Alto Paraguay","Asunción","Asuncion","Ciudad del Este","Encarnación","Encarnacion","Pedro Juan Caballero","Villarrica","Coronel Oviedo","Caacupé","Caacupe","San Lorenzo","Luque","Fernando de la Mora","Lambaré","Lambare","Capiatá","Capiata","Limpio","Mariano Roque Alonso","Nueva Asunción","Nueva Asuncion","Fuerte Olimpo"];
+
+  const FEEDS = [
+    "https://www.abc.com.py/rss/nacionales/",
+    "https://www.abc.com.py/rss/",
+    "https://www.ultimahora.com/rss/",
+    "https://www.lanacion.com.py/rss/",
+    "https://www.ip.gov.py/ip/feed/"
+  ];
+
+  const eventos = [];
+  const seen = new Set();
+
+  for (let feedUrl of FEEDS) {
+    try {
+      let resp = await fetch(feedUrl, { headers: { "User-Agent": "Noticlima/1.0" } });
+      if (!resp.ok) continue;
+      let xml = await resp.text();
+      let items = xml.match(/<item>([\s\S]*?)<\/item>/gi) || [];
+
+      for (let item of items) {
+        let title = extractTag(item, 'title');
+        let link  = extractTag(item, 'link');
+        let desc  = extractTag(item, 'description').replace(/<[^>]*>/g,'').trim().slice(0,300);
+        let pub   = extractTag(item, 'pubDate');
+
+        if (!title || seen.has(link)) continue;
+        let age = pub ? Date.now() - new Date(pub).getTime() : 0;
+        if (age > 7 * 86400000) continue; // solo últimos 7 días
+
+        let text = (title + " " + desc).toLowerCase();
+        let matchedTipo = null;
+        for (let { kw, tipo } of EVENTO_KEYWORDS) {
+          if (kw.some(k => text.includes(k))) { matchedTipo = tipo; break; }
+        }
+        if (!matchedTipo) continue;
+
+        // Buscar lugar mencionado
+        let lugar = "Paraguay";
+        for (let dept of DEPTS) {
+          if ((title + " " + desc).toLowerCase().includes(dept.toLowerCase())) {
+            lugar = dept; break;
+          }
+        }
+
+        // Severidad
+        let extremo = EXTREME_KW.some(k => text.includes(k));
+        let severidad = extremo ? "EXTREMO" : (["TORMENTA","INUNDACION","GRANIZO","VIENTO"].includes(matchedTipo) ? "SEVERO" : "MODERADO");
+
+        // Fecha corta
+        let fecha = pub ? new Date(pub).toLocaleDateString('es-PY',{day:'numeric',month:'short'}) : '';
+
+        seen.add(link);
+        eventos.push({ titulo: title, lugar, fecha, tipo: matchedTipo, severidad, resumen: desc.slice(0,200), fuente_url: link });
+
+        if (eventos.length >= 10) break;
+      }
+    } catch(e) {}
+    if (eventos.length >= 10) break;
+  }
+
+  // Ordenar: EXTREMO primero, luego SEVERO
+  eventos.sort((a,b) => {
+    const ord = { EXTREMO: 0, SEVERO: 1, MODERADO: 2 };
+    return (ord[a.severidad] || 2) - (ord[b.severidad] || 2);
+  });
+
+  await env.DMH_KV.put("eventos_latest", JSON.stringify(eventos), { expirationTtl: 3600 });
+  return eventos;
+}
+
+function extractTag(block, tag) {
+  let m = block.match(new RegExp(`<${tag}[^>]*><!\\[CDATA\\[([\\s\\S]*?)\\]\\]><\\/${tag}>`, 'i'))
+       || block.match(new RegExp(`<${tag}[^>]*>([\\s\\S]*?)<\\/${tag}>`, 'i'));
+  return m ? m[1].trim() : '';
+}
