@@ -1494,6 +1494,23 @@ function renderAlertas() {
         <span style="font-size:12px;color:var(--muted)">Verificando avisos vigentes…</span>
       </div>
     </div>
+
+    <!-- ALERTAS A NIVEL PAÍS -->
+    <div class="card" id="py-alertas-card">
+      <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:8px">
+        <div class="card-title">
+          <svg width="13" height="13" viewBox="0 0 24 24"><polygon points="12,2 2,20 22,20" fill="none" stroke="currentColor" stroke-width="2"/></svg>
+          Alertas Activas en Paraguay
+        </div>
+        <button onclick="loadAlertasPY(true)" style="background:var(--bg-card2);border:1px solid var(--border);border-radius:6px;padding:3px 8px;font-size:10px;color:var(--accent);cursor:pointer">🔄</button>
+      </div>
+      <div id="py-alertas-body">
+        <div style="display:flex;align-items:center;gap:8px">
+          <div class="spinner" style="width:16px;height:16px;margin:0"></div>
+          <span style="font-size:11px;color:var(--muted)">Verificando 20 ciudades del país...</span>
+        </div>
+      </div>
+    </div>
     <div class="card">${semaHtml}</div>
     ${alertCardsHtml}
     ${forecastSection}
@@ -1503,14 +1520,113 @@ function renderAlertas() {
     </div>`;
 
   checkDMHAlert();
+  loadAlertasPY();
 }
 
 // =============================================
-// AVISO OFICIAL DMH — verificado via IA + busqueda web
-// El DMH no tiene API publica con CAP/XML, asi que Claude
-// busca en la web si hay un aviso meteorologico vigente.
+// ALERTAS A NIVEL PAÍS — 20 ciudades de Paraguay
+// Consulta el Worker propio que ya verificó con Open-Meteo
 // =============================================
-const DMH_CACHE_KEY = 'noticlima_dmh_v1';
+const ALERTAS_PY_CACHE_KEY = 'noticlima_alertas_py_v1';
+
+async function loadAlertasPY(forzar = false) {
+  const body = document.getElementById('py-alertas-body');
+  if (!body) return;
+
+  // Caché local de 10 min
+  if (!forzar) {
+    try {
+      const raw = localStorage.getItem(ALERTAS_PY_CACHE_KEY);
+      if (raw) {
+        const obj = JSON.parse(raw);
+        if ((Date.now() - obj.ts) / 60000 < 10) {
+          renderAlertasPY(obj.data);
+          return;
+        }
+      }
+    } catch(e) {}
+  }
+
+  try {
+    const endpoint = forzar ? '/force-alertas' : '/alertas-py';
+    const controller = new AbortController();
+    setTimeout(() => controller.abort(), 12000);
+    const resp = await fetch(DMH_WORKER_URL + endpoint, { signal: controller.signal });
+    if (!resp.ok) throw new Error('Worker ' + resp.status);
+    const data = await resp.json();
+
+    localStorage.setItem(ALERTAS_PY_CACHE_KEY, JSON.stringify({ data, ts: Date.now() }));
+    renderAlertasPY(data);
+
+    // Notificación push para alertas EXTREMAS nuevas en cualquier punto del país
+    if (Notification.permission === 'granted' && data.alertas) {
+      for (const al of data.alertas.filter(a => a.nivel === 'EXTREMO')) {
+        const key = 'py_al_' + al.tipo + '_' + al.ciudad;
+        const stored = localStorage.getItem(key);
+        const storedTime = stored ? parseInt(stored) : 0;
+        if (Date.now() - storedTime > 45 * 60 * 1000) { // no repetir en 45 min
+          await showLocalNotif(al.titulo, al.body, 'EXTREME');
+          localStorage.setItem(key, String(Date.now()));
+          addToHistory && addToHistory({ title: al.titulo, body: al.body, level: 'EXTREME', tag: al.tipo + '_' + al.ciudad });
+        }
+      }
+    }
+  } catch(e) {
+    body.innerHTML = `<span style="font-size:11px;color:var(--muted)">Sin conexión con el servidor de alertas.</span>`;
+  }
+}
+
+function renderAlertasPY(data) {
+  const body = document.getElementById('py-alertas-body');
+  if (!body) return;
+
+  const alertas = (data && data.alertas) || [];
+  const hora = data && data.checkedAt ? new Date(data.checkedAt).toLocaleTimeString('es-PY',{hour:'2-digit',minute:'2-digit'}) : '';
+
+  if (!alertas.length) {
+    body.innerHTML = `
+      <div style="display:flex;align-items:center;gap:8px;padding:4px 0">
+        <span style="color:#22c55e;font-size:16px">✓</span>
+        <div>
+          <div style="font-size:12px;color:var(--text);font-weight:600">Sin alertas activas en Paraguay</div>
+          <div style="font-size:10px;color:var(--muted)">20 ciudades monitoreadas · ${hora}</div>
+        </div>
+      </div>`;
+    return;
+  }
+
+  const extremos = alertas.filter(a => a.nivel === 'EXTREMO');
+  const severos  = alertas.filter(a => a.nivel === 'SEVERO');
+  const moderados= alertas.filter(a => a.nivel === 'MODERADO');
+
+  let html = '';
+
+  // Resumen rápido
+  html += `<div style="display:flex;gap:6px;flex-wrap:wrap;margin-bottom:10px">`;
+  if (extremos.length)  html += `<span style="background:rgba(239,68,68,0.2);color:#ef4444;border:1px solid #ef444455;border-radius:6px;padding:2px 8px;font-size:11px;font-weight:700">🔴 ${extremos.length} EXTREMO${extremos.length>1?'S':''}</span>`;
+  if (severos.length)   html += `<span style="background:rgba(249,115,22,0.2);color:#f97316;border:1px solid #f9731655;border-radius:6px;padding:2px 8px;font-size:11px;font-weight:700">🟠 ${severos.length} SEVERO${severos.length>1?'S':''}</span>`;
+  if (moderados.length) html += `<span style="background:rgba(245,158,11,0.2);color:#f59e0b;border:1px solid #f59e0b55;border-radius:6px;padding:2px 8px;font-size:11px;font-weight:700">🟡 ${moderados.length} MODERADO${moderados.length>1?'S':''}</span>`;
+  html += `</div>`;
+
+  // Lista de alertas
+  alertas.slice(0, 8).forEach(al => {
+    html += `
+    <div style="display:flex;gap:8px;padding:8px 0;border-bottom:1px solid var(--border);align-items:flex-start">
+      <span style="font-size:18px;flex-shrink:0">${al.icon || '⚠️'}</span>
+      <div style="flex:1">
+        <div style="font-size:12px;font-weight:700;color:${al.color || '#f59e0b'}">${al.titulo}</div>
+        <div style="font-size:11px;color:var(--muted);margin-top:2px">${al.body}</div>
+      </div>
+    </div>`;
+  });
+
+  if (alertas.length > 8) {
+    html += `<div style="font-size:11px;color:var(--muted);text-align:center;padding:6px">+${alertas.length-8} alertas más en todo el país</div>`;
+  }
+
+  html += `<div style="font-size:10px;color:var(--muted);margin-top:6px">Última verificación: ${hora} · 20 ciudades</div>`;
+  body.innerHTML = html;
+}
 const DMH_CACHE_MINUTES = 10;
 // URL de tu Worker propio (Cloudflare) que tiene la API key de Anthropic guardada.
 // CAMBIAR esta URL por la tuya real despues de desplegar el Worker.
@@ -2701,6 +2817,7 @@ async function checkWeatherForAlerts() {
 
     sendLocationToSW();
     checkDMHAlert();
+    loadAlertasPY(); // verificar alertas en todo el pais
 
   } catch(e) { /* silencioso */ }
 }
