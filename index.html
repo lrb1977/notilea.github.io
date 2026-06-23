@@ -1558,16 +1558,16 @@ async function loadAlertasPY(forzar = false) {
     localStorage.setItem(ALERTAS_PY_CACHE_KEY, JSON.stringify({ data, ts: Date.now() }));
     renderAlertasPY(data);
 
-    // Notificación push para alertas EXTREMAS nuevas en cualquier punto del país
+    // Notificación push para alertas SEVERAS o EXTREMAS en cualquier punto del país
     if (Notification.permission === 'granted' && data.alertas) {
-      for (const al of data.alertas.filter(a => a.nivel === 'EXTREMO')) {
+      for (const al of data.alertas.filter(a => a.nivel === 'EXTREMO' || a.nivel === 'SEVERO')) {
         const key = 'py_al_' + al.tipo + '_' + al.ciudad;
         const stored = localStorage.getItem(key);
         const storedTime = stored ? parseInt(stored) : 0;
-        if (Date.now() - storedTime > 45 * 60 * 1000) { // no repetir en 45 min
-          await showLocalNotif(al.titulo, al.body, 'EXTREME');
+        if (Date.now() - storedTime > 45 * 60 * 1000) {
+          await showLocalNotif(al.titulo, al.body, al.nivel === 'EXTREMO' ? 'EXTREME' : 'SEVERE');
           localStorage.setItem(key, String(Date.now()));
-          addToHistory && addToHistory({ title: al.titulo, body: al.body, level: 'EXTREME', tag: al.tipo + '_' + al.ciudad });
+          addToHistory && addToHistory({ title: al.titulo, body: al.body, level: al.nivel === 'EXTREMO' ? 'EXTREME' : 'SEVERE', tag: al.tipo + '_' + al.ciudad });
         }
       }
     }
@@ -1671,23 +1671,24 @@ async function checkDMHAlert(forzar = false) {
     saveDMHCache(result);
     renderDMHAlertHTML(result);
 
-    // Si hay un aviso vigente nuevo (no notificado aun en este navegador), disparar push local
-    if (result.vigente && result.isNew && Notification.permission === 'granted') {
-      const avisoId = result.numero || result.titulo || 'aviso';
-      const lastNotified = localStorage.getItem('dmh_last_notified');
-      if (lastNotified !== avisoId) {
-        await showLocalNotif(
-          '📡 Aviso Oficial DMH Paraguay',
-          (result.titulo || 'Aviso meteorológico vigente') + (result.departamentos ? ' — ' + result.departamentos : ''),
-          result.nivel === 'ALERTA' ? 'SEVERE' : 'MODERATE'
-        );
-        localStorage.setItem('dmh_last_notified', avisoId);
-        addToHistory && addToHistory({
-          title: '📡 Aviso DMH: ' + (result.titulo || 'Vigente'),
-          body: result.resumen || '',
-          level: result.nivel === 'ALERTA' ? 'SEVERE' : 'MODERATE',
-          tag: 'dmh-' + avisoId
-        });
+    // Si hay avisos nuevos vigentes, disparar notificación push por cada uno
+    if (result.vigente && result.isNew && result.alertas && Notification.permission === 'granted') {
+      for (const al of (result.alertas || []).slice(0, 3)) {
+        const lastKey = 'dmh_notif_' + (al.guid || al.titulo || '').slice(0,30).replace(/\s/g,'_');
+        if (!localStorage.getItem(lastKey)) {
+          await showLocalNotif(
+            '📡 DMH: ' + (al.titulo || 'Aviso meteorológico'),
+            al.resumen ? al.resumen.slice(0,120) : 'Aviso oficial vigente para Paraguay',
+            al.nivel === 'ALERTA' ? 'SEVERE' : 'MODERATE'
+          );
+          localStorage.setItem(lastKey, '1');
+          addToHistory && addToHistory({
+            title: '📡 DMH: ' + (al.titulo || 'Aviso'),
+            body: al.resumen || '',
+            level: al.nivel === 'ALERTA' ? 'SEVERE' : 'MODERATE',
+            tag: 'dmh-' + (al.guid || al.titulo || 'aviso').slice(0,20)
+          });
+        }
       }
     }
   } catch(e) {
@@ -1699,7 +1700,7 @@ function renderDMHAlertHTML(r) {
   const body = document.getElementById('dmh-alert-body');
   if (!body) return;
 
-  if (!r.vigente) {
+  if (!r.vigente || !r.alertas || !r.alertas.length) {
     body.innerHTML = `
       <div style="display:flex;align-items:center;gap:8px;width:100%">
         <span style="color:#22c55e;font-size:18px">✓</span>
@@ -1708,18 +1709,21 @@ function renderDMHAlertHTML(r) {
     return;
   }
 
-  const nivelColor = r.nivel === 'ALERTA' ? '#ef4444' : '#f59e0b';
-  body.innerHTML = `
-    <div style="width:100%">
-      <div style="display:flex;align-items:center;gap:8px;margin-bottom:6px">
-        <span style="font-size:18px">⚠️</span>
-        <span style="font-size:13px;font-weight:700;color:${nivelColor}">${r.titulo || 'Aviso Meteorológico Vigente'}</span>
-        ${r.numero ? `<span class="badge" style="margin-left:auto">N° ${r.numero}</span>` : ''}
+  const hora = r.checkedAt ? new Date(r.checkedAt).toLocaleTimeString('es-PY',{hour:'2-digit',minute:'2-digit'}) : '';
+
+  body.innerHTML = r.alertas.map(al => {
+    const nivelColor = al.nivel === 'ALERTA' ? '#ef4444' : '#f59e0b';
+    const nivelLabel = al.nivel === 'ALERTA' ? '🔴 ALERTA' : '🟡 VIGILANCIA';
+    return `
+    <div style="border-left:3px solid ${nivelColor};padding:8px 10px;margin-bottom:8px;background:rgba(0,0,0,0.15);border-radius:0 8px 8px 0">
+      <div style="display:flex;align-items:center;gap:6px;margin-bottom:4px;flex-wrap:wrap">
+        <span style="font-size:13px;font-weight:700;color:var(--text)">${al.titulo}</span>
+        <span style="font-size:10px;font-weight:700;color:${nivelColor};background:${nivelColor}22;border:1px solid ${nivelColor}44;border-radius:4px;padding:1px 6px">${nivelLabel}</span>
       </div>
-      ${r.resumen ? `<div style="font-size:12px;color:var(--text);line-height:1.5;margin-bottom:6px">${r.resumen}</div>` : ''}
-      ${r.departamentos ? `<div style="font-size:11px;color:var(--accent);margin-bottom:6px">📍 Departamentos: ${r.departamentos}</div>` : ''}
-      ${r.fuente_url ? `<a href="${r.fuente_url}" target="_blank" style="font-size:11px;color:var(--accent);text-decoration:none">Ver aviso oficial completo →</a>` : ''}
+      ${al.resumen ? `<div style="font-size:11px;color:var(--muted);line-height:1.5;white-space:pre-line">${al.resumen}</div>` : ''}
+      ${al.fuente_url ? `<a href="${al.fuente_url}" target="_blank" style="font-size:11px;color:var(--accent);text-decoration:none;display:inline-block;margin-top:4px">Ver aviso completo →</a>` : ''}
     </div>`;
+  }).join('') + `<div style="font-size:10px;color:var(--muted);margin-top:4px">Fuente: CAP oficial DMH Paraguay · ${hora}</div>`;
 }
 
 // =============================================
@@ -2722,8 +2726,14 @@ function setCheckInterval(mins) {
 
 function startPeriodicCheck() {
   stopPeriodicCheck();
-  checkWeatherForAlerts(); // inmediato
-  notifCheckTimer = setInterval(checkWeatherForAlerts, notifCheckInterval * 60 * 1000);
+  // Verificar inmediatamente al activar
+  checkWeatherForAlerts();
+  loadAlertasPY(true); // alertas nacionales inmediatas
+  // Repetir cada X minutos
+  notifCheckTimer = setInterval(() => {
+    checkWeatherForAlerts();
+    loadAlertasPY(); // alertas nacionales en cada ciclo
+  }, notifCheckInterval * 60 * 1000);
 }
 
 function stopPeriodicCheck() {
