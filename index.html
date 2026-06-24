@@ -3160,14 +3160,13 @@ async function renderEventos(forzar = false) {
   const el = document.getElementById('eventos-content');
   if (!el) return;
 
-  // Verificar caché
+  // Caché de 60 min
   if (!forzar) {
     try {
       const raw = localStorage.getItem(EVENTOS_CACHE_KEY);
       if (raw) {
         const obj = JSON.parse(raw);
-        const ageMin = (Date.now() - obj.ts) / 60000;
-        if (ageMin < EVENTOS_CACHE_MIN) {
+        if ((Date.now() - obj.ts) / 60000 < EVENTOS_CACHE_MIN) {
           renderEventosHTML(obj.eventos, obj.ts);
           return;
         }
@@ -3175,39 +3174,130 @@ async function renderEventos(forzar = false) {
     } catch(e) {}
   }
 
-  el.innerHTML = `<div class="loading"><div class="spinner"></div><div class="loading-text">Buscando eventos meteorológicos severos en Paraguay...</div></div>`;
+  el.innerHTML = `<div class="loading"><div class="spinner"></div><div class="loading-text">Buscando eventos recientes...</div></div>`;
 
-  try {
-    // Consulta al Worker propio (RSS gratuito, sin API key)
-    const endpoint = forzar ? '/force-eventos' : '/eventos';
-    const controller = new AbortController();
-    setTimeout(() => controller.abort(), 12000);
-    const resp = await fetch(DMH_WORKER_URL + endpoint, { signal: controller.signal });
-    if (!resp.ok) throw new Error('Worker respondio ' + resp.status);
-    const eventos = await resp.json();
+  // Palabras clave de eventos severos en Paraguay
+  const KEYWORDS = [
+    'tormenta','granizo','inundación','inundacion','lluvia intensa',
+    'lluvia torrencial','viento fuerte','temporal','helada','escarcha',
+    'tiempo severo','alerta','aviso meteorológico','dmh','emergencia',
+    'tornado','ciclón','evacuación','damnificados','desborde',
+    'daños','viviendas afectadas','árbol caído','corte de ruta'
+  ];
 
-    localStorage.setItem(EVENTOS_CACHE_KEY, JSON.stringify({ eventos, ts: Date.now() }));
-    renderEventosHTML(eventos, Date.now());
+  // RSS usando proxy CORS gratuito (rss2json convierte RSS a JSON)
+  const FEEDS = [
+    { url: 'https://api.rss2json.com/v1/api.json?rss_url=https%3A%2F%2Fwww.abc.com.py%2Frss%2Fnacionales%2F', nombre: 'ABC Color' },
+    { url: 'https://api.rss2json.com/v1/api.json?rss_url=https%3A%2F%2Fwww.ultimahora.com%2Frss%2F', nombre: 'Última Hora' },
+    { url: 'https://api.rss2json.com/v1/api.json?rss_url=https%3A%2F%2Fwww.lanacion.com.py%2Frss%2F', nombre: 'La Nación' },
+    { url: 'https://api.rss2json.com/v1/api.json?rss_url=https%3A%2F%2Fcap-sources.s3.amazonaws.com%2Fpy-dmh-es%2Frss.xml', nombre: 'DMH Oficial' },
+  ];
 
-    // Notif push si hay evento EXTREMO nuevo
-    if (Notification.permission === 'granted') {
-      const extremos = eventos.filter(e => e.severidad === 'EXTREMO');
-      for (const ev of extremos) {
-        const lastKey = 'ev_notif_' + (ev.titulo || '').slice(0,20).replace(/\s/g,'_');
-        if (!localStorage.getItem(lastKey)) {
-          await showLocalNotif('⚠️ Evento severo: ' + ev.lugar, ev.resumen, 'SEVERE');
-          localStorage.setItem(lastKey, '1');
+  const TIPO_MAP = {
+    tormenta: {tipo:'TORMENTA', icon:'⛈️', color:'#f97316'},
+    granizo:  {tipo:'GRANIZO',  icon:'🌨️', color:'#60a5fa'},
+    inundaci: {tipo:'INUNDACION',icon:'🌊', color:'#3b82f6'},
+    helada:   {tipo:'FRIO',     icon:'🥶', color:'#93c5fd'},
+    escarcha: {tipo:'FRIO',     icon:'❄️', color:'#93c5fd'},
+    viento:   {tipo:'VIENTO',   icon:'💨', color:'#f59e0b'},
+    tornado:  {tipo:'TORMENTA', icon:'🌪️', color:'#ef4444'},
+    cicl:     {tipo:'CICLON',   icon:'🌀', color:'#ef4444'},
+    lluvia:   {tipo:'LLUVIA',   icon:'🌧️', color:'#3b82f6'},
+    temporal: {tipo:'TORMENTA', icon:'⛈️', color:'#f97316'},
+    dmh:      {tipo:'AVISO',    icon:'📡', color:'#8b5cf6'},
+    alerta:   {tipo:'AVISO',    icon:'⚠️', color:'#ef4444'},
+  };
+
+  const eventos = [];
+  const sevenDaysAgo = Date.now() - 7 * 24 * 3600000;
+
+  for (const feed of FEEDS) {
+    try {
+      const controller = new AbortController();
+      setTimeout(() => controller.abort(), 8000);
+      const resp = await fetch(feed.url, { signal: controller.signal });
+      if (!resp.ok) continue;
+      const data = await resp.json();
+      const items = data.items || [];
+
+      for (const item of items) {
+        const pubDate = item.pubDate ? new Date(item.pubDate).getTime() : 0;
+        if (pubDate && pubDate < sevenDaysAgo) continue; // solo 7 días
+
+        const title = (item.title || '').trim();
+        const desc  = (item.description || '').replace(/<[^>]*>/g,'').trim().slice(0,200);
+        const link  = item.link || item.guid || '';
+        const text  = (title + ' ' + desc).toLowerCase();
+
+        const matchKw = KEYWORDS.find(kw => text.includes(kw));
+        if (!matchKw) continue;
+
+        // Determinar tipo e icono
+        let tipoInfo = {tipo:'EVENTO', icon:'⚠️', color:'#f59e0b'};
+        for (const [kw, info] of Object.entries(TIPO_MAP)) {
+          if (text.includes(kw)) { tipoInfo = info; break; }
         }
+
+        // Severidad
+        const severidad = text.includes('extremo') || text.includes('emergencia') || text.includes('evacuaci') || text.includes('damnificado')
+          ? 'EXTREMO'
+          : text.includes('severo') || text.includes('alerta') || text.includes('tornado') || text.includes('cicl')
+          ? 'SEVERO' : 'MODERADO';
+
+        // Extraer lugar
+        const lugar = extraerLugar(title + ' ' + desc) || 'Paraguay';
+        const fecha = pubDate ? new Date(pubDate).toLocaleDateString('es-PY',{day:'numeric',month:'short'}) : '';
+
+        eventos.push({
+          titulo: title,
+          lugar,
+          fecha,
+          tipo: tipoInfo.tipo,
+          icon: tipoInfo.icon,
+          color: tipoInfo.color,
+          severidad,
+          resumen: desc,
+          fuente_url: link,
+          fuente_nombre: feed.nombre,
+          ts: pubDate || Date.now(),
+        });
+      }
+    } catch(e) { /* continuar con el siguiente feed */ }
+  }
+
+  // Ordenar por fecha más reciente y deduplicar
+  eventos.sort((a,b) => b.ts - a.ts);
+  const seen = new Set();
+  const unique = eventos.filter(e => {
+    const k = e.titulo.slice(0,40);
+    if (seen.has(k)) return false;
+    seen.add(k); return true;
+  }).slice(0, 10);
+
+  localStorage.setItem(EVENTOS_CACHE_KEY, JSON.stringify({ eventos: unique, ts: Date.now() }));
+  renderEventosHTML(unique, Date.now());
+
+  // Push para EXTREMOS nuevos
+  if (Notification.permission === 'granted') {
+    for (const ev of unique.filter(e => e.severidad === 'EXTREMO')) {
+      const key = 'ev_' + (ev.titulo||'').slice(0,20).replace(/\s/g,'_');
+      if (!localStorage.getItem(key)) {
+        await showLocalNotif('⚠️ Evento severo — ' + ev.lugar, ev.resumen || ev.titulo, 'SEVERE');
+        localStorage.setItem(key, '1');
       }
     }
-  } catch(e) {
-    el.innerHTML = `
-      <div class="card" style="text-align:center;padding:20px">
-        <div style="font-size:32px;margin-bottom:8px">📡</div>
-        <div style="font-size:12px;color:var(--muted)">No se pudieron cargar los eventos en este momento.</div>
-        <button onclick="renderEventos(true)" class="btn-search" style="margin-top:12px;font-size:12px">🔄 Reintentar</button>
-      </div>`;
   }
+}
+
+function extraerLugar(texto) {
+  const depts = ['Asunción','Central','Concepción','San Pedro','Cordillera','Guairá','Caaguazú',
+    'Caazapá','Itapúa','Misiones','Paraguarí','Alto Paraná','Ñeembucú','Amambay','Canindeyú',
+    'Presidente Hayes','Boquerón','Alto Paraguay','Ciudad del Este','Encarnación','Villarrica',
+    'Pedro Juan Caballero','Pilar','Coronel Oviedo','San Juan Bautista','Filadelfia'];
+  for (const d of depts) {
+    if (texto.includes(d)) return d;
+  }
+  return null;
 }
 
 function renderEventosHTML(eventos, ts) {
