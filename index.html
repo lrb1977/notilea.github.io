@@ -2927,7 +2927,7 @@ function buildAlerts(c, loc) {
     level:'EXTREME', tag:'storm', icon:'⛈️'
   });
   // LLUVIA TORRENCIAL (WMO 82-84 = chubascos fuertes, o alta prob con lluvia)
-  else if (code >= 82 || (rain >= 75 && code >= 61)) alerts.push({
+  else if (code >= 82 || (rain >= 85 && code >= 61)) alerts.push({
     title: '🌧️ LLUVIA TORRENCIAL — ' + loc,
     body: `Precipitaciones muy intensas. Riesgo de inundaciones en zonas bajas. Evita cruzar arroyos crecidos.`,
     level:'SEVERE', tag:'heavy-rain', icon:'🌧️'
@@ -2965,12 +2965,12 @@ function buildAlerts(c, loc) {
   });
 
   // SISTEMA CICLÓNICO (presión muy baja)
-  if (press < 990) alerts.push({
+  if (press < 980) alerts.push({
     title: '🌀 SISTEMA CICLÓNICO — ' + loc,
     body: `Presión de ${Math.round(press)} hPa. Sistema de baja presión intenso activo. Sigue instrucciones de Defensa Civil.`,
     level:'EXTREME', tag:'cyclone', icon:'🌀'
   });
-  else if (press < 998) alerts.push({
+  else if (press < 990) alerts.push({
     title: '🌀 Baja presión atmosférica — ' + loc,
     body: `Presión de ${Math.round(press)} hPa. Condición favorable para tiempo severo. Monitorea Noticlima.`,
     level:'SEVERE', tag:'low-press', icon:'🌀'
