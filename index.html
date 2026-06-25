@@ -1299,7 +1299,7 @@ function getSevereAlerts(current, hourly) {
     body:`Lluvia fuerte en curso. Posibles <b>anegamientos en zonas bajas</b> y dificultades en rutas de tierra.`,
     recs:['🚗 Reduce velocidad en rutas','🌊 No cruces arroyos o cauces crecidos','📍 Evita zonas bajas propensas a inundación']
   });
-  else if (rain_prob >= 80 && code >= 61) alerts.push({
+  else if (rain_prob >= 85 && code >= 61) alerts.push({
     level:'yellow', icon:'🌦️',
     title:'Probabilidad alta de lluvia',
     sublevel:'AMARILLO · VIGILANCIA',
