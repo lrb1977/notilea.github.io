@@ -1292,14 +1292,14 @@ function getSevereAlerts(current, hourly) {
     body:`Tormenta eléctrica <b>en curso o inminente</b>. Riesgo de rayos, granizo${code >= 96 ? ', granizo intenso' : ''} y ráfagas repentinas.`,
     recs:['⚡ No te refugies bajo árboles aislados','🏊 Sal del agua inmediatamente','📱 Desconecta equipos electrónicos','🚶 Agachate si estás al aire libre sin refugio','🏠 Espera 30 min tras el último trueno antes de salir']
   });
-  else if (code >= 80) alerts.push({
+  else if (code >= 90) alerts.push({
     level:'orange', icon:'🌧️',
     title:'Lluvia intensa',
     sublevel:'NARANJA · ATENCIÓN',
     body:`Lluvia fuerte en curso. Posibles <b>anegamientos en zonas bajas</b> y dificultades en rutas de tierra.`,
     recs:['🚗 Reduce velocidad en rutas','🌊 No cruces arroyos o cauces crecidos','📍 Evita zonas bajas propensas a inundación']
   });
-  else if (rain_prob >= 70 && code >= 61) alerts.push({
+  else if (rain_prob >= 80 && code >= 61) alerts.push({
     level:'yellow', icon:'🌦️',
     title:'Probabilidad alta de lluvia',
     sublevel:'AMARILLO · VIGILANCIA',
@@ -1340,7 +1340,7 @@ function getSevereAlerts(current, hourly) {
   });
 
   // PRESIÓN — descenso brusco como indicador de tormenta inminente
-  if (press < 995) alerts.push({
+  if (press < 990) alerts.push({
     level:'orange', icon:'🌀',
     title:'Presión atmosférica muy baja',
     sublevel:'NARANJA · VIGILANCIA',
