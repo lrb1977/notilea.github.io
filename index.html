@@ -2939,7 +2939,7 @@ function buildAlerts(c, loc) {
     level:'MODERATE', tag:'rain-active', icon:'🌦️'
   });
   // ALTA PROBABILIDAD DE LLUVIA
-  else if (rain >= 70) alerts.push({
+  else if (rain >= 85) alerts.push({
     title: '🌦️ Lluvia probable — ' + loc,
     body: `${rain}% de probabilidad de lluvia. Llevá paraguas y precaución al conducir.`,
     level:'MODERATE', tag:'rain-prob', icon:'🌦️'
@@ -2965,17 +2965,17 @@ function buildAlerts(c, loc) {
   });
 
   // SISTEMA CICLÓNICO (presión muy baja)
-  if (press < 980) alerts.push({
+  if (press < 990) alerts.push({
     title: '🌀 SISTEMA CICLÓNICO — ' + loc,
     body: `Presión de ${Math.round(press)} hPa. Sistema de baja presión intenso activo. Sigue instrucciones de Defensa Civil.`,
     level:'EXTREME', tag:'cyclone', icon:'🌀'
   });
-  else if (press < 990) alerts.push({
+  else if (press < 110) alerts.push({
     title: '🌀 Baja presión atmosférica — ' + loc,
     body: `Presión de ${Math.round(press)} hPa. Condición favorable para tiempo severo. Monitorea Noticlima.`,
     level:'SEVERE', tag:'low-press', icon:'🌀'
   });
-  else if (press < 1003) alerts.push({
+  else if (press < 1017) alerts.push({
     title: '🌀 Presión en descenso — ' + loc,
     body: `Presión de ${Math.round(press)} hPa. Posible deterioro del tiempo. Atención meteorológica.`,
     level:'MODERATE', tag:'press-drop', icon:'🌀'
