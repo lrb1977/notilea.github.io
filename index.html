@@ -72,6 +72,7 @@
   .ticker-inner { flex:1; overflow:hidden; position:relative; height:36px; }
   .ticker-track { position:absolute; top:0; left:0; height:36px; display:flex; align-items:center; white-space:nowrap; will-change:transform; }
   .ticker-item { display:inline-flex; align-items:center; gap:8px; padding:0 22px; font-size:11.5px; color:#8fa8c8; line-height:36px; }
+  @keyframes tickerBlink { 0%,100%{opacity:1;transform:scale(1)} 50%{opacity:0.15;transform:scale(0.7)} }
   .t-tag { font-size:9px; font-weight:700; padding:2px 6px; border-radius:3px; text-transform:uppercase; letter-spacing:0.3px; flex-shrink:0; }
   .t-sep { color:#1e3a5f; padding:0 4px; font-size:14px; }
   .ticker-fade-l { position:absolute; left:0; top:0; bottom:0; width:24px; background:linear-gradient(90deg,#070c18,transparent); z-index:2; pointer-events:none; }
@@ -1216,7 +1217,8 @@ function wmoIcon(code) {
   if (code <= 99) return '⛈️';
   return '🌡️';
 }
-function wmoDesc(code) {
+function wmoDesc(code, rainProb) {
+  // rainProb opcional — si es bajo, suaviza la descripción
   if (code === 0) return 'Despejado';
   if (code <= 2) return 'Parcialmente nublado';
   if (code === 3) return 'Nublado';
@@ -1229,7 +1231,11 @@ function wmoDesc(code) {
   if (code <= 71) return 'Nevada ligera';
   if (code <= 75) return 'Nevada intensa';
   if (code <= 82) return 'Lluvia fuerte';
-  if (code <= 95) return 'Tormenta eléctrica';
+  if (code <= 95) {
+    // Ajustar según probabilidad de precipitación
+    if (rainProb !== undefined && rainProb < 80) return 'Lluvia con posible tormenta';
+    return 'Tormenta eléctrica';
+  }
   if (code <= 99) return 'Tormenta con granizo';
   return 'Variable';
 }
@@ -1292,14 +1298,14 @@ function getSevereAlerts(current, hourly) {
     body:`Tormenta eléctrica <b>en curso o inminente</b>. Riesgo de rayos, granizo${code >= 96 ? ', granizo intenso' : ''} y ráfagas repentinas.`,
     recs:['⚡ No te refugies bajo árboles aislados','🏊 Sal del agua inmediatamente','📱 Desconecta equipos electrónicos','🚶 Agachate si estás al aire libre sin refugio','🏠 Espera 30 min tras el último trueno antes de salir']
   });
-  else if (code >= 90) alerts.push({
+  else if (code >= 80) alerts.push({
     level:'orange', icon:'🌧️',
     title:'Lluvia intensa',
     sublevel:'NARANJA · ATENCIÓN',
     body:`Lluvia fuerte en curso. Posibles <b>anegamientos en zonas bajas</b> y dificultades en rutas de tierra.`,
     recs:['🚗 Reduce velocidad en rutas','🌊 No cruces arroyos o cauces crecidos','📍 Evita zonas bajas propensas a inundación']
   });
-  else if (rain_prob >= 85 && code >= 61) alerts.push({
+  else if (rain_prob >= 70 && code >= 61) alerts.push({
     level:'yellow', icon:'🌦️',
     title:'Probabilidad alta de lluvia',
     sublevel:'AMARILLO · VIGILANCIA',
@@ -1340,7 +1346,7 @@ function getSevereAlerts(current, hourly) {
   });
 
   // PRESIÓN — descenso brusco como indicador de tormenta inminente
-  if (press < 990) alerts.push({
+  if (press < 995) alerts.push({
     level:'orange', icon:'🌀',
     title:'Presión atmosférica muy baja',
     sublevel:'NARANJA · VIGILANCIA',
@@ -1459,7 +1465,7 @@ function renderAlertas() {
         <div class="forecast-alert-row">
           <div class="fal-time">${day} ${hour}</div>
           <div class="fal-icon">${wmoIcon(code)}</div>
-          <div class="fal-desc">${wmoDesc(code)} · ${Math.round(wind)} km/h · ${rain}%💧</div>
+          <div class="fal-desc">${wmoDesc(code, rain)} · ${Math.round(wind)} km/h · ${rain}%💧</div>
           <span class="fal-badge" style="background:${severity.bg};color:${severity.color}">${severity.label}</span>
         </div>`;
       count++;
@@ -2103,7 +2109,7 @@ function renderDaily(days, containerId) {
         <div class="day-name">${dayName}</div>
         <div class="day-icon">${wmoIcon(d.weather_code[i])}</div>
         <div class="day-desc">
-          <div style="font-size:11px">${wmoDesc(d.weather_code[i])}</div>
+          <div style="font-size:11px">${wmoDesc(d.weather_code[i], d.precipitation_probability_max[i])}</div>
           <span class="rain-pill">💧 ${d.precipitation_probability_max[i]||0}%</span>
           <span style="font-size:10px;color:var(--muted);margin-left:4px">💨 ${Math.round(d.wind_speed_10m_max[i])}km/h</span>
         </div>
@@ -2927,7 +2933,7 @@ function buildAlerts(c, loc) {
     level:'EXTREME', tag:'storm', icon:'⛈️'
   });
   // LLUVIA TORRENCIAL (WMO 82-84 = chubascos fuertes, o alta prob con lluvia)
-  else if (code >= 82 || (rain >= 85 && code >= 61)) alerts.push({
+  else if (code >= 82 || (rain >= 75 && code >= 61)) alerts.push({
     title: '🌧️ LLUVIA TORRENCIAL — ' + loc,
     body: `Precipitaciones muy intensas. Riesgo de inundaciones en zonas bajas. Evita cruzar arroyos crecidos.`,
     level:'SEVERE', tag:'heavy-rain', icon:'🌧️'
@@ -2939,7 +2945,7 @@ function buildAlerts(c, loc) {
     level:'MODERATE', tag:'rain-active', icon:'🌦️'
   });
   // ALTA PROBABILIDAD DE LLUVIA
-  else if (rain >= 85) alerts.push({
+  else if (rain >= 70) alerts.push({
     title: '🌦️ Lluvia probable — ' + loc,
     body: `${rain}% de probabilidad de lluvia. Llevá paraguas y precaución al conducir.`,
     level:'MODERATE', tag:'rain-prob', icon:'🌦️'
@@ -2964,18 +2970,18 @@ function buildAlerts(c, loc) {
     level:'MODERATE', tag:'moderate-wind', icon:'💨'
   });
 
-  // SISTEMA CICLÓNICO (presión muy baja)
-  if (press < 990) alerts.push({
+  // SISTEMA CICLÓNICO (presión baja)
+  if (press < 994) alerts.push({
     title: '🌀 SISTEMA CICLÓNICO — ' + loc,
     body: `Presión de ${Math.round(press)} hPa. Sistema de baja presión intenso activo. Sigue instrucciones de Defensa Civil.`,
     level:'EXTREME', tag:'cyclone', icon:'🌀'
   });
-  else if (press < 110) alerts.push({
-    title: '🌀 Baja presión atmosférica — ' + loc,
+  else if (press < 1000) alerts.push({
+    title: '🌀 Baja presión intensa — ' + loc,
     body: `Presión de ${Math.round(press)} hPa. Condición favorable para tiempo severo. Monitorea Noticlima.`,
     level:'SEVERE', tag:'low-press', icon:'🌀'
   });
-  else if (press < 1017) alerts.push({
+  else if (press < 1008) alerts.push({
     title: '🌀 Presión en descenso — ' + loc,
     body: `Presión de ${Math.round(press)} hPa. Posible deterioro del tiempo. Atención meteorológica.`,
     level:'MODERATE', tag:'press-drop', icon:'🌀'
@@ -3345,19 +3351,20 @@ function renderEventosHTML(eventos, ts) {
 // =============================================
 // TICKER — setInterval marquee (máxima compatibilidad Android)
 // =============================================
-const TICKER_CACHE_KEY = 'noticlima_ticker_v3';
+const TICKER_CACHE_KEY = 'noticlima_ticker_v4';
 let tickerTimer = null;
 let tickerPos = 0;
 let tickerFullW = 0;
 
 const TICKER_FALLBACK = [
-  {tag:'NOAA',    text:'NOAA/CPC: Condiciones El Niño activas — anomalía SST mayor a +0.5°C persiste en el Pacífico central junio 2026.'},
-  {tag:'IRI',     text:'IRI Columbia: probabilidad 65% de El Niño moderado ONI mayor a 1.0°C para trimestre JAS 2026 en Sudamérica.'},
+  {tag:'🚨URGENTE', text:'EL NIÑO 2026 YA ESTÁ AQUÍ — NOAA lo declara oficial y podría ser el más intenso en 70 años. ONI supera +0.5°C en el Pacífico. Leer en Infobae →', url:'https://www.infobae.com/estados-unidos/2026/06/11/el-nino-2026-ya-esta-aqui-y-podria-convertirse-en-el-mas-intenso-en-mas-de-70-anos/', priority:true},
+  {tag:'NOAA',    text:'NOAA/CPC: 63% de probabilidad de que El Niño 2026 evolucione a categoría MUY FUERTE — el peor desde 1997-98.'},
+  {tag:'IRI',     text:'Copernicus: 75% de modelos climáticos proyectan aumento de +2.5°C en Pacífico para noviembre 2026. Episodio excepcional.'},
   {tag:'LLUVIAS', text:'El Niño 2026 proyecta precipitaciones 15 a 25% sobre el promedio en el este paraguayo durante primavera-verano.'},
   {tag:'CHACO',   text:'Pte. Hayes y Boqueron: lluvias superiores al promedio esperadas entre octubre y enero 2026-2027 bajo El Nino.'},
   {tag:'RIOS',    text:'Rio Paraguay en Asuncion podria superar cota de alerta si El Nino se intensifica en tercer trimestre 2026.'},
   {tag:'ALERTA',  text:'Alto Parana, Itapua y Canindeyu: riesgo alto de inundaciones rurales con El Nino moderado a fuerte 2026.'},
-  {tag:'NOAA',    text:'Indice ONI: anomalias positivas sostenidas en region Nino-3.4 confirman umbral de evento El Nino activo.'},
+  {tag:'NOAA',    text:'NOAA: 98.5% probabilidad de que 2026 esté entre los 5 años más cálidos desde que existen registros modernos.'},
   {tag:'AGRO',    text:'MAG Paraguay advierte riesgo de hongos y enfermedades en soja por exceso de humedad en campana 2026-2027.'},
   {tag:'DMHPY',   text:'DMH Paraguay emitira boletines especiales ENSO mensuales durante el segundo semestre de 2026.'},
   {tag:'SUR',     text:'Neembucu y Misiones en vigilancia maxima: rios Paraguay y Parana podrian crecer con El Nino activo 2026.'},
@@ -3374,44 +3381,53 @@ function saveTickerCache(items) {
 }
 
 const TAG_STYLES = {
-  NOAA:   'background:rgba(0,114,255,0.3);color:#60a5fa',
-  IRI:    'background:rgba(139,92,246,0.3);color:#a78bfa',
-  LLUVIAS:'background:rgba(96,165,250,0.25);color:#7dd3fc',
-  CHACO:  'background:rgba(245,158,11,0.25);color:#fbbf24',
-  RIOS:   'background:rgba(34,197,94,0.25);color:#4ade80',
-  ALERTA: 'background:rgba(239,68,68,0.25);color:#f87171',
-  AGRO:   'background:rgba(139,92,246,0.25);color:#a78bfa',
-  DMHPY:  'background:rgba(245,158,11,0.25);color:#fbbf24',
-  SUR:    'background:rgba(0,198,255,0.25);color:#00c6ff',
-  DEFAULT:'background:rgba(100,116,139,0.20);color:#94a3b8',
+  NOAA:       'background:rgba(0,114,255,0.3);color:#60a5fa',
+  IRI:        'background:rgba(139,92,246,0.3);color:#a78bfa',
+  LLUVIAS:    'background:rgba(96,165,250,0.25);color:#7dd3fc',
+  CHACO:      'background:rgba(245,158,11,0.25);color:#fbbf24',
+  RIOS:       'background:rgba(34,197,94,0.25);color:#4ade80',
+  ALERTA:     'background:rgba(239,68,68,0.25);color:#f87171',
+  AGRO:       'background:rgba(139,92,246,0.25);color:#a78bfa',
+  DMHPY:      'background:rgba(245,158,11,0.25);color:#fbbf24',
+  SUR:        'background:rgba(0,198,255,0.25);color:#00c6ff',
+  '🚨URGENTE':'background:rgba(239,68,68,0.85);color:#fff;font-size:10px',
+  DEFAULT:    'background:rgba(100,116,139,0.20);color:#94a3b8',
 };
 
 function startTickerJS(items) {
   if (!items || !items.length) return;
 
-  // Stop any existing timer
   if (tickerTimer) { clearInterval(tickerTimer); tickerTimer = null; }
 
   const track = document.getElementById('ticker-track');
   if (!track) return;
 
-  // Build text: repeat 3x for seamless loop
   const sep = ' &nbsp;&nbsp;&nbsp;★&nbsp;&nbsp;&nbsp; ';
   const single = items.map(n => {
     const st = TAG_STYLES[n.tag] || TAG_STYLES.DEFAULT;
-    return `<b style="${st};padding:1px 6px;border-radius:3px;font-size:9px;font-weight:700;text-transform:uppercase;letter-spacing:.4px;margin-right:7px">${n.tag}</b>${n.text}`;
+    const tagHtml = `<b style="${st};padding:1px 6px;border-radius:3px;font-size:9px;font-weight:700;text-transform:uppercase;letter-spacing:.4px;margin-right:7px">${n.tag}</b>`;
+
+    // Semáforo parpadeante rojo para noticias prioritarias
+    const semaphore = n.priority
+      ? `<span style="display:inline-block;width:9px;height:9px;border-radius:50%;background:#ef4444;box-shadow:0 0 8px #ef4444;margin-right:8px;animation:tickerBlink 0.7s ease-in-out infinite;flex-shrink:0"></span>`
+      : '';
+
+    // Si tiene URL, hacerlo clickeable
+    const text = n.url
+      ? `<span style="color:#fde68a;font-weight:600;cursor:pointer;text-decoration:underline" onclick="window.open('${n.url}','_blank')">${n.text}</span>`
+      : `<span>${n.text}</span>`;
+
+    return semaphore + tagHtml + text;
   }).join(sep);
 
   track.innerHTML = single + sep + single + sep + single + sep;
   track.style.cssText = 'position:absolute;top:0;left:0;height:100%;white-space:nowrap;display:flex;align-items:center;padding:0 8px;';
 
-  // Wait 500ms for DOM to paint and measure
   setTimeout(() => {
     let totalW = track.scrollWidth;
     if (totalW < 100) {
-      // Fallback: estimate ~8px per character
       const totalChars = items.reduce((s,n) => s + n.text.length + n.tag.length + 8, 0);
-      totalW = totalChars * 8 * 3; // times 3 because we tripled content
+      totalW = totalChars * 8 * 3;
     }
     tickerFullW = totalW / 3;
     tickerPos = 0;
