@@ -46,9 +46,38 @@ export default {
       return new Response(JSON.stringify(await checkDMHCap(env)),{headers:cors});
     if (url.pathname==='/force-alertas')
       return new Response(JSON.stringify(await checkAlertasPY(env)),{headers:cors});
+
+    // GET /visita — registra una visita y devuelve el conteo del día
+    if (url.pathname==='/visita') {
+      return new Response(JSON.stringify(await registrarVisita(env)), {headers:cors});
+    }
+    // GET /visitas — solo consulta sin registrar
+    if (url.pathname==='/visitas') {
+      const data = await env.DMH_KV.get('visitas_data', {type:'json'}) || {hoy:0,total:0,fecha:''};
+      return new Response(JSON.stringify(data), {headers:cors});
+    }
+
     return new Response(JSON.stringify({ok:true,msg:'Noticlima Worker v3.1'}),{headers:cors});
   },
 };
+
+async function registrarVisita(env) {
+  const hoy = new Date().toLocaleDateString('es-PY',{timeZone:'America/Asuncion'});
+  let data = await env.DMH_KV.get('visitas_data', {type:'json'}) || {hoy:0,total:0,fecha:''};
+
+  // Si cambió el día, resetear contador diario
+  if (data.fecha !== hoy) {
+    data.ayer = data.hoy; // guardar el de ayer
+    data.hoy  = 0;
+    data.fecha = hoy;
+  }
+
+  data.hoy   = (data.hoy   || 0) + 1;
+  data.total = (data.total || 0) + 1;
+
+  await env.DMH_KV.put('visitas_data', JSON.stringify(data));
+  return data;
+}
 
 async function checkDMHCap(env) {
   try {

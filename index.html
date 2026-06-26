@@ -807,6 +807,30 @@
 <footer>
   <span class="notilea-tag">Notilea</span> · Desde Nueva Asunción · <a href="#">notilea.com.py</a><br>
   Datos: <a href="https://open-meteo.com" target="_blank">Open-Meteo API</a> · Análisis IA generado localmente
+  <div id="visitas-contador" style="margin-top:12px;display:flex;align-items:center;justify-content:center;gap:8px;flex-wrap:wrap">
+    <div style="display:flex;align-items:center;gap:6px;background:var(--bg-card2);border:1px solid var(--border);border-radius:10px;padding:6px 14px">
+      <span style="font-size:14px">👁️</span>
+      <div>
+        <div style="font-size:9px;color:var(--muted);text-transform:uppercase;letter-spacing:0.5px">Hoy</div>
+        <div id="visitas-hoy" style="font-size:16px;font-weight:700;color:var(--accent);font-family:'Courier New',monospace">—</div>
+      </div>
+    </div>
+    <div style="display:flex;align-items:center;gap:6px;background:var(--bg-card2);border:1px solid var(--border);border-radius:10px;padding:6px 14px">
+      <span style="font-size:14px">📅</span>
+      <div>
+        <div style="font-size:9px;color:var(--muted);text-transform:uppercase;letter-spacing:0.5px">Ayer</div>
+        <div id="visitas-ayer" style="font-size:16px;font-weight:700;color:var(--muted);font-family:'Courier New',monospace">—</div>
+      </div>
+    </div>
+    <div style="display:flex;align-items:center;gap:6px;background:var(--bg-card2);border:1px solid var(--border);border-radius:10px;padding:6px 14px">
+      <span style="font-size:14px">📊</span>
+      <div>
+        <div style="font-size:9px;color:var(--muted);text-transform:uppercase;letter-spacing:0.5px">Total</div>
+        <div id="visitas-total" style="font-size:16px;font-weight:700;color:var(--text);font-family:'Courier New',monospace">—</div>
+      </div>
+    </div>
+  </div>
+  <div style="font-size:9px;color:var(--muted);margin-top:6px">Visitantes únicos por sesión · Noticlima de Notilea</div>
 </footer>
 
 <script>
@@ -3137,6 +3161,7 @@ window.addEventListener('load', () => {
   renderENSO();
   setTimeout(initTicker, 600);
   setTimeout(initNotifications, 1000);
+  setTimeout(registrarVisita, 2000); // contador de visitas
 
   // Fallback: ocultar splash a los 6s aunque el clima no haya cargado
   setTimeout(hideSplash, 6000);
@@ -3347,6 +3372,39 @@ function renderEventosHTML(eventos, ts) {
   <div style="font-size:10px;color:var(--muted);text-align:center;padding:8px">
     Actualizado ${updated} · Fuentes: ABC Color, Última Hora, La Nación · IA Noticlima de <span class="notilea-tag">Notilea</span>
   </div>`;}
+
+// =============================================
+// CONTADOR DE VISITAS
+// =============================================
+async function registrarVisita() {
+  try {
+    // Evitar contar la misma sesión dos veces (por recarga)
+    const sessionKey = 'noticlima_visited_' + new Date().toLocaleDateString('es-PY');
+    const yaContado = sessionStorage.getItem(sessionKey);
+
+    const endpoint = yaContado ? '/visitas' : '/visita';
+    if (!yaContado) sessionStorage.setItem(sessionKey, '1');
+
+    const controller = new AbortController();
+    setTimeout(() => controller.abort(), 5000);
+    const resp = await fetch(DMH_WORKER_URL + endpoint, { signal: controller.signal });
+    if (!resp.ok) return;
+    const data = await resp.json();
+
+    const hoyEl   = document.getElementById('visitas-hoy');
+    const ayerEl  = document.getElementById('visitas-ayer');
+    const totalEl = document.getElementById('visitas-total');
+
+    if (hoyEl)   hoyEl.textContent   = (data.hoy   || 0).toLocaleString('es-PY');
+    if (ayerEl)  ayerEl.textContent  = (data.ayer  || 0).toLocaleString('es-PY');
+    if (totalEl) totalEl.textContent = (data.total || 0).toLocaleString('es-PY');
+  } catch(e) {
+    // silencioso si el Worker no responde
+    document.getElementById('visitas-hoy')   && (document.getElementById('visitas-hoy').textContent   = '—');
+    document.getElementById('visitas-ayer')  && (document.getElementById('visitas-ayer').textContent  = '—');
+    document.getElementById('visitas-total') && (document.getElementById('visitas-total').textContent = '—');
+  }
+}
 
 // =============================================
 // TICKER — setInterval marquee (máxima compatibilidad Android)
