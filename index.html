@@ -1785,34 +1785,34 @@ function renderDMHAlertHTML(r) {
   // Mostrar el Boletín Especial destacado
   const todos = r.todos || [{titulo:r.titulo, resumen:r.resumen, nivel:r.nivel, fuente_url:r.fuente_url}];
   const principal = todos[0];
+  // El Worker puede devolver 'title' o 'titulo' segun la version
+  const pTitulo   = principal.titulo   || principal.title   || 'Boletín Meteorológico Especial';
+  const pResumen  = principal.resumen  || principal.desc    || '';
+  const pNivel    = principal.nivel    || 'ALERTA';
+  const pFuente   = principal.fuente_url || principal.link  || 'https://www.meteorologia.gov.py/boletin-especial/';
+  const pFechaLocal = principal.fechaLocal || '';
 
   if (boletinCard) {
     boletinCard.style.display = 'block';
-    // Título
     const tituloEl = document.getElementById('boletin-titulo');
-    if (tituloEl) tituloEl.textContent = principal.titulo || 'Boletín Meteorológico Especial';
-    // Nivel badge
+    if (tituloEl) tituloEl.textContent = pTitulo;
     const badgeEl = document.getElementById('boletin-nivel-badge');
     if (badgeEl) {
-      badgeEl.textContent = principal.nivel || 'ALERTA';
-      badgeEl.style.color = principal.nivel === 'ALERTA' ? '#ef4444' : '#f59e0b';
-      badgeEl.style.background = principal.nivel === 'ALERTA' ? 'rgba(239,68,68,0.25)' : 'rgba(245,158,11,0.25)';
-      badgeEl.style.borderColor = principal.nivel === 'ALERTA' ? '#ef444466' : '#f59e0b66';
+      badgeEl.textContent = pNivel;
+      badgeEl.style.color = pNivel === 'ALERTA' ? '#ef4444' : '#f59e0b';
+      badgeEl.style.background = pNivel === 'ALERTA' ? 'rgba(239,68,68,0.25)' : 'rgba(245,158,11,0.25)';
+      badgeEl.style.borderColor = pNivel === 'ALERTA' ? '#ef444466' : '#f59e0b66';
     }
-    // Resumen
     const resEl = document.getElementById('boletin-resumen');
-    if (resEl) resEl.textContent = principal.resumen || '';
-    // Período
+    if (resEl) resEl.textContent = pResumen;
     const perEl = document.getElementById('boletin-periodo');
     if (perEl) {
-      const fechaCheck = r.checkedAt ? new Date(r.checkedAt).toLocaleDateString('es-PY',{day:'numeric',month:'long'}) : '';
-      perEl.innerHTML = fechaCheck ? `🗓️ Emitido: ${fechaCheck}` : '';
+      const fechaStr = pFechaLocal || (r.checkedAt ? new Date(r.checkedAt).toLocaleDateString('es-PY',{day:'numeric',month:'long'}) : '');
+      perEl.innerHTML = fechaStr ? `🗓️ Emitido: ${fechaStr}` : '';
     }
-    // Link
     const linkEl = document.getElementById('boletin-link');
-    if (linkEl && principal.fuente_url) linkEl.href = principal.fuente_url;
-    // Guardar en window para compartir
-    window._boletinActual = principal;
+    if (linkEl) linkEl.href = pFuente;
+    window._boletinActual = { titulo: pTitulo, resumen: pResumen, nivel: pNivel, fuente_url: pFuente };
   }
 
   // Hora verificación
@@ -1820,11 +1820,15 @@ function renderDMHAlertHTML(r) {
 
   // Lista resumida de todos los avisos en la tarjeta pequeña
   body.innerHTML = todos.map((al, i) => {
-    const nivelColor = al.nivel === 'ALERTA' ? '#ef4444' : '#f59e0b';
+    const tituloAl = al.titulo || al.title || 'Aviso meteorológico';
+    const nivelAl  = al.nivel || 'ALERTA';
+    const nivelColor = nivelAl === 'ALERTA' ? '#ef4444' : '#f59e0b';
+    const resumenAl = al.resumen || al.desc || '';
     return `<div style="${i>0?'margin-top:8px;padding-top:8px;border-top:1px solid var(--border)':''}">
-      <div style="display:flex;align-items:center;gap:6px;flex-wrap:wrap">
-        <span style="font-size:12px;font-weight:700;color:${nivelColor}">⚠️ ${al.titulo}</span>
+      <div style="display:flex;align-items:center;gap:6px;flex-wrap:wrap;margin-bottom:3px">
+        <span style="font-size:12px;font-weight:700;color:${nivelColor}">⚠️ ${tituloAl}</span>
       </div>
+      ${resumenAl ? `<div style="font-size:11px;color:var(--muted);line-height:1.4">${resumenAl.slice(0,120)}${resumenAl.length>120?'…':''}</div>` : ''}
     </div>`;
   }).join('') + `<div style="font-size:10px;color:var(--muted);margin-top:6px">Verificado a las ${hora} · CAP DMH Paraguay</div>`;
 }
