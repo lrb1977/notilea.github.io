@@ -1369,13 +1369,20 @@ function getSevereAlerts(current, hourly) {
     recs:['🧴 Usar protector solar','👒 Sombrero y gafas UV','💧 Buena hidratación al aire libre']
   });
 
-  // PRESIÓN — descenso brusco como indicador de tormenta inminente
-  if (press < 995) alerts.push({
+  // PRESIÓN — solo alertar cuando es realmente extrema (tormenta fuerte activa)
+  if (press < 982) alerts.push({
+    level:'red', icon:'🌀',
+    title:'Presión atmosférica extrema',
+    sublevel:'ROJO · PELIGRO',
+    body:`Presión de <b>${Math.round(press)} hPa</b>. Sistema de baja presión muy intenso activo. Condición de tiempo severo extremo.`,
+    recs:['📻 Seguir instrucciones del DMH Paraguay','🏠 Permanecer en interiores','🚨 Contactar Defensa Civil si hay daños']
+  });
+  else if (press < 988) alerts.push({
     level:'orange', icon:'🌀',
     title:'Presión atmosférica muy baja',
     sublevel:'NARANJA · VIGILANCIA',
-    body:`Presión de <b>${Math.round(press)} hPa</b>. Condición típica previa a tormentas intensas o sistemas de baja presión activos.`,
-    recs:['📻 Monitorea boletines del DMH Paraguay','🏠 Evita actividades al aire libre si hay nubes convectivas','🚗 Precaución en rutas']
+    body:`Presión de <b>${Math.round(press)} hPa</b>. Condición de tormenta intensa activa o sistema de baja presión severo.`,
+    recs:['📻 Monitorea boletines del DMH Paraguay','🏠 Evita actividades al aire libre','🚗 Precaución extrema en rutas']
   });
 
   // HUMEDAD EXTREMA
@@ -2994,21 +3001,25 @@ function buildAlerts(c, loc) {
     level:'MODERATE', tag:'moderate-wind', icon:'💨'
   });
 
-  // SISTEMA CICLÓNICO (presión baja)
-  if (press < 994) alerts.push({
-    title: '🌀 SISTEMA CICLÓNICO — ' + loc,
-    body: `Presión de ${Math.round(press)} hPa. Sistema de baja presión intenso activo. Sigue instrucciones de Defensa Civil.`,
+  // SISTEMA CICLÓNICO — solo valores realmente extremos
+  // Normal en Paraguay: 1008-1018 hPa
+  // Tormenta fuerte: 995-1005 hPa
+  // Sistema ciclónico severo: <990 hPa
+  // Ciclón/huracán: <975 hPa
+  if (press < 975) alerts.push({
+    title: '🌀 SISTEMA CICLÓNICO EXTREMO — ' + loc,
+    body: `Presión de ${Math.round(press)} hPa. Peligro extremo. Sistema ciclónico intenso activo. Seguir instrucciones de Defensa Civil.`,
     level:'EXTREME', tag:'cyclone', icon:'🌀'
   });
-  else if (press < 1000) alerts.push({
-    title: '🌀 Baja presión intensa — ' + loc,
-    body: `Presión de ${Math.round(press)} hPa. Condición favorable para tiempo severo. Monitorea Noticlima.`,
-    level:'SEVERE', tag:'low-press', icon:'🌀'
+  else if (press < 985) alerts.push({
+    title: '🌀 Sistema ciclónico severo — ' + loc,
+    body: `Presión de ${Math.round(press)} hPa. Sistema de baja presión muy intenso. Condición de tiempo extremadamente peligroso.`,
+    level:'EXTREME', tag:'cyclone-sev', icon:'🌀'
   });
-  else if (press < 1008) alerts.push({
-    title: '🌀 Presión en descenso — ' + loc,
-    body: `Presión de ${Math.round(press)} hPa. Posible deterioro del tiempo. Atención meteorológica.`,
-    level:'MODERATE', tag:'press-drop', icon:'🌀'
+  else if (press < 992) alerts.push({
+    title: '🌀 Baja presión intensa — ' + loc,
+    body: `Presión de ${Math.round(press)} hPa. Sistema de baja presión severo activo. Tormentas fuertes probables.`,
+    level:'SEVERE', tag:'low-press', icon:'🌀'
   });
 
   // CALOR EXTREMO

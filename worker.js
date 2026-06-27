@@ -156,8 +156,9 @@ async function checkAlertasPY(env) {
       else if(maxCode>=61||maxRain>=65) alertas.push({tipo:'LLUVIA',nivel:'MODERADO',ciudad:n,dept:dp,titulo:`🌦️ Lluvia intensa — ${n}`,body:`${maxRain}% prob lluvia en ${n}.`,icon:'🌦️',color:'#f59e0b'});
       if(maxWind>=70) alertas.push({tipo:'VIENTO',nivel:'EXTREMO',ciudad:n,dept:dp,titulo:`🌪️ Viento extremo — ${n}`,body:`${Math.round(maxWind)} km/h en ${n}.`,icon:'🌪️',color:'#ef4444'});
       else if(maxWind>=50) alertas.push({tipo:'VIENTO',nivel:'SEVERO',ciudad:n,dept:dp,titulo:`💨 Viento fuerte — ${n}`,body:`${Math.round(maxWind)} km/h en ${n}.`,icon:'💨',color:'#f97316'});
-      if(press<990) alertas.push({tipo:'CICLON',nivel:'EXTREMO',ciudad:n,dept:dp,titulo:`🌀 Ciclón — ${n}`,body:`Presión ${Math.round(press)} hPa en ${n}.`,icon:'🌀',color:'#ef4444'});
-      else if(press<998) alertas.push({tipo:'CICLON',nivel:'SEVERO',ciudad:n,dept:dp,titulo:`🌀 Baja presión — ${n}`,body:`${Math.round(press)} hPa en ${n}.`,icon:'🌀',color:'#f97316'});
+      if(press<975) alertas.push({tipo:'CICLON',nivel:'EXTREMO',ciudad:n,dept:dp,titulo:`🌀 Sistema ciclónico extremo — ${n}`,body:`Presión ${Math.round(press)} hPa en ${n}. Peligro extremo. Seguir instrucciones Defensa Civil.`,icon:'🌀',color:'#ef4444'});
+      else if(press<985) alertas.push({tipo:'CICLON',nivel:'EXTREMO',ciudad:n,dept:dp,titulo:`🌀 Sistema ciclónico severo — ${n}`,body:`Presión ${Math.round(press)} hPa en ${n}, ${dp}. Sistema muy intenso activo.`,icon:'🌀',color:'#ef4444'});
+      else if(press<992) alertas.push({tipo:'CICLON',nivel:'SEVERO',ciudad:n,dept:dp,titulo:`🌀 Baja presión intensa — ${n}`,body:`${Math.round(press)} hPa en ${n}. Tormentas fuertes probables.`,icon:'🌀',color:'#f97316'});
       if(temp<=4) alertas.push({tipo:'HELADA',nivel:'EXTREMO',ciudad:n,dept:dp,titulo:`❄️ Helada — ${n}`,body:`${Math.round(temp)}°C en ${n}. Riesgo de helada.`,icon:'❄️',color:'#60a5fa'});
       else if(temp<=8) alertas.push({tipo:'FRIO',nivel:'SEVERO',ciudad:n,dept:dp,titulo:`🌡️ Frío intenso — ${n}`,body:`${Math.round(temp)}°C en ${n}.`,icon:'🌡️',color:'#93c5fd'});
       else if(temp>=40) alertas.push({tipo:'CALOR',nivel:'EXTREMO',ciudad:n,dept:dp,titulo:`🌡️ Calor extremo — ${n}`,body:`${Math.round(temp)}°C en ${n}.`,icon:'🌡️',color:'#ef4444'});
