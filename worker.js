@@ -2,7 +2,8 @@
  * Noticlima — Worker v3.1
  * Feed CAP oficial DMH Paraguay como fuente primaria
  */
-const DMH_CAP_URL  = 'https://cap-sources.s3.amazonaws.com/py-dmh-es/rss.xml';
+const DMH_CAP_URL    = 'https://cap-sources.s3.amazonaws.com/py-dmh-es/rss.xml';
+const DMH_AVISOS_URL = 'https://www.meteorologia.gov.py/avisos/';
 const DMH_KV_KEY   = 'dmh_latest';
 const NOTIFIED_KEY = 'dmh_last_notified_id';
 const ALERTAS_KEY  = 'py_alertas_latest';
@@ -81,44 +82,145 @@ async function registrarVisita(env) {
 
 async function checkDMHCap(env) {
   try {
-    const resp = await fetch(DMH_CAP_URL,{headers:{'User-Agent':'Noticlima/3.1'}});
-    if (!resp.ok) throw new Error('HTTP '+resp.status);
-    const xml  = await resp.text();
-    const items = [...xml.matchAll(/<item>([\s\S]*?)<\/item>/gi)].map(m=>m[1]);
-    const now  = Date.now();
+    const now = Date.now();
     const alertas = [];
-    for (const item of items) {
-      const title  = extractXML(item,'title');
-      const desc   = extractXML(item,'description').replace(/<[^>]*>/g,'').trim();
-      const link   = extractXML(item,'link');
-      const guid   = extractXML(item,'guid');
-      const pubRaw = extractXML(item,'pubDate');
-      const pub    = pubRaw ? new Date(pubRaw) : new Date();
-      if (now - pub.getTime() > 72*3600000) continue;
-      const fechaLocal = pub.toLocaleDateString('es-PY',{weekday:'short',day:'numeric',month:'short',hour:'2-digit',minute:'2-digit'});
-      const nivel  = clasificarNivel(title,desc);
-      alertas.push({title,desc,link,guid,fechaLocal,nivel});
-    }
+
+    // FUENTE 1: feed CAP de alert-hub (heladas, tormentas con formato estructurado)
+    try {
+      const resp = await fetch(DMH_CAP_URL,{headers:{'User-Agent':'Noticlima/3.2'}});
+      if (resp.ok) {
+        const xml = await resp.text();
+        const items = [...xml.matchAll(/<item>([\s\S]*?)<\/item>/gi)].map(m=>m[1]);
+        for (const item of items) {
+          const title  = extractXML(item,'title');
+          const desc   = extractXML(item,'description').replace(/<[^>]*>/g,'').trim();
+          const link   = extractXML(item,'link');
+          const guid   = extractXML(item,'guid');
+          const pubRaw = extractXML(item,'pubDate');
+          const pub    = pubRaw ? new Date(pubRaw) : new Date();
+          if (now - pub.getTime() > 30*3600000) continue;
+          const fechaLocal = pub.toLocaleDateString('es-PY',{weekday:'short',day:'numeric',month:'short',hour:'2-digit',minute:'2-digit',timeZone:'America/Asuncion'});
+          const nivel = clasificarNivel(title,desc);
+          alertas.push({title,desc,link,guid,fechaLocal,nivel,pub:pub.getTime(),fuente:'CAP'});
+        }
+      }
+    } catch(e) { console.log('[Worker] CAP feed error:', e.message); }
+
+    // FUENTE 2: pagina HTML de avisos vigentes (avisos de tiempo severo regional)
+    try {
+      const resp2 = await fetch(DMH_AVISOS_URL,{headers:{'User-Agent':'Mozilla/5.0 (Noticlima/3.2)'}});
+      if (resp2.ok) {
+        const html = await resp2.text();
+        const avisosHtml = parseAvisosHTML(html);
+        for (const av of avisosHtml) {
+          // Evitar duplicados con el feed CAP (mismo titulo+fecha aproximada)
+          const yaExiste = alertas.some(a => a.title === av.title && Math.abs(a.pub - av.pub) < 6*3600000);
+          if (!yaExiste) alertas.push(av);
+        }
+      }
+    } catch(e) { console.log('[Worker] HTML avisos error:', e.message); }
+
     if (!alertas.length) {
       const r = {vigente:false,checked:true,checkedAt:new Date().toISOString(),isNew:false};
-      await env.DMH_KV.put(DMH_KV_KEY,JSON.stringify(r),{expirationTtl:3600});
+      await env.DMH_KV.put(DMH_KV_KEY,JSON.stringify(r),{expirationTtl:1800});
       return r;
     }
+
+    // Ordenar por fecha más reciente primero
+    alertas.sort((a,b) => b.pub - a.pub);
+
+    // Verificar cuáles GUIDs/IDs son nuevos (no notificados aún)
+    let notifiedSet = new Set();
+    try {
+      const stored = await env.DMH_KV.get('dmh_notified_guids');
+      if (stored) notifiedSet = new Set(JSON.parse(stored));
+    } catch(e) {}
+
+    const idOf = a => a.guid || a.link || a.title + '_' + a.pub;
+    const nuevos = alertas.filter(a => !notifiedSet.has(idOf(a)));
+    const isNew  = nuevos.length > 0;
+
+    alertas.forEach(a => notifiedSet.add(idOf(a)));
+    const idsArr = [...notifiedSet].slice(-60);
+    await env.DMH_KV.put('dmh_notified_guids', JSON.stringify(idsArr));
+
     const best = alertas[0];
-    const avisoId = best.guid||best.link;
-    const last = await env.DMH_KV.get(NOTIFIED_KEY);
-    const isNew = last !== avisoId;
     const result = {
-      vigente:true, titulo:best.title, resumen:best.desc,
-      fuente_url:best.link, nivel:best.nivel, fechaLocal:best.fechaLocal,
-      todos:alertas, isNew, checked:true, checkedAt:new Date().toISOString(),
+      vigente:true,
+      titulo:best.title,
+      resumen:best.desc,
+      fuente_url:best.link,
+      nivel:best.nivel,
+      fechaLocal:best.fechaLocal,
+      departamentos:best.departamentos || null,
+      todos:alertas,
+      nuevos:nuevos.map(a=>({title:a.title,desc:a.desc,nivel:a.nivel,link:a.link,fechaLocal:a.fechaLocal,departamentos:a.departamentos||null})),
+      isNew,
+      checked:true,
+      checkedAt:new Date().toISOString(),
     };
-    if (isNew) await env.DMH_KV.put(NOTIFIED_KEY, avisoId);
-    await env.DMH_KV.put(DMH_KV_KEY,JSON.stringify(result),{expirationTtl:3600});
+
+    await env.DMH_KV.put(DMH_KV_KEY,JSON.stringify(result),{expirationTtl:1800});
     return result;
   } catch(e) {
     return {vigente:false,checked:false,error:e.message,checkedAt:new Date().toISOString()};
   }
+}
+
+// Extrae avisos vigentes desde la pagina HTML meteorologia.gov.py/avisos/
+function parseAvisosHTML(html) {
+  const avisos = [];
+  // Cada aviso suele estar en bloques con titulo tipo "Aviso Meteorologico" + fecha + departamentos
+  // Buscamos bloques de texto plano quitando tags, luego patrones de fecha "DD/MM/YYYY" y "HH:MM"
+  const text = html.replace(/<script[\s\S]*?<\/script>/gi,'').replace(/<style[\s\S]*?<\/style>/gi,'');
+
+  // Patron: Aviso Meteorológico N°: XXX/YYYY ... Fecha: DD/MM/YYYY Hora: HH:MM
+  const re = /Aviso Meteorol[oó]gico\s*N[°ºo]?\s*:?\s*(\d+\/\d+)?[\s\S]{0,150}?Fecha:\s*(\d{2}\/\d{2}\/\d{4})\s*Hora:\s*(\d{2}:\d{2})/gi;
+  let m;
+  while ((m = re.exec(text)) !== null) {
+    const numero = m[1] || '';
+    const [d,mo,y] = m[2].split('/');
+    const [hh,mi]  = m[3].split(':');
+    // Fecha/hora local Paraguay (UTC-4)
+    const pubUTC = new Date(`${y}-${mo}-${d}T${hh}:${mi}:00-04:00`).getTime();
+
+    // Buscar contexto cercano (1500 caracteres antes) para extraer departamentos y descripcion
+    const contextStart = Math.max(0, m.index - 1500);
+    const context = text.slice(contextStart, m.index)
+      .replace(/<[^>]*>/g,' ')
+      .replace(/&nbsp;|&amp;|&aacute;|&eacute;|&iacute;|&oacute;|&uacute;|&ntilde;/gi, c => ({
+        '&nbsp;':' ','&amp;':'&','&aacute;':'á','&eacute;':'é','&iacute;':'í','&oacute;':'ó','&uacute;':'ú','&ntilde;':'ñ'
+      }[c.toLowerCase()] || ' '))
+      .replace(/\s+/g,' ').trim();
+
+    const deptMatch = context.match(/Departamentos? afectados?:?\s*([^.]{5,200})\./i);
+    const departamentos = deptMatch ? deptMatch[1].trim() : null;
+
+    // Titulo: ultima frase relevante antes del numero de aviso (suele ser el tipo de evento)
+    const tituloMatch = context.match(/([A-ZÁÉÍÓÚÑ][^.]{10,120}(?:tormenta|severo|lluvia|viento|granizo|helada|temperatura)[^.]{0,80})\./i);
+    const titulo = tituloMatch ? tituloMatch[1].trim() : 'Aviso Meteorológico Vigente';
+
+    const now = Date.now();
+    if (now - pubUTC > 30*3600000) continue; // descartar avisos viejos
+    if (pubUTC > now + 3600000) continue; // descartar fechas futuras invalidas (parse error)
+
+    const fechaLocal = new Date(pubUTC).toLocaleDateString('es-PY',{weekday:'short',day:'numeric',month:'short',hour:'2-digit',minute:'2-digit',timeZone:'America/Asuncion'});
+    const nivel = clasificarNivel(titulo, context);
+
+    avisos.push({
+      title: titulo,
+      desc: departamentos ? `Departamentos afectados: ${departamentos}.` : context.slice(-200),
+      link: DMH_AVISOS_URL,
+      guid: 'html_' + numero + '_' + pubUTC,
+      fechaLocal,
+      nivel,
+      pub: pubUTC,
+      departamentos,
+      fuente: 'HTML',
+    });
+  }
+
+  return avisos;
 }
 
 function clasificarNivel(title,desc) {

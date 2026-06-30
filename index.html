@@ -1695,7 +1695,8 @@ function renderAlertasPY(data) {
   html += `<div style="font-size:10px;color:var(--muted);margin-top:6px">Última verificación: ${hora} · 20 ciudades</div>`;
   body.innerHTML = html;
 }
-const DMH_CACHE_MINUTES = 10;
+const DMH_CACHE_KEY = 'noticlima_dmh_cache_v2'; // v2: invalida cache viejo automaticamente
+const DMH_CACHE_MINUTES = 5;
 // URL de tu Worker propio (Cloudflare) que tiene la API key de Anthropic guardada.
 // CAMBIAR esta URL por la tuya real despues de desplegar el Worker.
 const DMH_WORKER_URL = 'https://noticlima-dmh-worker.lromero585.workers.dev';
