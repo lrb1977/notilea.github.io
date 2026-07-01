@@ -170,54 +170,87 @@ async function checkDMHCap(env) {
 // Extrae avisos vigentes desde la pagina HTML meteorologia.gov.py/avisos/
 function parseAvisosHTML(html) {
   const avisos = [];
-  // Cada aviso suele estar en bloques con titulo tipo "Aviso Meteorologico" + fecha + departamentos
-  // Buscamos bloques de texto plano quitando tags, luego patrones de fecha "DD/MM/YYYY" y "HH:MM"
-  const text = html.replace(/<script[\s\S]*?<\/script>/gi,'').replace(/<style[\s\S]*?<\/style>/gi,'');
+  const cleanText = html
+    .replace(/<script[\s\S]*?<\/script>/gi,'')
+    .replace(/<style[\s\S]*?<\/style>/gi,'')
+    .replace(/<[^>]*>/g,' ')
+    .replace(/&nbsp;|&amp;|&aacute;|&eacute;|&iacute;|&oacute;|&uacute;|&ntilde;|&Ntilde;/gi, c => ({
+      '&nbsp;':' ','&amp;':'&','&aacute;':'á','&eacute;':'é','&iacute;':'í','&oacute;':'ó','&uacute;':'ú','&ntilde;':'ñ','&ntilde;':'Ñ'
+    }[c.toLowerCase()] || ' '))
+    .replace(/\s+/g,' ').trim();
 
-  // Patron: Aviso Meteorológico N°: XXX/YYYY ... Fecha: DD/MM/YYYY Hora: HH:MM
-  const re = /Aviso Meteorol[oó]gico\s*N[°ºo]?\s*:?\s*(\d+\/\d+)?[\s\S]{0,150}?Fecha:\s*(\d{2}\/\d{2}\/\d{4})\s*Hora:\s*(\d{2}:\d{2})/gi;
+  // Formato real DMH: "Fenomeno esperado: ... Fecha: DD/MM/YYYY Hora de emision: HH:MM:SS H.O.P. ... Zona de cobertura: ... Departamentos afectados: ..."
+  const re = /Fen[oó]meno esperado:\s*([^]{5,400}?)\s*Fecha:\s*(\d{2}\/\d{2}\/\d{4})\s*Hora de emisi[oó]n:\s*(\d{2}:\d{2}):?\d{0,2}\s*H\.?O\.?P\.?([\s\S]{0,600}?)(?=Fen[oó]meno esperado:|$)/gi;
+
   let m;
-  while ((m = re.exec(text)) !== null) {
-    const numero = m[1] || '';
-    const [d,mo,y] = m[2].split('/');
-    const [hh,mi]  = m[3].split(':');
-    // Fecha/hora local Paraguay (UTC-4)
+  while ((m = re.exec(cleanText)) !== null) {
+    const fenomeno = m[1].trim();
+    const [d,mo,y]  = m[2].split('/');
+    const [hh,mi]   = m[3].split(':');
+    const bloqueResto = m[4] || '';
+
     const pubUTC = new Date(`${y}-${mo}-${d}T${hh}:${mi}:00-04:00`).getTime();
+    const now = Date.now();
+    if (now - pubUTC > 30*3600000) continue; // descartar avisos viejos (>30h)
+    if (pubUTC > now + 3600000) continue; // descartar fechas futuras invalidas
 
-    // Buscar contexto cercano (1500 caracteres antes) para extraer departamentos y descripcion
-    const contextStart = Math.max(0, m.index - 1500);
-    const context = text.slice(contextStart, m.index)
-      .replace(/<[^>]*>/g,' ')
-      .replace(/&nbsp;|&amp;|&aacute;|&eacute;|&iacute;|&oacute;|&uacute;|&ntilde;/gi, c => ({
-        '&nbsp;':' ','&amp;':'&','&aacute;':'á','&eacute;':'é','&iacute;':'í','&oacute;':'ó','&uacute;':'ú','&ntilde;':'ñ'
-      }[c.toLowerCase()] || ' '))
-      .replace(/\s+/g,' ').trim();
+    const zonaMatch = bloqueResto.match(/Zona de cobertura:\s*([^.]+?)\s*(?=Departamentos? afectados?:|\.|$)/i);
+    const zona = zonaMatch ? zonaMatch[1].trim() : null;
 
-    const deptMatch = context.match(/Departamentos? afectados?:?\s*([^.]{5,200})\./i);
+    const deptMatch = bloqueResto.match(/Departamentos? afectados?:?\s*([^.]{5,300})\./i);
     const departamentos = deptMatch ? deptMatch[1].trim() : null;
 
-    // Titulo: ultima frase relevante antes del numero de aviso (suele ser el tipo de evento)
-    const tituloMatch = context.match(/([A-ZÁÉÍÓÚÑ][^.]{10,120}(?:tormenta|severo|lluvia|viento|granizo|helada|temperatura)[^.]{0,80})\./i);
-    const titulo = tituloMatch ? tituloMatch[1].trim() : 'Aviso Meteorológico Vigente';
-
-    const now = Date.now();
-    if (now - pubUTC > 30*3600000) continue; // descartar avisos viejos
-    if (pubUTC > now + 3600000) continue; // descartar fechas futuras invalidas (parse error)
-
     const fechaLocal = new Date(pubUTC).toLocaleDateString('es-PY',{weekday:'short',day:'numeric',month:'short',hour:'2-digit',minute:'2-digit',timeZone:'America/Asuncion'});
-    const nivel = clasificarNivel(titulo, context);
+    const nivel = clasificarNivel(fenomeno, bloqueResto);
+
+    let desc = fenomeno;
+    if (departamentos) desc += ` Departamentos afectados: ${departamentos}.`;
+    else if (zona) desc += ` Zona: ${zona}.`;
 
     avisos.push({
-      title: titulo,
-      desc: departamentos ? `Departamentos afectados: ${departamentos}.` : context.slice(-200),
+      title: 'Aviso Meteorológico — ' + fenomeno.slice(0,60) + (fenomeno.length>60?'…':''),
+      desc: desc.slice(0,400),
       link: DMH_AVISOS_URL,
-      guid: 'html_' + numero + '_' + pubUTC,
+      guid: 'html_' + pubUTC,
       fechaLocal,
       nivel,
       pub: pubUTC,
       departamentos,
+      zona,
       fuente: 'HTML',
     });
+  }
+
+  // Fallback: si el patron estructurado no encontro nada, intentar el patron anterior (aviso simple con N°)
+  if (!avisos.length) {
+    const reSimple = /Aviso Meteorol[oó]gico\s*N[°ºo]?\s*:?\s*(\d+\/\d+)?[\s\S]{0,150}?Fecha:\s*(\d{2}\/\d{2}\/\d{4})\s*Hora:\s*(\d{2}:\d{2})/gi;
+    let m2;
+    while ((m2 = reSimple.exec(cleanText)) !== null) {
+      const numero = m2[1] || '';
+      const [d,mo,y] = m2[2].split('/');
+      const [hh,mi]  = m2[3].split(':');
+      const pubUTC = new Date(`${y}-${mo}-${d}T${hh}:${mi}:00-04:00`).getTime();
+      const now = Date.now();
+      if (now - pubUTC > 30*3600000) continue;
+      if (pubUTC > now + 3600000) continue;
+
+      const contextStart = Math.max(0, m2.index - 1500);
+      const context = cleanText.slice(contextStart, m2.index);
+      const deptMatch = context.match(/Departamentos? afectados?:?\s*([^.]{5,200})\./i);
+      const departamentos = deptMatch ? deptMatch[1].trim() : null;
+      const tituloMatch = context.match(/([A-ZÁÉÍÓÚÑ][^.]{10,120}(?:tormenta|severo|lluvia|viento|granizo|helada|temperatura)[^.]{0,80})\./i);
+      const titulo = tituloMatch ? tituloMatch[1].trim() : 'Aviso Meteorológico Vigente';
+      const fechaLocal = new Date(pubUTC).toLocaleDateString('es-PY',{weekday:'short',day:'numeric',month:'short',hour:'2-digit',minute:'2-digit',timeZone:'America/Asuncion'});
+      const nivel = clasificarNivel(titulo, context);
+
+      avisos.push({
+        title: titulo,
+        desc: departamentos ? `Departamentos afectados: ${departamentos}.` : context.slice(-200),
+        link: DMH_AVISOS_URL,
+        guid: 'html_' + numero + '_' + pubUTC,
+        fechaLocal, nivel, pub: pubUTC, departamentos, fuente: 'HTML',
+      });
+    }
   }
 
   return avisos;
