@@ -451,7 +451,6 @@
       ⛈️ Tormentas eléctricas (WMO 95-99)<br>
       🌧️ Lluvia torrencial / Diluvio<br>
       🌪️ Viento extremo (&gt;40 km/h)<br>
-      🌀 Sistema ciclónico (presión &lt;998 hPa)<br>
       🌡️ Calor extremo (&gt;38°C)<br>
       📡 Alertas CAP del DMH Paraguay
     </div>
@@ -3004,27 +3003,6 @@ function buildAlerts(c, loc) {
     title: '💨 Viento moderado fuerte — ' + loc,
     body: `Vientos de ${Math.round(wind)} km/h. Precaución en zonas abiertas y con objetos sueltos.`,
     level:'MODERATE', tag:'moderate-wind', icon:'💨'
-  });
-
-  // SISTEMA CICLÓNICO — solo valores realmente extremos
-  // Normal en Paraguay: 1008-1018 hPa
-  // Tormenta fuerte: 995-1005 hPa
-  // Sistema ciclónico severo: <990 hPa
-  // Ciclón/huracán: <975 hPa
-  if (press < 975) alerts.push({
-    title: '🌀 SISTEMA CICLÓNICO EXTREMO — ' + loc,
-    body: `Presión de ${Math.round(press)} hPa. Peligro extremo. Sistema ciclónico intenso activo. Seguir instrucciones de Defensa Civil.`,
-    level:'EXTREME', tag:'cyclone', icon:'🌀'
-  });
-  else if (press < 985) alerts.push({
-    title: '🌀 Sistema ciclónico severo — ' + loc,
-    body: `Presión de ${Math.round(press)} hPa. Sistema de baja presión muy intenso. Condición de tiempo extremadamente peligroso.`,
-    level:'EXTREME', tag:'cyclone-sev', icon:'🌀'
-  });
-  else if (press < 992) alerts.push({
-    title: '🌀 Baja presión intensa — ' + loc,
-    body: `Presión de ${Math.round(press)} hPa. Sistema de baja presión severo activo. Tormentas fuertes probables.`,
-    level:'SEVERE', tag:'low-press', icon:'🌀'
   });
 
   // CALOR EXTREMO
