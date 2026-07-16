@@ -450,7 +450,7 @@
     <div style="font-size:12px;color:var(--muted);line-height:2">
       ⛈️ Tormentas eléctricas (WMO 95-99)<br>
       🌧️ Lluvia torrencial / Diluvio<br>
-      🌪️ Viento extremo (&gt;60 km/h)<br>
+      🌪️ Viento extremo (&gt;40 km/h)<br>
       🌀 Sistema ciclónico (presión &lt;998 hPa)<br>
       🌡️ Calor extremo (&gt;38°C)<br>
       📡 Alertas CAP del DMH Paraguay
@@ -2987,20 +2987,20 @@ function buildAlerts(c, loc) {
     level:'MODERATE', tag:'rain-prob', icon:'🌦️'
   });
 
-  // VIENTO EXTREMO (>70 km/h)
-  if (wind >= 70) alerts.push({
+  // VIENTO EXTREMO (>40 km/h)
+  if (wind >= 40) alerts.push({
     title: '🌪️ VIENTO EXTREMO — ' + loc,
     body: `Vientos de ${Math.round(wind)} km/h. Riesgo de daños estructurales. Permanece en interiores.`,
     level:'EXTREME', tag:'extreme-wind', icon:'🌪️'
   });
-  // VIENTO FUERTE (>50 km/h)
-  else if (wind >= 50) alerts.push({
+  // VIENTO FUERTE (>30 km/h)
+  else if (wind >= 30) alerts.push({
     title: '💨 Viento fuerte — ' + loc,
     body: `Ráfagas de ${Math.round(wind)} km/h. Asegura objetos sueltos. Precaución al conducir y en altura.`,
     level:'SEVERE', tag:'strong-wind', icon:'💨'
   });
-  // VIENTO MODERADO-FUERTE (>35 km/h) — común antes de tormentas en Paraguay
-  else if (wind >= 35) alerts.push({
+  // VIENTO MODERADO-FUERTE (>20 km/h) — común antes de tormentas en Paraguay
+  else if (wind >= 20) alerts.push({
     title: '💨 Viento moderado fuerte — ' + loc,
     body: `Vientos de ${Math.round(wind)} km/h. Precaución en zonas abiertas y con objetos sueltos.`,
     level:'MODERATE', tag:'moderate-wind', icon:'💨'
