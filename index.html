@@ -849,8 +849,15 @@
 
   <!-- 1. Monitoreo de lluvias en toda la cuenca -->
   <div class="card" style="margin-bottom:10px">
-    <div class="card-title">🌧️ Lluvias en la Cuenca</div>
+    <div class="card-title">🌧️ Lluvias en la Cuenca Alta (Pantanal)</div>
     <div id="rio-lluvias-cuenca">
+      <div class="loading" style="padding:20px"><div class="spinner"></div><div class="loading-text">Cargando…</div></div>
+    </div>
+  </div>
+
+  <div class="card" style="margin-bottom:10px">
+    <div class="card-title">🌧️ Lluvias en la Cuenca Media — Próximos 7 días</div>
+    <div id="rio-lluvias-cuenca-media">
       <div class="loading" style="padding:20px"><div class="spinner"></div><div class="loading-text">Cargando…</div></div>
     </div>
   </div>
@@ -883,7 +890,7 @@
 
   <!-- 5. Nivel esperado -->
   <div class="card" style="margin-bottom:10px">
-    <div class="card-title">📏 Nivel Esperado — Próximos días</div>
+    <div class="card-title">📏 Nivel Esperado — 5 / 7 / 15 días</div>
     <div id="rio-nivel-esperado" style="font-size:12px;color:var(--muted)">—</div>
   </div>
 
@@ -3436,20 +3443,24 @@ function extraerLugar(texto) {
 // Sin API key, gratuito, hasta 210 días de pronóstico
 // =============================================
 const RIO_CACHE_KEY = 'noticlima_rio_v1';
-const RIO_CACHE_MIN = 30;
+const RIO_CACHE_MIN = 1440; // 24 horas
 const RIO_FLOOD_API = 'https://flood-api.open-meteo.com/v1/flood';
 const RIO_WEATHER_API = 'https://api.open-meteo.com/v1/forecast';
 
-// Puertos y puntos clave sobre el río Paraguay (coordenadas aproximadas sobre el cauce)
+// Puertos y puntos clave sobre el río Paraguay, de norte a sur (Bahía Negra → Pilar)
 const RIO_PUERTOS = [
-  { nombre:'Asunción',    lat:-25.2867, lon:-57.6350, dept:'Central',          nivel_alerta_m: 6.0, nivel_emergencia_m: 7.5 },
-  { nombre:'Concepción',  lat:-23.4055, lon:-57.4333, dept:'Concepción',       nivel_alerta_m: 5.5, nivel_emergencia_m: 7.0 },
-  { nombre:'Alberdi',     lat:-26.1667, lon:-58.2167, dept:'Ñeembucú',         nivel_alerta_m: 5.0, nivel_emergencia_m: 6.5 },
-  { nombre:'Pilar',       lat:-26.8667, lon:-58.3000, dept:'Ñeembucú',         nivel_alerta_m: 5.0, nivel_emergencia_m: 6.5 },
-  { nombre:'Ayolas',      lat:-27.4000, lon:-56.9000, dept:'Misiones',         nivel_alerta_m: 4.5, nivel_emergencia_m: 6.0 },
+  { nombre:'Bahía Negra',  lat:-20.2333, lon:-58.2000, dept:'Alto Paraguay',    nivel_alerta_m: 4.5, nivel_emergencia_m: 6.0 },
+  { nombre:'Fuerte Olimpo',lat:-21.0333, lon:-57.8667, dept:'Alto Paraguay',    nivel_alerta_m: 4.5, nivel_emergencia_m: 6.0 },
+  { nombre:'Concepción',   lat:-23.4055, lon:-57.4333, dept:'Concepción',      nivel_alerta_m: 5.5, nivel_emergencia_m: 7.0 },
+  { nombre:'Asunción',     lat:-25.2867, lon:-57.6350, dept:'Central',         nivel_alerta_m: 6.0, nivel_emergencia_m: 7.5 },
+  { nombre:'Alberdi',      lat:-26.1667, lon:-58.2167, dept:'Ñeembucú',        nivel_alerta_m: 5.0, nivel_emergencia_m: 6.5 },
+  { nombre:'Pilar',        lat:-26.8667, lon:-58.3000, dept:'Ñeembucú',        nivel_alerta_m: 5.0, nivel_emergencia_m: 6.5 },
 ];
-// Encarnación está sobre el río Paraná, incluido por relevancia portuaria
-const RIO_PUERTO_PARANA = { nombre:'Encarnación', lat:-27.3333, lon:-55.8667, dept:'Itapúa', nivel_alerta_m: 5.0, nivel_emergencia_m: 6.5 };
+// Ayolas y Encarnación están sobre el río Paraná, incluidos por relevancia portuaria
+const RIO_PUERTO_PARANA = [
+  { nombre:'Ayolas',      lat:-27.4000, lon:-56.9000, dept:'Misiones', nivel_alerta_m: 4.5, nivel_emergencia_m: 6.0 },
+  { nombre:'Encarnación', lat:-27.3333, lon:-55.8667, dept:'Itapúa',   nivel_alerta_m: 5.0, nivel_emergencia_m: 6.5 },
+];
 
 // Afluentes principales de la cuenca del río Paraguay
 const RIO_AFLUENTES = [
@@ -3467,6 +3478,13 @@ const RIO_CUENCA_ALTA = [
   { nombre:'Bahía Negra (Alto Paraguay)',  lat:-20.2333, lon:-58.2000 },
 ];
 
+// Zona de cuenca media — entre Concepción y Asunción
+const RIO_CUENCA_MEDIA = [
+  { nombre:'Concepción (cuenca media)', lat:-23.4055, lon:-57.4333 },
+  { nombre:'Rosario (San Pedro)',       lat:-24.4167, lon:-57.1167 },
+  { nombre:'Asunción (cuenca media-baja)', lat:-25.2867, lon:-57.6350 },
+];
+
 let rioMapInstance = null;
 let rioMapMarkers = [];
 
@@ -3474,25 +3492,27 @@ let rioMapMarkers = [];
 async function actualizarBannerRio() {
   const previewEl = document.getElementById('rio-banner-preview');
   if (!previewEl) return;
+  const puertoAsuncion = RIO_PUERTOS.find(p => p.nombre === 'Asunción');
+  const idxAsuncion = RIO_PUERTOS.findIndex(p => p.nombre === 'Asunción');
   try {
     // Usar caché si existe y es reciente
     const raw = localStorage.getItem(RIO_CACHE_KEY);
     if (raw) {
       const obj = JSON.parse(raw);
       if ((Date.now() - obj.ts) / 60000 < RIO_CACHE_MIN) {
-        const asuncion = obj.data.puertosData && obj.data.puertosData[0];
+        const asuncion = obj.data.puertosData && obj.data.puertosData[idxAsuncion];
         if (asuncion && asuncion.daily && asuncion.daily.river_discharge) {
           const last = asuncion.daily.river_discharge.filter(v => v != null).pop();
-          const nivel = clasificarNivelRio(last, RIO_PUERTOS[0]);
+          const nivel = clasificarNivelRio(last, puertoAsuncion);
           previewEl.textContent = `Asunción: ${Math.round(last)} m³/s · ${nivel.label}`;
           return;
         }
       }
     }
-    const d = await fetchRioDischarge(RIO_PUERTOS[0].lat, RIO_PUERTOS[0].lon, 3, 0);
+    const d = await fetchRioDischarge(puertoAsuncion.lat, puertoAsuncion.lon, 3, 0);
     if (d && d.daily && d.daily.river_discharge) {
       const last = d.daily.river_discharge.filter(v => v != null).pop();
-      const nivel = clasificarNivelRio(last, RIO_PUERTOS[0]);
+      const nivel = clasificarNivelRio(last, puertoAsuncion);
       previewEl.textContent = `Asunción: ${Math.round(last)} m³/s · ${nivel.label}`;
     }
   } catch(e) { previewEl.textContent = 'Toca para ver el panel completo'; }
@@ -3513,14 +3533,16 @@ async function renderRioParaguay(forzar = false) {
   }
 
   try {
-    const [asuncionFlood, puertosData, afluentesData, cuencaData] = await Promise.all([
-      fetchRioDischarge(RIO_PUERTOS[0].lat, RIO_PUERTOS[0].lon, 15, 30),
-      Promise.all([...RIO_PUERTOS, RIO_PUERTO_PARANA].map(p => fetchRioDischarge(p.lat, p.lon, 5, 0))),
+    const puertoAsuncion = RIO_PUERTOS.find(p => p.nombre === 'Asunción');
+    const [asuncionFlood, puertosData, afluentesData, cuencaData, cuencaMediaData] = await Promise.all([
+      fetchRioDischarge(puertoAsuncion.lat, puertoAsuncion.lon, 15, 30),
+      Promise.all([...RIO_PUERTOS, ...RIO_PUERTO_PARANA].map(p => fetchRioDischarge(p.lat, p.lon, 5, 0))),
       Promise.all(RIO_AFLUENTES.map(a => fetchRioDischarge(a.lat, a.lon, 3, 0))),
       Promise.all(RIO_CUENCA_ALTA.map(c => fetchLluviaZona(c.lat, c.lon))),
+      Promise.all(RIO_CUENCA_MEDIA.map(c => fetchLluviaZona(c.lat, c.lon))),
     ]);
 
-    const data = { asuncionFlood, puertosData, afluentesData, cuencaData, ts: Date.now() };
+    const data = { asuncionFlood, puertosData, afluentesData, cuencaData, cuencaMediaData, ts: Date.now() };
     localStorage.setItem(RIO_CACHE_KEY, JSON.stringify({ data, ts: Date.now() }));
     renderRioFromCache(data);
 
@@ -3566,18 +3588,20 @@ function clasificarNivelRio(discharge, puerto) {
 function renderRioFromCache(data) {
   // Banner preview
   const previewEl = document.getElementById('rio-banner-preview');
-  const asuncion = data.puertosData && data.puertosData[0];
+  const idxAsuncion = RIO_PUERTOS.findIndex(p => p.nombre === 'Asunción');
+  const asuncion = data.puertosData && data.puertosData[idxAsuncion];
   if (previewEl) {
     if (asuncion && asuncion.daily && asuncion.daily.river_discharge) {
       const last = asuncion.daily.river_discharge.filter(v => v != null).pop();
-      const nivel = clasificarNivelRio(last, RIO_PUERTOS[0]);
+      const nivel = clasificarNivelRio(last, RIO_PUERTOS[idxAsuncion]);
       previewEl.textContent = `Asunción: ${Math.round(last)} m³/s · ${nivel.label}`;
     } else {
       previewEl.textContent = 'Toca para ver el panel completo';
     }
   }
 
-  renderRioLluviasCuenca(data.cuencaData);
+  renderRioLluviasCuenca('rio-lluvias-cuenca', RIO_CUENCA_ALTA, data.cuencaData);
+  renderRioLluviasCuenca('rio-lluvias-cuenca-media', RIO_CUENCA_MEDIA, data.cuencaMediaData);
   renderRioCrecidaChart(data.asuncionFlood);
   renderRioPuertosList(data.puertosData);
   renderRioNivelEsperado(data.asuncionFlood);
@@ -3586,26 +3610,26 @@ function renderRioFromCache(data) {
   renderRioMapaRiesgo(data.puertosData);
 }
 
-// 1. Lluvias en la cuenca (zona alta: Pantanal / origen de crecidas)
-function renderRioLluviasCuenca(cuencaData) {
-  const el = document.getElementById('rio-lluvias-cuenca');
+// 1. Lluvias en la cuenca (reutilizable para cuenca alta o media) — próximos 7 días
+function renderRioLluviasCuenca(elId, zonas, cuencaData) {
+  const el = document.getElementById(elId);
   if (!el) return;
   if (!cuencaData || !cuencaData.length) { el.innerHTML = '<div style="font-size:11px;color:var(--muted)">Sin datos disponibles.</div>'; return; }
 
-  el.innerHTML = RIO_CUENCA_ALTA.map((zona, i) => {
+  el.innerHTML = zonas.map((zona, i) => {
     const d = cuencaData[i];
     if (!d || !d.daily) return '';
-    const acumulado7 = (d.daily.precipitation_sum || []).slice(0,7).reduce((a,b)=>a+(b||0),0);
+    const acumuladoPasado7 = (d.daily.precipitation_sum || []).slice(0,7).reduce((a,b)=>a+(b||0),0);
     const proximos7 = (d.daily.precipitation_sum || []).slice(7,14).reduce((a,b)=>a+(b||0),0);
-    const color = acumulado7 > 150 ? '#ef4444' : acumulado7 > 80 ? '#f97316' : acumulado7 > 40 ? '#fbbf24' : '#4ade80';
+    const color = proximos7 > 150 ? '#ef4444' : proximos7 > 80 ? '#f97316' : proximos7 > 40 ? '#fbbf24' : '#4ade80';
     return `<div style="display:flex;justify-content:space-between;align-items:center;padding:7px 0;border-bottom:1px solid var(--border)">
       <div>
         <div style="font-size:12px;font-weight:600;color:var(--text)">${zona.nombre}</div>
-        <div style="font-size:10px;color:var(--muted)">Próx. 7 días: ${Math.round(proximos7)} mm previstos</div>
+        <div style="font-size:10px;color:var(--muted)">Últimos 7 días: ${Math.round(acumuladoPasado7)} mm</div>
       </div>
       <div style="text-align:right">
-        <div style="font-size:14px;font-weight:700;color:${color};font-family:'Courier New',monospace">${Math.round(acumulado7)} mm</div>
-        <div style="font-size:9px;color:var(--muted)">últimos 7 días</div>
+        <div style="font-size:14px;font-weight:700;color:${color};font-family:'Courier New',monospace">${Math.round(proximos7)} mm</div>
+        <div style="font-size:9px;color:var(--muted)">próx. 7 días</div>
       </div>
     </div>`;
   }).join('') || '<div style="font-size:11px;color:var(--muted)">Sin datos disponibles.</div>';
@@ -3652,7 +3676,7 @@ function renderRioMapaRiesgo(puertosData) {
   rioMapMarkers.forEach(m => m.remove());
   rioMapMarkers = [];
 
-  const todos = [...RIO_PUERTOS, RIO_PUERTO_PARANA];
+  const todos = [...RIO_PUERTOS, ...RIO_PUERTO_PARANA];
   todos.forEach((p, i) => {
     const d = puertosData && puertosData[i];
     let discharge = null;
@@ -3677,7 +3701,7 @@ function renderRioMapaRiesgo(puertosData) {
 function renderRioPuertosList(puertosData) {
   const el = document.getElementById('rio-puertos-list');
   if (!el) return;
-  const todos = [...RIO_PUERTOS, RIO_PUERTO_PARANA];
+  const todos = [...RIO_PUERTOS, ...RIO_PUERTO_PARANA];
 
   el.innerHTML = todos.map((p, i) => {
     const d = puertosData && puertosData[i];
@@ -3688,7 +3712,7 @@ function renderRioPuertosList(puertosData) {
       proximos3 = d.daily.river_discharge.slice(-3);
     }
     const nivel = clasificarNivelRio(discharge, p);
-    const rioNombre = p === RIO_PUERTO_PARANA ? 'Río Paraná' : 'Río Paraguay';
+    const rioNombre = RIO_PUERTO_PARANA.includes(p) ? 'Río Paraná' : 'Río Paraguay';
 
     return `<div class="rio-port-card">
       <div style="display:flex;justify-content:space-between;align-items:center">
@@ -3719,10 +3743,11 @@ function renderRioNivelEsperado(floodData) {
 
   if (!futureValues.length) { el.textContent = 'Sin proyección disponible.'; return; }
 
-  const puntos = [3, 7, 15].map(dias => {
+  const puntoAsuncion = RIO_PUERTOS.find(p => p.nombre === 'Asunción');
+  const puntos = [5, 7, 15].map(dias => {
     const idx = Math.min(dias - 1, futureValues.length - 1);
     const val = futureValues[idx];
-    const nivel = clasificarNivelRio(val, RIO_PUERTOS[0]);
+    const nivel = clasificarNivelRio(val, puntoAsuncion);
     return { dias, val, nivel };
   });
 
