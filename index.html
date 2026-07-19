@@ -862,6 +862,18 @@
     </div>
   </div>
 
+  <div class="card" style="margin-bottom:10px;border:1px solid rgba(56,189,248,0.3)">
+    <div style="display:flex;align-items:center;justify-content:space-between">
+      <div class="card-title" style="color:#38bdf8;margin-bottom:2px">📏 Nivel Oficial DMH — Estaciones Convencionales</div>
+      <button onclick="cargarNivelOficialRio(true)" style="background:var(--bg-card2);border:1px solid var(--border);border-radius:7px;padding:5px 10px;font-size:11px;color:#38bdf8;cursor:pointer">🔄</button>
+    </div>
+    <div style="font-size:10px;color:var(--muted);margin-bottom:8px">Vallemi · Concepción · Asunción · Pilar — fuente oficial meteorologia.gov.py</div>
+    <div id="rio-nivel-oficial-list">
+      <div class="loading" style="padding:20px"><div class="spinner"></div><div class="loading-text">Consultando DMH…</div></div>
+    </div>
+    <div id="rio-nivel-oficial-meta" style="font-size:9px;color:var(--muted);margin-top:6px;text-align:right"></div>
+  </div>
+
   <!-- 2. Pronóstico de crecidas 3-15 días -->
   <div class="card" style="margin-bottom:10px">
     <div class="card-title">📈 Pronóstico de Crecida (15 días) — Asunción</div>
@@ -3519,6 +3531,8 @@ async function actualizarBannerRio() {
 }
 
 async function renderRioParaguay(forzar = false) {
+  cargarNivelOficialRio(forzar); // datos oficiales DMH via Worker, independiente y no bloqueante
+
   if (!forzar) {
     try {
       const raw = localStorage.getItem(RIO_CACHE_KEY);
@@ -3550,6 +3564,124 @@ async function renderRioParaguay(forzar = false) {
     console.warn('[Río Paraguay] Error:', e);
     const el = document.getElementById('rio-puertos-list');
     if (el) el.innerHTML = `<div style="text-align:center;padding:16px;color:var(--muted);font-size:12px">📡 No se pudo conectar con el servicio de monitoreo del río.<br><button onclick="renderRioParaguay(true)" class="btn-search" style="margin-top:10px;font-size:12px">🔄 Reintentar</button></div>`;
+  }
+}
+
+// ============================================================
+// NIVEL OFICIAL DEL RÍO — DMH (estaciones convencionales)
+// Vallemi, Concepción, Asunción y Pilar. Fuente:
+// meteorologia.gov.py/nivel-rio/indexconvencional.php
+// Se actualiza cada vez que la DMH publica datos nuevos
+// (detectado vía huella/fingerprint en el Worker).
+// ============================================================
+const NIVEL_RIO_CACHE_KEY = 'noticlima_nivel_rio_v1';
+const NIVEL_RIO_CACHE_MIN = 20; // consulta liviana al Worker, sin costo de scraping repetido
+
+async function cargarNivelOficialRio(forzar = false) {
+  const listEl = document.getElementById('rio-nivel-oficial-list');
+  const metaEl = document.getElementById('rio-nivel-oficial-meta');
+  if (!listEl) return;
+
+  if (!forzar) {
+    try {
+      const raw = localStorage.getItem(NIVEL_RIO_CACHE_KEY);
+      if (raw) {
+        const obj = JSON.parse(raw);
+        if ((Date.now() - obj.ts) / 60000 < NIVEL_RIO_CACHE_MIN) {
+          renderNivelOficialRio(obj.data);
+          return;
+        }
+      }
+    } catch(e) {}
+  }
+
+  try {
+    const endpoint = forzar ? '/force-nivel-rio' : '/nivel-rio';
+    const controller = new AbortController();
+    setTimeout(() => controller.abort(), 12000);
+    const resp = await fetch(DMH_WORKER_URL + endpoint, { signal: controller.signal });
+    if (!resp.ok) throw new Error('Worker ' + resp.status);
+    const data = await resp.json();
+
+    if (!data.estaciones || !data.estaciones.length) throw new Error('Sin datos de estaciones');
+
+    // Detectar si cambió respecto a lo que ya teníamos guardado localmente
+    let huboActualizacionDMH = false;
+    try {
+      const raw = localStorage.getItem(NIVEL_RIO_CACHE_KEY);
+      if (raw) {
+        const prev = JSON.parse(raw).data;
+        const prevFecha = prev && prev.estaciones && prev.estaciones[0] && prev.estaciones[0].fecha;
+        const nuevaFecha = data.estaciones[0] && data.estaciones[0].fecha;
+        if (prevFecha && nuevaFecha && prevFecha !== nuevaFecha) huboActualizacionDMH = true;
+      }
+    } catch(e) {}
+
+    localStorage.setItem(NIVEL_RIO_CACHE_KEY, JSON.stringify({ data, ts: Date.now() }));
+    renderNivelOficialRio(data);
+
+    // Notificar solo si la DMH efectivamente publicó datos nuevos (no en cada chequeo)
+    if ((data.isNew || huboActualizacionDMH) && Notification.permission === 'granted') {
+      const asuncion = data.estaciones.find(e => e.localidad === 'Asunción');
+      if (asuncion) {
+        const tendenciaIcon = asuncion.tendencia === 'subiendo' ? '📈' : asuncion.tendencia === 'bajando' ? '📉' : '➡️';
+        await showLocalNotif(
+          `${tendenciaIcon} DMH actualizó el nivel del Río Paraguay`,
+          `Asunción: ${asuncion.nivel_texto} (${asuncion.variacion_texto > 0 ? '+' : ''}${asuncion.variacion_texto}) — ${asuncion.fecha}`,
+          'MODERATE'
+        );
+      }
+    }
+  } catch(e) {
+    listEl.innerHTML = `<div style="text-align:center;padding:14px;color:var(--muted);font-size:11px">📡 No se pudo consultar el nivel oficial del río en este momento.<br><button onclick="cargarNivelOficialRio(true)" class="btn-search" style="margin-top:8px;font-size:11px">🔄 Reintentar</button></div>`;
+    if (metaEl) metaEl.textContent = '';
+  }
+}
+
+function renderNivelOficialRio(data) {
+  const listEl = document.getElementById('rio-nivel-oficial-list');
+  const metaEl = document.getElementById('rio-nivel-oficial-meta');
+  if (!listEl || !data.estaciones) return;
+
+  const nivelClase = (nivelTexto) => {
+    const n = parseFloat(String(nivelTexto).replace(',', '.'));
+    if (isNaN(n)) return 'normal';
+    if (n >= 6) return 'emergencia';
+    if (n >= 4.5) return 'alerta';
+    if (n >= 3.5) return 'atencion';
+    return 'normal';
+  };
+  const nivelLabel = { normal:'NORMAL', atencion:'ATENCIÓN', alerta:'ALERTA', emergencia:'EMERGENCIA' };
+  const tendenciaIcon = { subiendo:'📈', bajando:'📉', estable:'➡️' };
+  const tendenciaColor = { subiendo:'#fbbf24', bajando:'#38bdf8', estable:'var(--muted)' };
+
+  listEl.innerHTML = data.estaciones.map(e => {
+    const clase = nivelClase(e.nivel);
+    const tIcon = tendenciaIcon[e.tendencia] || '➡️';
+    const tColor = tendenciaColor[e.tendencia] || 'var(--muted)';
+    const variacionSigno = (typeof e.variacion === 'number' && e.variacion > 0) ? '+' : '';
+    return `<div class="rio-port-card">
+      <div style="display:flex;justify-content:space-between;align-items:center">
+        <div class="rio-port-name">📍 ${e.localidad}</div>
+        <span class="rio-level-badge rio-level-${clase}">${nivelLabel[clase]}</span>
+      </div>
+      <div style="font-size:10px;color:var(--muted);margin-top:2px">${e.fecha}</div>
+      <div style="display:flex;gap:18px;margin-top:6px;align-items:flex-end">
+        <div>
+          <div style="font-size:9px;color:var(--muted);text-transform:uppercase">Nivel del día</div>
+          <div style="font-size:17px;font-weight:700;color:var(--text);font-family:'Courier New',monospace">${e.nivel_texto}</div>
+        </div>
+        <div>
+          <div style="font-size:9px;color:var(--muted);text-transform:uppercase">Variación diaria</div>
+          <div style="font-size:14px;font-weight:700;color:${tColor};font-family:'Courier New',monospace">${tIcon} ${variacionSigno}${e.variacion_texto}</div>
+        </div>
+      </div>
+    </div>`;
+  }).join('');
+
+  if (metaEl) {
+    const hora = data.checkedAt ? new Date(data.checkedAt).toLocaleString('es-PY', { timeZone:'America/Asuncion', hour:'2-digit', minute:'2-digit', day:'2-digit', month:'2-digit' }) : '';
+    metaEl.textContent = `Verificado ${hora} · Fuente oficial DMH`;
   }
 }
 
