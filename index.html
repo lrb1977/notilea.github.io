@@ -2993,7 +2993,7 @@ async function checkWeatherForAlerts() {
   try {
     // Pedir TAMBIÉN datos horarios para detectar tormentas que se aproximan
     const url = `https://api.open-meteo.com/v1/forecast?latitude=${state.lat}&longitude=${state.lon}`
-      + `&current=weather_code,wind_speed_10m,temperature_2m,precipitation_probability,surface_pressure,relative_humidity_2m,uv_index`
+      + `&current=weather_code,wind_speed_10m,temperature_2m,precipitation_probability,precipitation,surface_pressure,relative_humidity_2m,uv_index`
       + `&hourly=weather_code,wind_speed_10m,precipitation_probability,precipitation`
       + `&forecast_hours=6`
       + `&timezone=America%2FAsuncion`;
@@ -3036,7 +3036,7 @@ async function checkWeatherForAlerts() {
           });
         }
         // Lluvia intensa próxima
-        else if ((hCode >= 80 || (hRain >= 70 && hPrecip >= 3)) && !currentAlerts.find(a => a.tag === 'rain-upcoming')) {
+        else if (((hCode >= 80 && hPrecip >= 2) || (hRain >= 70 && hPrecip >= 3)) && !currentAlerts.find(a => a.tag === 'rain-upcoming')) {
           upcomingAlerts.push({
             title: `🌧️ Lluvia intensa próxima — ${loc} (${cuando})`,
             body: `${hRain}% prob. de lluvia intensa. Precaución en rutas y zonas bajas.`,
@@ -3080,6 +3080,7 @@ function buildAlerts(c, loc) {
   const temp  = c.temperature_2m || 25;
   const press = c.surface_pressure || 1013;
   const rain  = c.precipitation_probability || 0;
+  const precipMm = c.precipitation ?? c.rain ?? 0; // mm reales medidos, no probabilidad
   const uv    = c.uv_index || 0;
 
   // TORMENTA ELÉCTRICA ACTIVA (WMO 95-99)
@@ -3090,22 +3091,22 @@ function buildAlerts(c, loc) {
       : 'Tormenta eléctrica activa. Permanece en interiores. No te refugies bajo árboles.',
     level:'EXTREME', tag:'storm', icon:'⛈️'
   });
-  // LLUVIA TORRENCIAL (WMO 82-84 = chubascos fuertes, o alta prob con lluvia)
-  else if (code >= 82 || (rain >= 75 && code >= 61)) alerts.push({
+  // LLUVIA TORRENCIAL — exige precipitación real medida (>=8mm/h), no solo código o probabilidad
+  else if (code >= 82 && precipMm >= 8) alerts.push({
     title: '🌧️ LLUVIA TORRENCIAL — ' + loc,
-    body: `Precipitaciones muy intensas. Riesgo de inundaciones en zonas bajas. Evita cruzar arroyos crecidos.`,
+    body: `Precipitaciones muy intensas en curso (${precipMm} mm/h). Riesgo de inundaciones en zonas bajas. Evita cruzar arroyos crecidos.`,
     level:'SEVERE', tag:'heavy-rain', icon:'🌧️'
   });
-  // LLUVIA INTENSA (WMO 61-67 = lluvia moderada a fuerte)
-  else if (code >= 61 || (rain >= 60 && code >= 51)) alerts.push({
+  // LLUVIA INTENSA — exige precipitación real medida (>=2mm/h), no solo código
+  else if (code >= 61 && precipMm >= 2) alerts.push({
     title: '🌦️ Lluvia intensa — ' + loc,
-    body: `Lluvia intensa en curso. ${rain > 0 ? rain + '% prob.' : ''} Precaución en rutas y zonas inundables.`,
+    body: `Lluvia intensa en curso (${precipMm} mm/h). Precaución en rutas y zonas inundables.`,
     level:'MODERATE', tag:'rain-active', icon:'🌦️'
   });
-  // ALTA PROBABILIDAD DE LLUVIA
-  else if (rain >= 70) alerts.push({
+  // ALTA PROBABILIDAD DE LLUVIA (esto sí es pronóstico, no "en curso" — texto aclarado)
+  else if (rain >= 70 && precipMm < 0.5) alerts.push({
     title: '🌦️ Lluvia probable — ' + loc,
-    body: `${rain}% de probabilidad de lluvia. Llevá paraguas y precaución al conducir.`,
+    body: `${rain}% de probabilidad de lluvia en las próximas horas. Llevá paraguas y precaución al conducir.`,
     level:'MODERATE', tag:'rain-prob', icon:'🌦️'
   });
 
