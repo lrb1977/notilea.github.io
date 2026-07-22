@@ -594,8 +594,9 @@
 </div>
 
 <!-- LIGHTBOX PARA VER IMAGEN EN GRANDE -->
-<div id="reportes-lightbox" onclick="cerrarLightboxReporte()" style="display:none;position:fixed;inset:0;background:rgba(0,0,0,0.92);z-index:9999;align-items:center;justify-content:center;flex-direction:column;padding:16px">
+<div id="reportes-lightbox" onclick="if(event.target===this) cerrarLightboxReporte()" style="display:none;position:fixed;inset:0;background:rgba(0,0,0,0.92);z-index:9999;align-items:center;justify-content:center;flex-direction:column;padding:16px">
   <img id="reportes-lightbox-img" style="max-width:100%;max-height:80vh;border-radius:8px;box-shadow:0 8px 40px rgba(0,0,0,0.6)">
+  <iframe id="reportes-lightbox-video" style="display:none;width:100%;max-width:640px;height:60vh;border:0;border-radius:8px;box-shadow:0 8px 40px rgba(0,0,0,0.6)" allow="autoplay" allowfullscreen></iframe>
   <div id="reportes-lightbox-caption" style="color:#fff;font-size:13px;margin-top:12px;text-align:center;max-width:90%"></div>
   <button onclick="cerrarLightboxReporte()" style="position:absolute;top:16px;right:16px;background:rgba(255,255,255,0.15);border:none;color:#fff;width:38px;height:38px;border-radius:50%;font-size:18px;cursor:pointer">✕</button>
 </div>
@@ -2725,7 +2726,7 @@ function renderNoticias() {
 // El script lee una carpeta de Drive y devuelve JSON.
 // Reemplazá REPORTES_SCRIPT_URL por tu URL /exec real.
 // =============================================
-const REPORTES_SCRIPT_URL = 'https://script.google.com/macros/s/AKfycbzu9OykRhQLkw6amM7qRi5_FurFOdAUpZb0pexYeYgvWkme3NdA2jCjN2aM4bPk-JDKqQ/exec';
+const REPORTES_SCRIPT_URL = 'https://script.google.com/macros/s/AKfycbxKKoPyu_ZKG_DW8ThqD5KyKTs8Q93Dmvb-YBkH5DeqR6c8YyFDAf1WqHzDwiCEefU-bg/exec';
 let reportesAutoRefreshTimer = null;
 
 async function cargarImagenesReportes(forzar = false) {
@@ -2775,7 +2776,7 @@ function renderReportesGrid(items) {
 
   if (!items.length) {
     el.innerHTML = `<div class="card" style="text-align:center;padding:24px;color:var(--muted)">
-      📂 No hay imágenes en la carpeta todavía.
+      📂 No hay imágenes ni videos en la carpeta todavía.
     </div>`;
     return;
   }
@@ -2783,8 +2784,15 @@ function renderReportesGrid(items) {
   el.innerHTML = `<div style="display:grid;grid-template-columns:repeat(2,1fr);gap:10px">
     ${items.map((it, i) => `
       <div class="card" style="padding:8px;cursor:pointer;margin-bottom:0" onclick="abrirLightboxReporte(${i})">
-        <img src="${it.thumbnail || it.url}" loading="lazy" style="width:100%;aspect-ratio:1;object-fit:cover;border-radius:6px;background:var(--bg-card2)"
-             onerror="this.onerror=null;this.src='${it.url}';">
+        <div style="position:relative">
+          <img src="${it.thumbnail || it.url}" loading="lazy" style="width:100%;aspect-ratio:1;object-fit:cover;border-radius:6px;background:var(--bg-card2)"
+               onerror="this.onerror=null;this.src='${it.url}';">
+          ${it.type === 'video' ? `<div style="position:absolute;inset:0;display:flex;align-items:center;justify-content:center">
+            <div style="width:34px;height:34px;border-radius:50%;background:rgba(0,0,0,0.55);display:flex;align-items:center;justify-content:center">
+              <div style="width:0;height:0;border-left:11px solid #fff;border-top:7px solid transparent;border-bottom:7px solid transparent;margin-left:3px"></div>
+            </div>
+          </div>` : ''}
+        </div>
         <div style="font-size:10.5px;color:var(--text);margin-top:6px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis">${it.name}</div>
         <div style="font-size:9px;color:var(--muted)">${new Date(it.date).toLocaleDateString('es-PY',{day:'2-digit',month:'short',year:'numeric'})}</div>
       </div>
@@ -2798,7 +2806,22 @@ function abrirLightboxReporte(i) {
   const items = window._reportesItems || [];
   const it = items[i];
   if (!it) return;
-  document.getElementById('reportes-lightbox-img').src = it.url;
+
+  const imgEl = document.getElementById('reportes-lightbox-img');
+  const videoEl = document.getElementById('reportes-lightbox-video');
+
+  if (it.type === 'video') {
+    videoEl.src = it.embedUrl || ('https://drive.google.com/file/d/' + it.id + '/preview');
+    videoEl.style.display = 'block';
+    imgEl.style.display = 'none';
+    imgEl.src = '';
+  } else {
+    imgEl.src = it.url;
+    imgEl.style.display = 'block';
+    videoEl.style.display = 'none';
+    videoEl.src = '';
+  }
+
   document.getElementById('reportes-lightbox-caption').textContent =
     it.name + ' · ' + new Date(it.date).toLocaleDateString('es-PY',{day:'2-digit',month:'short',year:'numeric'});
   document.getElementById('reportes-lightbox').style.display = 'flex';
@@ -2806,6 +2829,7 @@ function abrirLightboxReporte(i) {
 
 function cerrarLightboxReporte() {
   document.getElementById('reportes-lightbox').style.display = 'none';
+  document.getElementById('reportes-lightbox-video').src = ''; // detiene la reproducción al cerrar
 }
 
 // =============================================
