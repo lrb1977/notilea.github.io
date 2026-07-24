@@ -978,6 +978,7 @@
     </div>
   </div>
   <div style="font-size:9px;color:var(--muted);margin-top:6px">Visitantes únicos por sesión · Noticlima de Notilea</div>
+  <div id="owner-diag" style="font-size:9px;margin-top:4px"></div>
 </footer>
 
 <script>
@@ -4181,8 +4182,46 @@ function renderEventosHTML(eventos, ts) {
 // =============================================
 // CONTADOR DE VISITAS
 // =============================================
+const OWNER_DEVICE_KEY = 'noticlima_owner_device';
+
+// Activar una sola vez desde tu propio celular abriendo:  tusitio.com/?owner=1
+// Queda guardado en localStorage y ese dispositivo nunca vuelve a contarse.
+if (new URLSearchParams(location.search).get('owner') === '1') {
+  localStorage.setItem(OWNER_DEVICE_KEY, '1');
+}
+function esMiDispositivo() {
+  return localStorage.getItem(OWNER_DEVICE_KEY) === '1';
+}
+
+// Badge de diagnóstico visible en pantalla (sin herramientas técnicas)
+(function mostrarDiagnosticoOwner() {
+  const el = document.getElementById('owner-diag');
+  if (!el) return;
+  if (esMiDispositivo()) {
+    el.innerHTML = '✅ Este dispositivo está excluido del contador';
+    el.style.color = '#4ade80';
+  } else {
+    el.innerHTML = '⚠️ Este dispositivo SÍ se está contando — abrí el sitio agregando <code>?owner=1</code> al final de la URL una sola vez';
+    el.style.color = '#facc15';
+  }
+})();
+
 async function registrarVisita() {
   try {
+    // Mi propio dispositivo: solo consulta el contador, nunca lo incrementa
+    if (esMiDispositivo()) {
+      const resp = await fetch(DMH_WORKER_URL + '/visitas');
+      if (!resp.ok) return;
+      const data = await resp.json();
+      const hoyEl = document.getElementById('visitas-hoy');
+      const ayerEl = document.getElementById('visitas-ayer');
+      const totalEl = document.getElementById('visitas-total');
+      if (hoyEl)   hoyEl.textContent   = (data.hoy   || 0).toLocaleString('es-PY');
+      if (ayerEl)  ayerEl.textContent  = (data.ayer  || 0).toLocaleString('es-PY');
+      if (totalEl) totalEl.textContent = (data.total || 0).toLocaleString('es-PY');
+      return;
+    }
+
     // Evitar contar la misma sesión dos veces (por recarga)
     const sessionKey = 'noticlima_visited_' + new Date().toLocaleDateString('es-PY');
     const yaContado = sessionStorage.getItem(sessionKey);
