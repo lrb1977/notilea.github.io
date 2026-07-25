@@ -3595,7 +3595,7 @@ function extraerLugar(texto) {
 // Sin API key, gratuito, hasta 210 días de pronóstico
 // =============================================
 const RIO_CACHE_KEY = 'noticlima_rio_v1';
-const RIO_CACHE_MIN = 1440; // 24 horas
+const RIO_CACHE_MIN = 60; // 1 hora — datos GloFAS se actualizan pocas veces al día, pero esto evita mostrar info de ayer
 const RIO_FLOOD_API = 'https://flood-api.open-meteo.com/v1/flood';
 const RIO_WEATHER_API = 'https://api.open-meteo.com/v1/forecast';
 
