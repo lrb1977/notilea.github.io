@@ -2,8 +2,20 @@
 // Noticlima de Notilea — Service Worker v2.0
 // Verifica alertas DMH CAP + 20 ciudades PY aunque app cerrada
 // ============================================================
-const CACHE_NAME     = 'noticlima-v2';
+const CACHE_NAME     = 'noticlima-v3';
 const DMH_WORKER_URL = 'https://noticlima-dmh-worker.lromero585.workers.dev';
+
+// App-shell mínimo: sin esto, un WebAPK instalado que falla la
+// primera carga de red no tiene a qué "caer" y Chrome muestra
+// "No se puede ejecutar el sitio".
+const CORE_ASSETS = [
+  './',
+  './index.html',
+  './manifest.json',
+  './icon-192.png',
+  './icon-512.png',
+  './favicon.png',
+];
 
 const SEVERITY = {
   EXTREME: {priority:4, vibrate:[300,100,300,100,600], requireInteraction:true},
@@ -11,12 +23,52 @@ const SEVERITY = {
   MODERATE:{priority:2, vibrate:[200], requireInteraction:false},
 };
 
-self.addEventListener('install',  e => { self.skipWaiting(); });
-self.addEventListener('activate', e => { e.waitUntil(self.clients.claim()); });
+self.addEventListener('install', e => {
+  e.waitUntil(
+    caches.open(CACHE_NAME)
+      .then(cache => cache.addAll(CORE_ASSETS))
+      .catch(() => {}) // no bloquear la instalación si algún asset falla
+      .then(() => self.skipWaiting())
+  );
+});
+
+self.addEventListener('activate', e => {
+  e.waitUntil(
+    caches.keys()
+      .then(keys => Promise.all(keys.filter(k => k !== CACHE_NAME).map(k => caches.delete(k))))
+      .then(() => self.clients.claim())
+  );
+});
 
 self.addEventListener('fetch', e => {
-  if (e.request.url.includes('open-meteo.com') || e.request.url.includes('workers.dev')) return;
-  e.respondWith(fetch(e.request).catch(() => caches.match(e.request)));
+  const req = e.request;
+
+  // Solo interceptamos GET http(s). Cualquier otra cosa (POST,
+  // chrome-extension://, etc.) se deja pasar directo: si el SW
+  // llama fetch() sobre eso puede lanzar una excepción y romper
+  // la carga entera de la app instalada.
+  if (req.method !== 'GET' || !req.url.startsWith('http')) return;
+  if (req.url.includes('open-meteo.com') || req.url.includes('workers.dev')) return;
+
+  // Navegación (abrir/lanzar la app): red primero, y si falla,
+  // servir el index.html cacheado en vez de dejar la pantalla en blanco.
+  if (req.mode === 'navigate') {
+    e.respondWith(
+      fetch(req).catch(() => caches.match('./index.html'))
+    );
+    return;
+  }
+
+  // Resto de assets: red primero, con fallback a caché y,
+  // si tampoco hay caché, se actualiza la caché con lo que llegó.
+  e.respondWith(
+    fetch(req)
+      .then(res => {
+        if (res.ok) caches.open(CACHE_NAME).then(c => c.put(req, res.clone()));
+        return res;
+      })
+      .catch(() => caches.match(req))
+  );
 });
 
 // ── Notification click ────────────────────────────────────
@@ -61,14 +113,25 @@ async function checkDMH() {
     const r = await fetch(DMH_WORKER_URL + '/check');
     if (!r.ok) return;
     const d = await r.json();
-    if (d.vigente && d.isNew) {
-      const nivel = d.nivel === 'ALERTA' ? 'EXTREME' : 'SEVERE';
+    if (!d.vigente || !d.isNew) return;
+
+    // Notificar cada aviso nuevo individualmente (usando d.nuevos[] si existe)
+    const avisosNuevos = (d.nuevos && d.nuevos.length > 0)
+      ? d.nuevos
+      : [{title: d.titulo, desc: d.resumen, nivel: d.nivel, link: d.fuente_url}];
+
+    for (const av of avisosNuevos) {
+      const titulo = av.title || av.titulo || 'Aviso Oficial DMH Paraguay';
+      const resumen = av.desc || av.resumen || '';
+      const nivel = (av.nivel === 'ALERTA') ? 'EXTREME' : 'SEVERE';
       const sv = SEVERITY[nivel];
-      await self.registration.showNotification('📡 Aviso Oficial DMH Paraguay', {
-        body:               d.titulo + (d.resumen ? ' — ' + d.resumen.slice(0,100) : ''),
+      const tag = 'dmh-' + (av.guid || titulo).slice(0,30).replace(/\s/g,'_');
+
+      await self.registration.showNotification('📡 DMH Paraguay: ' + titulo, {
+        body:               resumen ? resumen.slice(0,120) : 'Aviso meteorológico vigente. Toca para ver detalles.',
         icon:               './icon-192.png',
         badge:              './badge-72.png',
-        tag:                'dmh-cap',
+        tag,
         renotify:           true,
         requireInteraction: sv.requireInteraction,
         vibrate:            sv.vibrate,
