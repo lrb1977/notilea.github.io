@@ -3640,8 +3640,8 @@ const RIO_CUENCA_MEDIA = [
 let rioMapInstance = null;
 let rioMapMarkers = [];
 
-// Último caudal válido (>0) conocido por puerto, para no mostrar 0
-// cuando GloFAS falla puntualmente en ese punto de la grilla.
+// Último caudal válido (>0) conocido por puerto — red de respaldo por si
+// una consulta puntual falla aun con la coordenada ya corregida.
 const RIO_LASTKNOWN_KEY = 'noticlima_rio_lastknown_v1';
 function getRioLastKnown() {
   try { return JSON.parse(localStorage.getItem(RIO_LASTKNOWN_KEY) || '{}'); }
@@ -3649,6 +3649,49 @@ function getRioLastKnown() {
 }
 function setRioLastKnown(map) {
   try { localStorage.setItem(RIO_LASTKNOWN_KEY, JSON.stringify(map)); } catch(e) {}
+}
+
+// Auto-ajuste de coordenadas: GloFAS tiene 5km de resolución y la
+// coordenada exacta de una ciudad puede no caer sobre el canal del
+// río (devuelve 0 siempre, no es un fallo de red). Si eso pasa,
+// probamos celdas cercanas (±0.1°/±0.2°, según recomienda Open-Meteo)
+// y guardamos la que sí tiene caudal real para no tener que reintentar
+// en cada carga.
+const RIO_SNAP_KEY = 'noticlima_rio_snap_v1';
+function getRioSnap() {
+  try { return JSON.parse(localStorage.getItem(RIO_SNAP_KEY) || '{}'); }
+  catch(e) { return {}; }
+}
+function setRioSnap(map) {
+  try { localStorage.setItem(RIO_SNAP_KEY, JSON.stringify(map)); } catch(e) {}
+}
+function ultimoCaudal(d) {
+  if (d && d.daily && d.daily.river_discharge) {
+    const vals = d.daily.river_discharge.filter(v => v != null);
+    return vals.length ? vals[vals.length - 1] : null;
+  }
+  return null;
+}
+async function fetchRioDischargeAuto(p, forecastDays, pastDays) {
+  const snap = getRioSnap();
+  const s = snap[p.nombre];
+  const lat = s ? s.lat : p.lat, lon = s ? s.lon : p.lon;
+  const d = await fetchRioDischarge(lat, lon, forecastDays, pastDays);
+  const val = ultimoCaudal(d);
+  if ((val == null || val === 0) && !s) {
+    const offsets = [[0,0.1],[0,-0.1],[0.1,0],[-0.1,0],[0.1,0.1],[-0.1,-0.1],[0.1,-0.1],[-0.1,0.1],[0,0.2],[0,-0.2],[0.2,0],[-0.2,0]];
+    const intentos = await Promise.all(offsets.map(([dlat,dlon]) =>
+      fetchRioDischarge(p.lat+dlat, p.lon+dlon, forecastDays, pastDays).then(r => ({r, dlat, dlon}))
+    ));
+    for (const {r, dlat, dlon} of intentos) {
+      if (ultimoCaudal(r) > 0) {
+        snap[p.nombre] = { lat: p.lat+dlat, lon: p.lon+dlon };
+        setRioSnap(snap);
+        return r;
+      }
+    }
+  }
+  return d;
 }
 
 // Actualización liviana solo del banner (se usa al cargar la app, sin abrir el panel completo)
@@ -3701,7 +3744,7 @@ async function renderRioParaguay(forzar = false) {
     const puertoAsuncion = RIO_PUERTOS.find(p => p.nombre === 'Asunción');
     const [asuncionFlood, puertosData, afluentesData, cuencaData, cuencaMediaData] = await Promise.all([
       fetchRioDischarge(puertoAsuncion.lat, puertoAsuncion.lon, 15, 30),
-      Promise.all([...RIO_PUERTOS, ...RIO_PUERTO_PARANA].map(p => fetchRioDischarge(p.lat, p.lon, 5, 0))),
+      Promise.all([...RIO_PUERTOS, ...RIO_PUERTO_PARANA].map(p => fetchRioDischargeAuto(p, 5, 0))),
       Promise.all(RIO_AFLUENTES.map(a => fetchRioDischarge(a.lat, a.lon, 3, 0))),
       Promise.all(RIO_CUENCA_ALTA.map(c => fetchLluviaZona(c.lat, c.lon))),
       Promise.all(RIO_CUENCA_MEDIA.map(c => fetchLluviaZona(c.lat, c.lon))),
