@@ -264,6 +264,7 @@
   .rio-port-name { font-size:13px; font-weight:700; color:#e0f2fe; display:flex; align-items:center; gap:6px; }
   .rio-level-badge { font-size:10px; font-weight:700; border-radius:5px; padding:2px 8px; }
   .rio-level-normal   { background:rgba(34,197,94,0.2);  color:#4ade80; }
+  .rio-level-sindatos { background:rgba(148,163,184,0.2); color:#94a3b8; }
   .rio-level-atencion  { background:rgba(245,158,11,0.2); color:#fbbf24; }
   .rio-level-alerta    { background:rgba(249,115,22,0.2); color:#fb923c; }
   .rio-level-emergencia{ background:rgba(239,68,68,0.2);  color:#f87171; }
@@ -3419,7 +3420,9 @@ window.addEventListener('load', () => {
   setTimeout(initTicker, 600);
   setTimeout(initNotifications, 1000);
   setTimeout(registrarVisita, 2000); // contador de visitas
-  setTimeout(actualizarBannerRio, 2500); // preview del monitoreo del río en el header
+  setTimeout(actualizarBannerRio, 2500); // preview rápido (desde caché o 1 sola consulta) en el header
+  setTimeout(() => renderRioParaguay(true), 5000); // actualización completa de todos los puertos al abrir la app
+  setInterval(() => renderRioParaguay(true), 6 * 60 * 60 * 1000); // refresco automático cada 6 horas
 
   // Fallback: ocultar splash a los 6s aunque el clima no haya cargado
   setTimeout(hideSplash, 6000);
@@ -3595,7 +3598,7 @@ function extraerLugar(texto) {
 // Sin API key, gratuito, hasta 210 días de pronóstico
 // =============================================
 const RIO_CACHE_KEY = 'noticlima_rio_v1';
-const RIO_CACHE_MIN = 1440; // 24 horas
+const RIO_CACHE_MIN = 360; // 6 horas
 const RIO_FLOOD_API = 'https://flood-api.open-meteo.com/v1/flood';
 const RIO_WEATHER_API = 'https://api.open-meteo.com/v1/forecast';
 
@@ -3666,25 +3669,31 @@ function setRioSnap(map) {
   try { localStorage.setItem(RIO_SNAP_KEY, JSON.stringify(map)); } catch(e) {}
 }
 function ultimoCaudal(d) {
-  if (d && d.daily && d.daily.river_discharge) {
+  if (d && d.daily && Array.isArray(d.daily.river_discharge)) {
     const vals = d.daily.river_discharge.filter(v => v != null);
     return vals.length ? vals[vals.length - 1] : null;
   }
   return null;
+}
+// Un caudal de EXACTAMENTE 0 en estos puntos casi siempre significa que la
+// celda de GloFAS no cae sobre el canal del río (no que el río esté seco).
+// Se trata igual que "sin datos" para no mostrar 0 m³/s engañoso.
+function caudalValido(d) {
+  const v = ultimoCaudal(d);
+  return (v == null || v === 0) ? null : v;
 }
 async function fetchRioDischargeAuto(p, forecastDays, pastDays) {
   const snap = getRioSnap();
   const s = snap[p.nombre];
   const lat = s ? s.lat : p.lat, lon = s ? s.lon : p.lon;
   const d = await fetchRioDischarge(lat, lon, forecastDays, pastDays);
-  const val = ultimoCaudal(d);
-  if ((val == null || val === 0) && !s) {
+  if (caudalValido(d) == null && !s) {
     const offsets = [[0,0.1],[0,-0.1],[0.1,0],[-0.1,0],[0.1,0.1],[-0.1,-0.1],[0.1,-0.1],[-0.1,0.1],[0,0.2],[0,-0.2],[0.2,0],[-0.2,0]];
     const intentos = await Promise.all(offsets.map(([dlat,dlon]) =>
       fetchRioDischarge(p.lat+dlat, p.lon+dlon, forecastDays, pastDays).then(r => ({r, dlat, dlon}))
     ));
     for (const {r, dlat, dlon} of intentos) {
-      if (ultimoCaudal(r) > 0) {
+      if (caudalValido(r) != null) {
         snap[p.nombre] = { lat: p.lat+dlat, lon: p.lon+dlon };
         setRioSnap(snap);
         return r;
@@ -3701,26 +3710,25 @@ async function actualizarBannerRio() {
   const puertoAsuncion = RIO_PUERTOS.find(p => p.nombre === 'Asunción');
   const idxAsuncion = RIO_PUERTOS.findIndex(p => p.nombre === 'Asunción');
   try {
-    // Usar caché si existe y es reciente
+    // Usar caché si existe y es reciente (misma ventana de 6h que el panel)
     const raw = localStorage.getItem(RIO_CACHE_KEY);
     if (raw) {
       const obj = JSON.parse(raw);
       if ((Date.now() - obj.ts) / 60000 < RIO_CACHE_MIN) {
         const asuncion = obj.data.puertosData && obj.data.puertosData[idxAsuncion];
-        if (asuncion && asuncion.daily && asuncion.daily.river_discharge) {
-          const last = asuncion.daily.river_discharge.filter(v => v != null).pop();
+        const last = caudalValido(asuncion);
+        if (last != null) {
           const nivel = clasificarNivelRio(last, puertoAsuncion);
           previewEl.textContent = `Asunción: ${Math.round(last)} m³/s · ${nivel.label}`;
           return;
         }
       }
     }
-    const d = await fetchRioDischarge(puertoAsuncion.lat, puertoAsuncion.lon, 3, 0);
-    if (d && d.daily && d.daily.river_discharge) {
-      const last = d.daily.river_discharge.filter(v => v != null).pop();
-      const nivel = clasificarNivelRio(last, puertoAsuncion);
-      previewEl.textContent = `Asunción: ${Math.round(last)} m³/s · ${nivel.label}`;
-    }
+    const d = await fetchRioDischargeAuto(puertoAsuncion, 3, 0);
+    const last = caudalValido(d);
+    previewEl.textContent = last != null
+      ? `Asunción: ${Math.round(last)} m³/s · ${clasificarNivelRio(last, puertoAsuncion).label}`
+      : 'Asunción: Sin datos';
   } catch(e) { previewEl.textContent = 'Toca para ver el panel completo'; }
 }
 
@@ -3743,7 +3751,7 @@ async function renderRioParaguay(forzar = false) {
   try {
     const puertoAsuncion = RIO_PUERTOS.find(p => p.nombre === 'Asunción');
     const [asuncionFlood, puertosData, afluentesData, cuencaData, cuencaMediaData] = await Promise.all([
-      fetchRioDischarge(puertoAsuncion.lat, puertoAsuncion.lon, 15, 30),
+      fetchRioDischargeAuto(puertoAsuncion, 15, 30),
       Promise.all([...RIO_PUERTOS, ...RIO_PUERTO_PARANA].map(p => fetchRioDischargeAuto(p, 5, 0))),
       Promise.all(RIO_AFLUENTES.map(a => fetchRioDischarge(a.lat, a.lon, 3, 0))),
       Promise.all(RIO_CUENCA_ALTA.map(c => fetchLluviaZona(c.lat, c.lon))),
@@ -3751,20 +3759,16 @@ async function renderRioParaguay(forzar = false) {
     ]);
 
     // GloFAS a veces devuelve 0 en algunos puertos (la celda de la grilla
-    // no cae justo sobre el canal del río en ese punto), y ese 0 se
-    // colaba como si fuera un dato real, dejando ese puerto "pegado"
-    // mientras los demás sí se actualizaban. Si un puerto da 0/sin dato,
-    // reusamos el último valor válido que tengamos guardado para ese puerto.
+    // no cae justo sobre el canal del río en ese punto). fetchRioDischargeAuto
+    // ya intenta corregir la coordenada; si aun así no hay dato válido,
+    // reusamos el último caudal real que tengamos guardado para ese puerto
+    // en vez de dejarlo en 0.
     const todosPuertos = [...RIO_PUERTOS, ...RIO_PUERTO_PARANA];
     const lastKnown = getRioLastKnown();
     puertosData.forEach((d, i) => {
       const nombre = todosPuertos[i].nombre;
-      let val = null;
-      if (d && d.daily && d.daily.river_discharge) {
-        const vals = d.daily.river_discharge.filter(v => v != null);
-        val = vals.slice(-1)[0];
-      }
-      if (val != null && val > 0) {
+      const val = caudalValido(d);
+      if (val != null) {
         lastKnown[nombre] = { val, ts: Date.now() };
       } else if (lastKnown[nombre]) {
         puertosData[i] = { daily: { river_discharge: [lastKnown[nombre].val], _stale: true, _staleTs: lastKnown[nombre].ts } };
@@ -3901,32 +3905,37 @@ function renderNivelOficialRio(data) {
   }
 }
 
+// Reintenta automáticamente ante fallos de red/timeout (hasta 2 reintentos,
+// con espera creciente). Si el servidor responde pero sin datos, no reintenta
+// más de lo necesario para no penalizar el rendimiento.
+async function fetchConReintento(url, timeoutMs, maxIntentos = 2) {
+  for (let intento = 0; intento <= maxIntentos; intento++) {
+    try {
+      const controller = new AbortController();
+      const t = setTimeout(() => controller.abort(), timeoutMs);
+      const resp = await fetch(url, { signal: controller.signal });
+      clearTimeout(t);
+      if (resp.ok) return await resp.json();
+    } catch(e) { /* se reintenta abajo */ }
+    if (intento < maxIntentos) await new Promise(r => setTimeout(r, 700 * (intento + 1)));
+  }
+  return null;
+}
+
 async function fetchRioDischarge(lat, lon, forecastDays, pastDays) {
-  try {
-    const url = `${RIO_FLOOD_API}?latitude=${lat}&longitude=${lon}&daily=river_discharge&forecast_days=${forecastDays}&past_days=${pastDays}&timezone=America%2FAsuncion`;
-    const controller = new AbortController();
-    setTimeout(() => controller.abort(), 10000);
-    const resp = await fetch(url, { signal: controller.signal });
-    if (!resp.ok) return null;
-    return await resp.json();
-  } catch(e) { return null; }
+  const url = `${RIO_FLOOD_API}?latitude=${lat}&longitude=${lon}&daily=river_discharge&forecast_days=${forecastDays}&past_days=${pastDays}&timezone=America%2FAsuncion`;
+  return fetchConReintento(url, 10000, 2);
 }
 
 async function fetchLluviaZona(lat, lon) {
-  try {
-    const url = `${RIO_WEATHER_API}?latitude=${lat}&longitude=${lon}&daily=precipitation_sum&forecast_days=7&past_days=7&timezone=America%2FAsuncion`;
-    const controller = new AbortController();
-    setTimeout(() => controller.abort(), 8000);
-    const resp = await fetch(url, { signal: controller.signal });
-    if (!resp.ok) return null;
-    return await resp.json();
-  } catch(e) { return null; }
+  const url = `${RIO_WEATHER_API}?latitude=${lat}&longitude=${lon}&daily=precipitation_sum&forecast_days=7&past_days=7&timezone=America%2FAsuncion`;
+  return fetchConReintento(url, 8000, 2);
 }
 
 function clasificarNivelRio(discharge, puerto) {
   // Estimación de nivel basada en caudal relativo (m³/s) — GloFAS no da altura directa,
   // se usa el caudal como proxy junto a umbrales de referencia históricos del río Paraguay
-  if (discharge == null) return { label:'Sin datos', clase:'normal' };
+  if (discharge == null) return { label:'Sin datos', clase:'sindatos' };
   if (discharge > 12000) return { label:'EMERGENCIA', clase:'emergencia' };
   if (discharge > 8000)  return { label:'ALERTA', clase:'alerta' };
   if (discharge > 5500)  return { label:'ATENCIÓN', clase:'atencion' };
@@ -3939,13 +3948,10 @@ function renderRioFromCache(data) {
   const idxAsuncion = RIO_PUERTOS.findIndex(p => p.nombre === 'Asunción');
   const asuncion = data.puertosData && data.puertosData[idxAsuncion];
   if (previewEl) {
-    if (asuncion && asuncion.daily && asuncion.daily.river_discharge) {
-      const last = asuncion.daily.river_discharge.filter(v => v != null).pop();
-      const nivel = clasificarNivelRio(last, RIO_PUERTOS[idxAsuncion]);
-      previewEl.textContent = `Asunción: ${Math.round(last)} m³/s · ${nivel.label}`;
-    } else {
-      previewEl.textContent = 'Toca para ver el panel completo';
-    }
+    const last = caudalValido(asuncion);
+    previewEl.textContent = last != null
+      ? `Asunción: ${Math.round(last)} m³/s · ${clasificarNivelRio(last, RIO_PUERTOS[idxAsuncion]).label}`
+      : 'Asunción: Sin datos';
   }
 
   renderRioLluviasCuenca('rio-lluvias-cuenca', RIO_CUENCA_ALTA, data.cuencaData);
@@ -4027,10 +4033,7 @@ function renderRioMapaRiesgo(puertosData) {
   const todos = [...RIO_PUERTOS, ...RIO_PUERTO_PARANA];
   todos.forEach((p, i) => {
     const d = puertosData && puertosData[i];
-    let discharge = null;
-    if (d && d.daily && d.daily.river_discharge) {
-      discharge = d.daily.river_discharge.filter(v => v != null).slice(-1)[0];
-    }
+    const discharge = caudalValido(d);
     const nivel = clasificarNivelRio(discharge, p);
     const colorMap = { normal:'#22c55e', atencion:'#fbbf24', alerta:'#f97316', emergencia:'#ef4444' };
     const color = colorMap[nivel.clase] || '#22c55e';
@@ -4053,12 +4056,7 @@ function renderRioPuertosList(puertosData) {
 
   el.innerHTML = todos.map((p, i) => {
     const d = puertosData && puertosData[i];
-    let discharge = null, proximos3 = [];
-    if (d && d.daily && d.daily.river_discharge) {
-      const vals = d.daily.river_discharge.filter(v => v != null);
-      discharge = vals.slice(-1)[0];
-      proximos3 = d.daily.river_discharge.slice(-3);
-    }
+    const discharge = caudalValido(d);
     const nivel = clasificarNivelRio(discharge, p);
     const rioNombre = RIO_PUERTO_PARANA.includes(p) ? 'Río Paraná' : 'Río Paraguay';
     const stale = d && d.daily && d.daily._stale;
