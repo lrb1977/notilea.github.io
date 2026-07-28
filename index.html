@@ -3675,31 +3675,41 @@ function ultimoCaudal(d) {
   }
   return null;
 }
-// Un caudal de EXACTAMENTE 0 en estos puntos casi siempre significa que la
-// celda de GloFAS no cae sobre el canal del río (no que el río esté seco).
-// Se trata igual que "sin datos" para no mostrar 0 m³/s engañoso.
+// Un caudal MUY bajo en estos puntos (río Paraguay/Paraná, puertos
+// principales) casi siempre significa que la celda de GloFAS no cae sobre
+// el canal principal (puede devolver decimales chicos tipo 0.3 o 1.8, que
+// al redondear para mostrar se ven como "0" o "1" pero pasan cualquier
+// chequeo de "!= 0"). Se trata como sin datos para no mostrar caudales
+// engañosos, muy por debajo de cualquier valor real observado en estos ríos.
+const RIO_CAUDAL_MINIMO_VALIDO = 50;
 function caudalValido(d) {
   const v = ultimoCaudal(d);
-  return (v == null || v === 0) ? null : v;
+  return (v == null || v < RIO_CAUDAL_MINIMO_VALIDO) ? null : v;
 }
 async function fetchRioDischargeAuto(p, forecastDays, pastDays) {
   const snap = getRioSnap();
   const s = snap[p.nombre];
   const lat = s ? s.lat : p.lat, lon = s ? s.lon : p.lon;
   const d = await fetchRioDischarge(lat, lon, forecastDays, pastDays);
-  if (caudalValido(d) == null && !s) {
-    const offsets = [[0,0.1],[0,-0.1],[0.1,0],[-0.1,0],[0.1,0.1],[-0.1,-0.1],[0.1,-0.1],[-0.1,0.1],[0,0.2],[0,-0.2],[0.2,0],[-0.2,0]];
-    const intentos = await Promise.all(offsets.map(([dlat,dlon]) =>
-      fetchRioDischarge(p.lat+dlat, p.lon+dlon, forecastDays, pastDays).then(r => ({r, dlat, dlon}))
-    ));
-    for (const {r, dlat, dlon} of intentos) {
-      if (caudalValido(r) != null) {
-        snap[p.nombre] = { lat: p.lat+dlat, lon: p.lon+dlon };
-        setRioSnap(snap);
-        return r;
-      }
-    }
+  if (caudalValido(d) != null) return d;
+
+  // La coordenada actual (original o una ya "snapeada" antes que resultó
+  // mala) no da un caudal creíble: probamos celdas cercanas y nos quedamos
+  // con la de MAYOR caudal válido, no con la primera que supere el umbral.
+  const offsets = [[0,0],[0,0.1],[0,-0.1],[0.1,0],[-0.1,0],[0.1,0.1],[-0.1,-0.1],[0.1,-0.1],[-0.1,0.1],[0,0.2],[0,-0.2],[0.2,0],[-0.2,0]];
+  const intentos = await Promise.all(offsets.map(([dlat,dlon]) =>
+    fetchRioDischarge(p.lat+dlat, p.lon+dlon, forecastDays, pastDays).then(r => ({ r, dlat, dlon, v: caudalValido(r) }))
+  ));
+  let mejor = null;
+  for (const it of intentos) {
+    if (it.v != null && (!mejor || it.v > mejor.v)) mejor = it;
   }
+  if (mejor) {
+    snap[p.nombre] = { lat: p.lat + mejor.dlat, lon: p.lon + mejor.dlon };
+    setRioSnap(snap);
+    return mejor.r;
+  }
+
   return d;
 }
 
