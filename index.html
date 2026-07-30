@@ -3628,20 +3628,27 @@ const RIO_FLOOD_API = 'https://flood-api.open-meteo.com/v1/flood';
 const RIO_WEATHER_API = 'https://api.open-meteo.com/v1/forecast';
 
 // Puertos y puntos clave sobre el río Paraguay, de norte a sur (Bahía Negra → Pilar)
+// caudal_medio_m3s: caudal medio histórico de referencia de CADA estación
+// (no un umbral único global). Fuentes: CIC (Comité Intergubernamental
+// Coordinador de los Países de la Cuenca del Plata), mediciones ANNP/UNA en
+// Asunción, y OEA (informe cuenca del Plata). Ver metodología de umbrales
+// en clasificarNivelRio().
 const RIO_PUERTOS = [
-  { nombre:'Bahía Negra',  lat:-20.2333, lon:-58.2000, dept:'Alto Paraguay',    nivel_alerta_m: 4.5, nivel_emergencia_m: 6.0 },
-  { nombre:'Fuerte Olimpo',lat:-21.0333, lon:-57.8667, dept:'Alto Paraguay',    nivel_alerta_m: 4.5, nivel_emergencia_m: 6.0 },
-  { nombre:'Concepción',   lat:-23.4055, lon:-57.4333, dept:'Concepción',      nivel_alerta_m: 5.5, nivel_emergencia_m: 7.0 },
-  { nombre:'Asunción',     lat:-25.2867, lon:-57.6350, dept:'Central',         nivel_alerta_m: 6.0, nivel_emergencia_m: 7.5 },
-  { nombre:'Alberdi',      lat:-26.1667, lon:-58.2167, dept:'Ñeembucú',        nivel_alerta_m: 5.0, nivel_emergencia_m: 6.5 },
-  { nombre:'Pilar',        lat:-26.8667, lon:-58.3000, dept:'Ñeembucú',        nivel_alerta_m: 5.0, nivel_emergencia_m: 6.5 },
+  { nombre:'Bahía Negra',  lat:-20.2333, lon:-58.2000, dept:'Alto Paraguay', caudal_medio_m3s: 950,  fuente_caudal:'GloFAS (referencia, cuenca alta sin estación oficial)' },
+  { nombre:'Fuerte Olimpo',lat:-21.0333, lon:-57.8667, dept:'Alto Paraguay', caudal_medio_m3s: 1100, fuente_caudal:'GloFAS (referencia, cuenca alta sin estación oficial)' },
+  { nombre:'Concepción',   lat:-23.4055, lon:-57.4333, dept:'Concepción',    caudal_medio_m3s: 2300, fuente_caudal:'GloFAS (referencia, interpolado entre Bahía Negra y Asunción)' },
+  { nombre:'Asunción',     lat:-25.2867, lon:-57.6350, dept:'Central',       caudal_medio_m3s: 4000, fuente_caudal:'CIC / mediciones ANNP-UNA en Asunción' },
+  { nombre:'Alberdi',      lat:-26.1667, lon:-58.2167, dept:'Ñeembucú',      caudal_medio_m3s: 4200, fuente_caudal:'GloFAS (referencia, aguas abajo de Asunción)' },
+  { nombre:'Pilar',        lat:-26.8667, lon:-58.3000, dept:'Ñeembucú',      caudal_medio_m3s: 3840, fuente_caudal:'OEA — informe cuenca del Plata, Puerto Bermejo' },
 ];
-// Puertos sobre el río Paraná, incluidos por relevancia portuaria
+// Puertos sobre el río Paraná, incluidos por relevancia portuaria.
+// El Paraná mueve un orden de magnitud más de agua que el Paraguay — por
+// eso NO comparte los mismos umbrales (ver clasificarNivelRio()).
 const RIO_PUERTO_PARANA = [
-  { nombre:'Puerto Guairá',   lat:-24.0200, lon:-54.3400, dept:'Canindeyú',       nivel_alerta_m: 4.5, nivel_emergencia_m: 6.0 },
-  { nombre:'Puerto Libertad', lat:-25.9167, lon:-54.6000, dept:'Misiones (Arg.)', nivel_alerta_m: 4.5, nivel_emergencia_m: 6.0 },
-  { nombre:'Encarnación',     lat:-27.3333, lon:-55.8667, dept:'Itapúa',          nivel_alerta_m: 5.0, nivel_emergencia_m: 6.5 },
-  { nombre:'Ayolas',          lat:-27.4000, lon:-56.9000, dept:'Misiones',        nivel_alerta_m: 4.5, nivel_emergencia_m: 6.0 },
+  { nombre:'Puerto Guairá',   lat:-24.0200, lon:-54.3400, dept:'Canindeyú',       caudal_medio_m3s: 11200, fuente_caudal:'Itaipú Binacional — afluencia media histórica 1983-2022' },
+  { nombre:'Puerto Libertad', lat:-25.9167, lon:-54.6000, dept:'Misiones (Arg.)', caudal_medio_m3s: 11800, fuente_caudal:'Itaipú Binacional (referencia, aguas abajo de la represa)' },
+  { nombre:'Encarnación',     lat:-27.3333, lon:-55.8667, dept:'Itapúa',          caudal_medio_m3s: 12500, fuente_caudal:'CIC — Posadas/Encarnación (referencia regional)' },
+  { nombre:'Ayolas',          lat:-27.4000, lon:-56.9000, dept:'Misiones',        caudal_medio_m3s: 13500, fuente_caudal:'CIC — Posadas 1901-1983 (referencia regional)' },
 ];
 
 // Afluentes principales de la cuenca del río Paraguay
@@ -3969,13 +3976,30 @@ async function fetchLluviaZona(lat, lon) {
   return fetchConReintento(url, 8000, 2);
 }
 
+// Clasifica el riesgo de crecida usando el caudal medio HISTÓRICO de cada
+// estación (puerto.caudal_medio_m3s) en vez de un umbral fijo en m³/s.
+//
+// Metodología: sin series diarias completas por estación para hacer un
+// ajuste de frecuencia de crecidas (Gumbel/Log-Pearson III) propiamente
+// dicho, se usa la relación caudal/caudal-medio como proxy del período de
+// retorno — un enfoque estándar simplificado cuando no hay percentiles
+// completos:
+//   ≤ 1.3x el medio  → NORMAL      (variabilidad habitual del río)
+//   1.3x – 1.8x       → ATENCIÓN    (por encima de lo normal, ~retorno 2 años)
+//   1.8x – 2.5x       → ALERTA      (crecida significativa, ~retorno 5 años)
+//   > 2.5x            → PELIGRO     (crecida mayor, ~retorno 20 años)
+// Los caudales medios de referencia están en RIO_PUERTOS / RIO_PUERTO_PARANA
+// (fuente_caudal indica de dónde sale cada uno). Agregar un puerto nuevo
+// solo requiere sumarlo a esos arrays con su propio caudal_medio_m3s —
+// el sistema es escalable, no hay que tocar esta función.
+const RIO_CAUDAL_MEDIO_DEFECTO = 4000; // fallback si a un puerto le falta caudal_medio_m3s (orden de magnitud Paraguay medio)
 function clasificarNivelRio(discharge, puerto) {
-  // Estimación de nivel basada en caudal relativo (m³/s) — GloFAS no da altura directa,
-  // se usa el caudal como proxy junto a umbrales de referencia históricos del río Paraguay
   if (discharge == null) return { label:'Sin datos', clase:'sindatos' };
-  if (discharge > 12000) return { label:'EMERGENCIA', clase:'emergencia' };
-  if (discharge > 8000)  return { label:'ALERTA', clase:'alerta' };
-  if (discharge > 5500)  return { label:'ATENCIÓN', clase:'atencion' };
+  const medio = (puerto && puerto.caudal_medio_m3s) || RIO_CAUDAL_MEDIO_DEFECTO;
+  const ratio = discharge / medio;
+  if (ratio > 2.5) return { label:'PELIGRO',   clase:'emergencia' };
+  if (ratio > 1.8) return { label:'ALERTA',    clase:'alerta' };
+  if (ratio > 1.3) return { label:'ATENCIÓN',  clase:'atencion' };
   return { label:'NORMAL', clase:'normal' };
 }
 
