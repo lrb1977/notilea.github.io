@@ -656,10 +656,29 @@
 
         <div id="leaflet-map" style="height:420px;width:100%"></div>
 
+        <!-- GOES-19: mensaje si la imagen no está disponible -->
+        <div id="goes19-status" style="display:none;position:absolute;top:50%;left:50%;transform:translate(-50%,-50%);z-index:60;background:rgba(8,14,26,0.92);border:1px solid var(--border);border-radius:9px;padding:10px 16px;font-size:12px;color:var(--muted);text-align:center;max-width:80%">
+          📡 Imagen satelital temporalmente no disponible
+        </div>
+
+        <!-- GOES-19: leyenda flotante de temperatura de tope de nubes -->
+        <div id="goes19-legend" style="display:none;position:absolute;top:56px;right:10px;z-index:50;background:rgba(8,14,26,0.92);border:1px solid var(--border);border-radius:9px;padding:8px 10px;box-shadow:0 4px 16px rgba(0,0,0,0.4);width:150px">
+          <div style="font-size:10px;color:var(--text);font-weight:700;margin-bottom:5px">Temp. tope nubes (°C)</div>
+          <div style="height:8px;border-radius:4px;background:linear-gradient(90deg,#fff,#000,#ff0,#f00,#00f)"></div>
+          <div style="display:flex;justify-content:space-between;font-size:9px;color:var(--muted);margin-top:3px">
+            <span>-93°</span><span>+57°</span>
+          </div>
+        </div>
+
         <!-- Timestamp flotante inferior -->
         <div style="position:absolute;bottom:10px;left:10px;z-index:50;background:rgba(8,14,26,0.92);border:1px solid var(--border);border-radius:9px;padding:6px 12px;display:flex;align-items:center;gap:6px;box-shadow:0 4px 16px rgba(0,0,0,0.4)">
           <svg width="13" height="13" viewBox="0 0 24 24" style="color:var(--accent)"><circle cx="12" cy="12" r="9" fill="none" stroke="currentColor" stroke-width="2"/><line x1="12" y1="12" x2="12" y2="7" stroke="currentColor" stroke-width="2"/><line x1="12" y1="12" x2="16" y2="14" stroke="currentColor" stroke-width="2"/></svg>
           <span id="radar-time" style="font-size:11px;color:var(--text);font-weight:600;font-family:'Courier New',monospace">Cargando…</span>
+        </div>
+
+        <!-- GOES-19: crédito flotante inferior derecho -->
+        <div id="goes19-credit" style="display:none;position:absolute;bottom:10px;right:10px;z-index:50;background:rgba(8,14,26,0.85);border-radius:6px;padding:3px 8px">
+          <span style="font-size:8.5px;color:var(--muted)">Fuente: NOAA/NESDIS - GOES-19 ABI Banda 13 (10,3 µm)</span>
         </div>
       </div>
 
@@ -730,6 +749,11 @@
             <span class="layer-toggle-icon" style="color:#f97316"><svg width="16" height="16" viewBox="0 0 24 24"><rect x="10" y="3" width="4" height="12" rx="2" fill="none" stroke="currentColor" stroke-width="1.8"/><circle cx="12" cy="18" r="3" fill="none" stroke="currentColor" stroke-width="1.8"/></svg></span>
             <span class="layer-toggle-label">Temperatura</span>
             <div class="layer-toggle-switch" onclick="setRadarLayer('temp')" id="toggle-temp"><div class="layer-toggle-knob"></div></div>
+          </div>
+          <div class="layer-toggle-row" data-layer="goes19">
+            <span class="layer-toggle-icon" style="color:#e879f9"><svg width="16" height="16" viewBox="0 0 24 24"><circle cx="12" cy="12" r="3" fill="currentColor"/><path d="M12 2v4M12 18v4M2 12h4M18 12h4" stroke="currentColor" stroke-width="1.8" stroke-linecap="round"/><path d="M6.3 6.3l2 2M15.7 15.7l2 2M6.3 17.7l2-2M15.7 8.3l2-2" stroke="currentColor" stroke-width="1.8" stroke-linecap="round"/></svg></span>
+            <span class="layer-toggle-label">🛰️ Satélite GOES-19 ABI Banda 13 (10,3 µm)</span>
+            <div class="layer-toggle-switch" onclick="toggleGoes19Layer()" id="toggle-goes19"><div class="layer-toggle-knob"></div></div>
           </div>
         </div>
 
@@ -4648,6 +4672,7 @@ function updateFrameLabel(idx) {
 // Compatibilidad: ya no hay capa satelital separada, el "frame" controla el radar de lluvia
 function applySatelliteFrame(idx) {
   applyRainFrame(idx);
+  syncGoes19WithFrame(idx);
   updateFrameLabel(idx);
 }
 
@@ -4805,6 +4830,104 @@ async function renderWindTempLayer(variable) {
   });
 }
 
+// =============================================
+// CAPA SATELITAL GOES-19 ABI Banda 13 (10,3 µm) — NOAA/NESDIS vía NASA GIBS
+// =============================================
+// URL configurable: para cambiar de fuente en el futuro alcanza con editar
+// esta plantilla, sin tocar el resto del código. Debe soportar los
+// placeholders {time} (YYYY-MM-DDTHH:MMZ), {z}, {y}, {x}.
+const GOES19_TILE_URL_TEMPLATE = 'https://gibs.earthdata.nasa.gov/wmts/epsg3857/best/GOES-East_ABI_Band13_Clean_Infrared/default/{time}/GoogleMapsCompatible_Level7/{z}/{y}/{x}.png';
+const GOES19_REFRESH_MS = 10 * 60 * 1000; // 10 minutos
+
+let goes19Layer = null;
+let goes19Interval = null;
+let goes19FailCount = 0;
+let goes19Active = false;
+
+// GOES-19 publica un frame nuevo cada 10 min con algunos minutos de rezago;
+// redondeamos hacia abajo y retrocedemos un paso para pedir un frame que ya
+// exista en el servidor.
+function goes19TimeStamp(minutosAtras = 0) {
+  const d = new Date();
+  d.setUTCSeconds(0, 0);
+  d.setUTCMinutes(Math.floor(d.getUTCMinutes() / 10) * 10 - 10 - minutosAtras);
+  return d.toISOString().slice(0, 16) + 'Z'; // YYYY-MM-DDTHH:MMZ
+}
+
+function buildGoes19Url(minutosAtras = 0) {
+  return GOES19_TILE_URL_TEMPLATE.replace('{time}', goes19TimeStamp(minutosAtras));
+}
+
+function applyGoes19Layer(minutosAtras = 0) {
+  if (!radarMap) return;
+  if (goes19Layer) { goes19Layer.remove(); goes19Layer = null; }
+  goes19FailCount = 0;
+  hideGoes19Unavailable();
+
+  goes19Layer = L.tileLayer(buildGoes19Url(minutosAtras), {
+    opacity: 0.6, zIndex: 5,
+    attribution: 'NOAA/NESDIS GOES-19 ABI Banda 13',
+    maxNativeZoom: 7, maxZoom: 18,
+    // Solo carga los mosaicos visibles del viewport, sin precargar de más
+    // (clave para no penalizar el rendimiento en celulares)
+    updateWhenIdle: true, keepBuffer: 1, updateWhenZooming: false,
+  });
+  goes19Layer.on('tileerror', () => {
+    goes19FailCount++;
+    if (goes19FailCount >= 4) showGoes19Unavailable();
+  });
+  goes19Layer.on('load', () => { goes19FailCount = 0; hideGoes19Unavailable(); });
+  goes19Layer.addTo(radarMap);
+
+  const cr = document.getElementById('goes19-credit');
+  const lg = document.getElementById('goes19-legend');
+  if (cr) cr.style.display = 'block';
+  if (lg) lg.style.display = 'block';
+}
+
+function removeGoes19Layer() {
+  if (goes19Layer) { goes19Layer.remove(); goes19Layer = null; }
+  hideGoes19Unavailable();
+  const cr = document.getElementById('goes19-credit');
+  const lg = document.getElementById('goes19-legend');
+  if (cr) cr.style.display = 'none';
+  if (lg) lg.style.display = 'none';
+}
+
+function showGoes19Unavailable() {
+  const el = document.getElementById('goes19-status');
+  if (el) el.style.display = 'block';
+}
+function hideGoes19Unavailable() {
+  const el = document.getElementById('goes19-status');
+  if (el) el.style.display = 'none';
+}
+
+// Toggle independiente: puede activarse junto con lluvia/nubes/viento/temp,
+// no forma parte del grupo exclusivo que maneja setRadarLayer()
+function toggleGoes19Layer() {
+  const sw = document.getElementById('toggle-goes19');
+  if (!sw) return;
+  goes19Active = !sw.classList.contains('active');
+  sw.classList.toggle('active', goes19Active);
+
+  if (goes19Active) {
+    applyGoes19Layer();
+    if (!goes19Interval) goes19Interval = setInterval(() => applyGoes19Layer(), GOES19_REFRESH_MS);
+  } else {
+    removeGoes19Layer();
+    if (goes19Interval) { clearInterval(goes19Interval); goes19Interval = null; }
+  }
+}
+
+// Sincroniza la capa GOES-19 con la línea de tiempo compartida (rain frames),
+// para que la animación mueva también la imagen satelital si está activa
+function syncGoes19WithFrame(idx) {
+  if (!goes19Active || !radarFrames.length) return;
+  const minutosAtras = (radarFrames.length - 1 - idx) * 10;
+  applyGoes19Layer(minutosAtras);
+}
+
 // Capa de NUBOSIDAD — imagen satelital real (NASA GIBS, gratis, sin API key)
 let cloudSatLayer = null;
 function applyCloudSatLayer() {
@@ -4834,7 +4957,7 @@ function removeCloudSatLayer() {
 
 function setRadarLayer(type) {
   currentLayerType = type;
-  document.querySelectorAll('.layer-toggle-switch').forEach(s => s.classList.remove('active'));
+  document.querySelectorAll('.layer-toggle-switch').forEach(s => { if (s.id !== 'toggle-goes19') s.classList.remove('active'); });
   const el = document.getElementById('toggle-'+type);
   if (el) el.classList.add('active');
 
