@@ -5089,11 +5089,27 @@ async function fetchTapWeather(lat, lng) {
 
   try {
     const url = `https://api.open-meteo.com/v1/forecast?latitude=${lat.toFixed(4)}&longitude=${lng.toFixed(4)}`
-      + `&current=temperature_2m,apparent_temperature,relative_humidity_2m,weather_code,wind_speed_10m,precipitation_probability,cloud_cover`
+      + `&current=temperature_2m,apparent_temperature,relative_humidity_2m,weather_code,wind_speed_10m,precipitation_probability,precipitation,cloud_cover`
       + `&timezone=America%2FAsuncion`;
     const r = await fetch(url);
     const d = await r.json();
     const c = d.current;
+
+    // El modelo a veces da weather_code "despejado" con precipitación > 0 en el
+    // mismo instante (código de estado vs. valor instantáneo no siempre calzan
+    // perfecto). Si el propio dato de precipitación del modelo contradice el
+    // código de estado, usamos la precipitación para no mostrar "Despejado"
+    // con lluvia real reportada.
+    let weatherCode = c.weather_code;
+    if (c.precipitation > 0.1 && weatherCode <= 2) weatherCode = 61; // lluvia ligera
+
+    // El radar (observación en tiempo real) y este pronóstico puntual (modelo,
+    // resolución más gruesa) son dos fuentes distintas — pueden no coincidir
+    // exactamente con núcleos de tormenta chicos o muy localizados.
+    const radarActivo = currentLayerType === 'rain';
+    const avisoFuente = radarActivo
+      ? `<div style="grid-column:1/-1;font-size:9.5px;color:var(--muted);margin-top:2px">📡 El radar muestra observación en tiempo real; esta condición es del modelo de pronóstico para este punto — pueden diferir con tormentas chicas o cercanas.</div>`
+      : '';
 
     // Reverse geocode
     let locName = `${lat.toFixed(2)}°S, ${Math.abs(lng).toFixed(2)}°O`;
@@ -5121,11 +5137,12 @@ async function fetchTapWeather(lat, lng) {
     content.innerHTML = `
       <div style="display:grid;grid-template-columns:1fr 1fr;gap:8px">
         <div class="metric"><div class="metric-label">📍 Lugar</div><div style="font-size:12px;font-weight:600">${locName}</div></div>
-        <div class="metric"><div class="metric-label">Condición</div><div class="metric-value">${wmoIcon(c.weather_code)} ${wmoDesc(c.weather_code)}</div></div>
+        <div class="metric"><div class="metric-label">Condición</div><div class="metric-value">${wmoIcon(weatherCode)} ${wmoDesc(weatherCode, c.precipitation_probability)}</div></div>
         <div class="metric"><div class="metric-label">🌡 Temperatura</div><div class="metric-value">${Math.round(c.temperature_2m)}°C</div></div>
         <div class="metric"><div class="metric-label">💧 Humedad</div><div class="metric-value">${c.relative_humidity_2m}%</div></div>
         <div class="metric"><div class="metric-label">💨 Viento</div><div class="metric-value">${Math.round(c.wind_speed_10m)} km/h</div></div>
         <div class="metric"><div class="metric-label">🌧 Prob. Lluvia</div><div class="metric-value">${c.precipitation_probability||0}%</div></div>
+        ${avisoFuente}
       </div>
       <button onclick="loadLocationFromTap(${lat},${lng},'${locName}')" 
         style="width:100%;margin-top:10px;background:var(--accent2);border:none;border-radius:8px;padding:9px;color:#fff;font-size:12px;font-weight:600;cursor:pointer">
