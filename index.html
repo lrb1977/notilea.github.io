@@ -1397,6 +1397,16 @@ function setLoadingAll() {
 // =============================================
 // WEATHER CODE HELPERS
 // =============================================
+// Las fechas diarias de Open-Meteo vienen como "YYYY-MM-DD" (sin hora).
+// JavaScript interpreta ese formato como medianoche UTC; en un huso horario
+// detrás de UTC (como Paraguay, UTC-4) eso corre la fecha un día para atrás
+// al mostrarla en hora local. Se arma la fecha a mano en horario LOCAL para
+// evitar ese corrimiento.
+function parseFechaLocal(fechaStr) {
+  const [y, m, d] = fechaStr.split('-').map(Number);
+  return new Date(y, m - 1, d);
+}
+
 function wmoIcon(code) {
   if (code === 0) return '☀️';
   if (code <= 2) return '🌤️';
@@ -2313,7 +2323,7 @@ function renderDaily(days, containerId) {
   const n = Math.min(days, d.time.length);
   const rows = [];
   for (let i=0;i<n;i++) {
-    const date = new Date(d.time[i]);
+    const date = parseFechaLocal(d.time[i]);
     const dayName = i===0?'Hoy': i===1?'Mañana': date.toLocaleDateString('es-PY',{weekday:'short',day:'numeric'});
     rows.push(`
       <div class="day-row">
@@ -2350,7 +2360,7 @@ function renderDailyChart(days) {
   const n = Math.min(days, d.time.length);
   const maxTemps=[], minTemps=[], labels=[];
   for(let i=0;i<n;i++){
-    const date = new Date(d.time[i]);
+    const date = parseFechaLocal(d.time[i]);
     labels.push(i===0?'Hoy':date.toLocaleDateString('es-PY',{weekday:'short'}));
     maxTemps.push(d.temperature_2m_max[i]);
     minTemps.push(d.temperature_2m_min[i]);
@@ -2542,7 +2552,7 @@ async function generarNoticia(forzar = false) {
   let forecastSummary = '';
   if (f && f.time) {
     for (let i = 0; i < Math.min(7, f.time.length); i++) {
-      const d = new Date(f.time[i]);
+      const d = parseFechaLocal(f.time[i]);
       const dayName = i===0?'Hoy': i===1?'Mañana': d.toLocaleDateString('es-PY',{weekday:'long'});
       forecastSummary += `${dayName}: max ${Math.round(f.temperature_2m_max[i])}°C, min ${Math.round(f.temperature_2m_min[i])}°C, lluvia ${f.precipitation_sum[i]?.toFixed(1)||0}mm, prob ${f.precipitation_probability_max[i]||0}%, viento ${Math.round(f.wind_speed_10m_max[i])}km/h. `;
     }
