@@ -766,11 +766,12 @@
             <div class="layer-toggle-switch" onclick="toggleLightningLayer()" id="toggle-lightning"><div class="layer-toggle-knob"></div></div>
           </div>
           <div id="lightning-note" style="display:none;padding:10px 4px 4px;border-top:1px solid var(--border)">
-            <iframe id="lightning-iframe" src=""
-              style="width:100%;height:260px;border:0;border-radius:9px;background:#0a0f1a"
-              loading="lazy"></iframe>
+            <a href="https://maps.blitzortung.org/?MapInteractive=0&NavigationControl=0&FullScreenControl=0&Cookies=0&InfoDiv=0&MenuDiv=0&GeolocateControl=0&ScaleControl=0&LinksChecked=1&LinksRange=10&MapStyle=2&MapStyleRange=10#6/-23.5/-58" target="_blank" rel="noopener"
+              style="display:flex;align-items:center;justify-content:center;gap:8px;width:100%;background:linear-gradient(90deg,#f59e0b,#fbbf24);border-radius:9px;padding:12px;color:#1a1200;font-size:13px;font-weight:700;text-decoration:none">
+              ⚡ Abrir mapa de rayos en vivo (Blitzortung.org) ↗
+            </a>
             <div style="font-size:9px;color:var(--muted);text-align:center;margin-top:6px">
-              ⚡ Datos: Blitzortung.org / LightningMaps.org — mapa embebido oficial (no es una capa sobre el satélite, es un mapa aparte)
+              Se abre en una pestaña nueva — Blitzortung no permite embeber su mapa dentro de otros sitios, pero sí que se enlace directamente.
             </div>
           </div>
         </div>
@@ -5011,18 +5012,14 @@ function syncGoes19WithFrame(idx) {
 // registro que se pueda integrar de forma confiable como capa de mapa
 // (Blitzortung/ENTLN no ofrecen teselas públicas simples). El toggle queda
 // visible como lo pidió el usuario, pero avisa en vez de simular datos.
-const LIGHTNING_IFRAME_URL = 'https://maps.blitzortung.org/?MapInteractive=0&NavigationControl=0&FullScreenControl=0&Cookies=0&InfoDiv=0&MenuDiv=0&GeolocateControl=0&ScaleControl=0&LinksChecked=1&LinksRange=10&MapStyle=2&MapStyleRange=10#6/-23.5/-58';
+const LIGHTNING_IFRAME_URL = 'https://maps.blitzortung.org/?MapInteractive=0&NavigationControl=0&FullScreenControl=0&Cookies=0&InfoDiv=0&MenuDiv=0&GeolocateControl=0&ScaleControl=0&LinksChecked=1&LinksRange=10&MapStyle=2&MapStyleRange=10#6/-23.5/-58'; // referencia, ver el <a href> del botón
 
 function toggleLightningLayer() {
   const sw = document.getElementById('toggle-lightning');
   const note = document.getElementById('lightning-note');
-  const frame = document.getElementById('lightning-iframe');
   if (!sw) return;
   const active = sw.classList.toggle('active');
   if (note) note.style.display = active ? 'block' : 'none';
-  // Recién carga el iframe la primera vez que se activa (no antes, para no
-  // gastar datos/batería de más si el usuario nunca lo abre)
-  if (active && frame && !frame.src) frame.src = LIGHTNING_IFRAME_URL;
 }
 
 // Capa de NUBOSIDAD — imagen satelital real (NASA GIBS, gratis, sin API key)
