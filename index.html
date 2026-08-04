@@ -3194,6 +3194,54 @@ async function checkNow() {
   await checkDMHAlert(true); // forzar verificacion del aviso DMH tambien
 }
 
+// Lee el radar REAL de lluvia (RainViewer) en un punto exacto, para detectar
+// lluvia activa que el modelo de pronóstico no haya anticipado para esta hora.
+// Es un chequeo best-effort: si el navegador bloquea la lectura de píxeles
+// (falta de CORS del lado de RainViewer) o cualquier otra cosa falla, devuelve
+// null y el resto de las alertas sigue funcionando igual que siempre.
+async function checkRadarRainNearby(lat, lon) {
+  try {
+    if (!rvHost || !radarFrames.length) {
+      const r = await fetch('https://api.rainviewer.com/public/weather-maps.json');
+      if (!r.ok) return null;
+      const d = await r.json();
+      rvHost = d.host || 'https://tilecache.rainviewer.com';
+      const past = (d.radar && d.radar.past) ? d.radar.past : [];
+      if (!past.length) return null;
+      radarFrames = past.slice(-13);
+    }
+    const frame = radarFrames[radarFrames.length - 1];
+    if (!frame) return null;
+
+    const z = 8, tileSize = 256;
+    const xFrac = (lon + 180) / 360 * Math.pow(2, z);
+    const latRad = lat * Math.PI / 180;
+    const yFrac = (1 - Math.log(Math.tan(latRad) + 1 / Math.cos(latRad)) / Math.PI) / 2 * Math.pow(2, z);
+    const tileX = Math.floor(xFrac), tileY = Math.floor(yFrac);
+    const px = Math.min(tileSize - 1, Math.floor((xFrac - tileX) * tileSize));
+    const py = Math.min(tileSize - 1, Math.floor((yFrac - tileY) * tileSize));
+
+    const url = `${rvHost}${frame.path}/${tileSize}/${z}/${tileX}/${tileY}/4/1_1.png`;
+    const img = await new Promise((resolve, reject) => {
+      const im = new Image();
+      im.crossOrigin = 'anonymous';
+      im.onload = () => resolve(im);
+      im.onerror = () => reject(new Error('no se pudo cargar el mosaico del radar'));
+      im.src = url;
+    });
+
+    const canvas = document.createElement('canvas');
+    canvas.width = tileSize; canvas.height = tileSize;
+    const ctx = canvas.getContext('2d');
+    ctx.drawImage(img, 0, 0);
+    const alpha = ctx.getImageData(px, py, 1, 1).data[3]; // puede tirar si no hay CORS
+    return alpha > 20; // el radar dibuja transparente donde no hay eco de lluvia
+  } catch (e) {
+    console.warn('[Radar real] no se pudo leer (probable falta de CORS):', e.message);
+    return null; // desconocido — no bloquea el resto de las alertas
+  }
+}
+
 async function checkWeatherForAlerts() {
   if (Notification.permission !== 'granted') return;
 
@@ -3214,8 +3262,23 @@ async function checkWeatherForAlerts() {
 
     const loc = state.locationName.split(',')[0];
 
-    // 1. Alertas del momento actual
+    // 1. Alertas del momento actual (pronóstico del modelo)
     const currentAlerts = buildAlerts(c, loc);
+
+    // 1b. Radar REAL de lluvia — puede detectar lluvia activa que el modelo
+    // no haya anticipado para esta hora exacta (lluvias localizadas/matinales
+    // que el pronóstico a veces se pierde).
+    const yaHayAlertaDeLluvia = currentAlerts.some(a => ['storm','heavy-rain','rain-active'].includes(a.tag));
+    if (!yaHayAlertaDeLluvia) {
+      const radarLlueve = await checkRadarRainNearby(state.lat, state.lon);
+      if (radarLlueve === true) {
+        currentAlerts.push({
+          title: '📡 Lluvia detectada por radar — ' + loc,
+          body: 'El radar de precipitación en tiempo real muestra lluvia activa en tu zona ahora mismo, aunque el pronóstico del modelo no la haya anticipado para esta hora.',
+          level: 'MODERATE', tag: 'radar-rain', icon: '📡'
+        });
+      }
+    }
 
     // 2. Alertas de las próximas 6 horas (tormentas que se aproximan)
     const upcomingAlerts = [];
