@@ -682,6 +682,20 @@
         </div>
       </div>
 
+      <!-- Imagen oficial NOAA/NESDIS (sector completo, colores reales) —
+           sin zoom/paneo (no es una capa Leaflet georreferenciada, es la
+           imagen fija que publica NOAA), se auto-actualiza cada 10 min -->
+      <div id="noaa-official-wrap" style="display:none;border-top:1px solid var(--border);padding:12px 14px">
+        <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:8px">
+          <span style="font-size:11px;font-weight:700;color:var(--text)">🛰️ Imagen oficial NOAA/NESDIS (sector completo)</span>
+          <span id="noaa-official-time" style="font-size:9.5px;color:var(--muted)"></span>
+        </div>
+        <img id="noaa-official-img" style="width:100%;border-radius:9px;display:block;background:#0a0f1a" alt="Imagen satelital oficial NOAA/NESDIS GOES-19 Banda 13">
+        <div style="font-size:9px;color:var(--muted);text-align:center;margin-top:6px">
+          Sin zoom/paneo (imagen completa del sector) · Se actualiza cada 10 min · Fuente: cdn.star.nesdis.noaa.gov
+        </div>
+      </div>
+
       <!-- Leyenda: temperatura de tope de nubes (satélite) -->
       <div id="radar-legend" style="display:flex;flex-direction:column;gap:4px;margin:0;padding:10px 14px;border-top:1px solid var(--border)">
         <div style="display:flex;justify-content:space-between;align-items:center">
@@ -755,6 +769,7 @@
             <span class="layer-toggle-label">Temperatura</span>
             <div class="layer-toggle-switch" onclick="setRadarLayer('temp')" id="toggle-temp"><div class="layer-toggle-knob"></div></div>
           </div>
+
           <div class="layer-toggle-row" data-layer="goes19">
             <span class="layer-toggle-icon" style="color:#e879f9"><svg width="16" height="16" viewBox="0 0 24 24"><circle cx="12" cy="12" r="3" fill="currentColor"/><path d="M12 2v4M12 18v4M2 12h4M18 12h4" stroke="currentColor" stroke-width="1.8" stroke-linecap="round"/><path d="M6.3 6.3l2 2M15.7 15.7l2 2M6.3 17.7l2-2M15.7 8.3l2-2" stroke="currentColor" stroke-width="1.8" stroke-linecap="round"/></svg></span>
             <span class="layer-toggle-label">🛰️ Satélite GOES-19 ABI Banda 13 (10,3 µm)</span>
@@ -762,11 +777,16 @@
           </div>
           <div class="layer-toggle-row" data-layer="lightning">
             <span class="layer-toggle-icon" style="color:#fbbf24"><svg width="16" height="16" viewBox="0 0 24 24"><polygon points="13,2 4,14 11,14 9,22 20,9 13,9" fill="currentColor"/></svg></span>
-            <span class="layer-toggle-label">⚡ Rayos (mapa embebido)</span>
+            <span class="layer-toggle-label">⚡ Rayos (Xweather)</span>
             <div class="layer-toggle-switch" onclick="toggleLightningLayer()" id="toggle-lightning"><div class="layer-toggle-knob"></div></div>
           </div>
           <div id="lightning-note" style="display:none;padding:10px 4px 4px;border-top:1px solid var(--border)">
             <div id="lightning-status" style="font-size:9.5px;color:var(--muted);text-align:center">⚡ Datos: Xweather (Vaisala) — vía Worker propio, credenciales no expuestas</div>
+          </div>
+          <div class="layer-toggle-row" data-layer="noaa-official">
+            <span class="layer-toggle-icon" style="color:#38bdf8"><svg width="16" height="16" viewBox="0 0 24 24"><rect x="3" y="4" width="18" height="14" rx="2" fill="none" stroke="currentColor" stroke-width="1.8"/><circle cx="12" cy="11" r="3" fill="none" stroke="currentColor" stroke-width="1.8"/></svg></span>
+            <span class="layer-toggle-label">🛰️ Imagen oficial NOAA (sector, sin zoom)</span>
+            <div class="layer-toggle-switch" onclick="toggleNoaaOfficialImage()" id="toggle-noaa-official"><div class="layer-toggle-knob"></div></div>
           </div>
         </div>
 
@@ -4635,7 +4655,7 @@ function initRadarMap() {
 
   // Mapa base sin tiles externos — evita bloqueo en WebView Android
   const baseTile = L.tileLayer('https://server.arcgisonline.com/ArcGIS/rest/services/Canvas/World_Dark_Gray_Base/MapServer/tile/{z}/{y}/{x}', {
-    attribution: '© Esri · NOAA/NESDIS GOES-19 · RainViewer',
+    attribution: '© Esri · RainViewer · Open-Meteo',
     maxZoom: 16
   });
 
@@ -4657,8 +4677,6 @@ function initRadarMap() {
   baseTile.addTo(radarMap);
 
   // Límites de países/departamentos (capa transparente, solo bordes y nombres)
-  // sobre la imagen satelital — necesaria para que se vea "profesional" y
-  // ubicable, como el visor de referencia.
   L.tileLayer('https://server.arcgisonline.com/ArcGIS/rest/services/Reference/World_Boundaries_and_Places/MapServer/tile/{z}/{y}/{x}', {
     attribution: '', maxZoom: 16, zIndex: 20
   }).addTo(radarMap);
@@ -4723,10 +4741,173 @@ function updateFrameLabel(idx) {
   if (rt) rt.textContent = isNow ? (new Date().toLocaleTimeString('es-PY',{hour:'2-digit',minute:'2-digit'}) + ' · Actual') : (d.toLocaleTimeString('es-PY',{hour:'2-digit',minute:'2-digit'}) + ' PY');
 }
 
+// =============================================
+// CAPA SATELITAL GOES-19 ABI Banda 13 (10,3 µm) — NOAA/NESDIS vía Iowa
+// Environmental Mesonet (IEM), servicio TMS público sin API key.
+// =============================================
+const GOES19_TILE_URL_TEMPLATE = 'https://mesonet.agron.iastate.edu/cache/tile.py/1.0.0/goes_east_fulldisk_ch13/{z}/{x}/{y}.png';
+const GOES19_REFRESH_MS = 10 * 60 * 1000; // 10 minutos
+
+let goes19Layer = null;
+let goes19Interval = null;
+let goes19FailCount = 0;
+let goes19Active = false;
+
+function buildGoes19Url(cacheBust) {
+  return GOES19_TILE_URL_TEMPLATE + '?t=' + cacheBust;
+}
+
+function applyGoes19Layer() {
+  if (!radarMap) return;
+  if (goes19Layer) { goes19Layer.remove(); goes19Layer = null; }
+  goes19FailCount = 0;
+  hideGoes19Unavailable();
+
+  goes19Layer = L.tileLayer(buildGoes19Url(Date.now()), {
+    opacity: 0.85, zIndex: 5,
+    tms: true, // el TMS de IEM usa el eje Y invertido (estándar OSGeo TMS)
+    attribution: 'NOAA/NESDIS GOES-19 ABI Banda 13 · Iowa Environmental Mesonet',
+    maxNativeZoom: 8, maxZoom: 18,
+    updateWhenIdle: true, keepBuffer: 1, updateWhenZooming: false,
+  });
+  goes19Layer.on('tileerror', () => {
+    goes19FailCount++;
+    if (goes19FailCount >= 4) showGoes19Unavailable();
+  });
+  goes19Layer.on('load', () => { goes19FailCount = 0; hideGoes19Unavailable(); });
+  goes19Layer.addTo(radarMap);
+
+  const cr = document.getElementById('goes19-credit');
+  const lg = document.getElementById('goes19-legend');
+  if (cr) cr.style.display = 'block';
+  if (lg) lg.style.display = 'block';
+  const rt = document.getElementById('radar-time');
+  if (rt) rt.textContent = new Date().toLocaleTimeString('es-PY',{hour:'2-digit',minute:'2-digit'}) + ' · Satélite';
+}
+
+function removeGoes19Layer() {
+  if (goes19Layer) { goes19Layer.remove(); goes19Layer = null; }
+  hideGoes19Unavailable();
+  const cr = document.getElementById('goes19-credit');
+  const lg = document.getElementById('goes19-legend');
+  if (cr) cr.style.display = 'none';
+  if (lg) lg.style.display = 'none';
+}
+
+function showGoes19Unavailable() {
+  const el = document.getElementById('goes19-status');
+  if (el) el.style.display = 'block';
+}
+function hideGoes19Unavailable() {
+  const el = document.getElementById('goes19-status');
+  if (el) el.style.display = 'none';
+}
+
+function toggleGoes19Layer() {
+  const sw = document.getElementById('toggle-goes19');
+  if (!sw) return;
+  goes19Active = !sw.classList.contains('active');
+  sw.classList.toggle('active', goes19Active);
+  if (goes19Active) {
+    applyGoes19Layer();
+    if (!goes19Interval) goes19Interval = setInterval(applyGoes19Layer, GOES19_REFRESH_MS);
+  } else {
+    removeGoes19Layer();
+    if (goes19Interval) { clearInterval(goes19Interval); goes19Interval = null; }
+  }
+}
+
+// =============================================
+// CAPA DE RAYOS — Xweather (Vaisala), vía proxy del Worker propio para no
+// exponer las credenciales en el index.html público.
+// =============================================
+const LIGHTNING_TILE_URL = DMH_WORKER_URL + '/tiles/lightning/{z}/{x}/{y}';
+const LIGHTNING_REFRESH_MS = 5 * 60 * 1000; // 5 minutos
+
+let lightningLayer = null;
+let lightningInterval = null;
+let lightningFailCount = 0;
+
+function applyLightningLayer() {
+  if (!radarMap) return;
+  if (lightningLayer) { lightningLayer.remove(); lightningLayer = null; }
+  lightningFailCount = 0;
+
+  lightningLayer = L.tileLayer(LIGHTNING_TILE_URL + '?t=' + Date.now(), {
+    opacity: 0.9, zIndex: 10,
+    attribution: 'Xweather (Vaisala)',
+    maxNativeZoom: 10, maxZoom: 18,
+    updateWhenIdle: true, keepBuffer: 1, updateWhenZooming: false,
+  });
+  lightningLayer.on('tileerror', () => {
+    lightningFailCount++;
+    if (lightningFailCount >= 4) setLightningStatus('⚠️ No se pudo cargar la capa de rayos por ahora.');
+  });
+  lightningLayer.on('load', () => { lightningFailCount = 0; setLightningStatus('⚡ Datos: Xweather (Vaisala) — vía Worker propio'); });
+  lightningLayer.addTo(radarMap);
+}
+
+function removeLightningLayer() {
+  if (lightningLayer) { lightningLayer.remove(); lightningLayer = null; }
+}
+
+function setLightningStatus(text) {
+  const el = document.getElementById('lightning-status');
+  if (el) el.textContent = text;
+}
+
+function toggleLightningLayer() {
+  const sw = document.getElementById('toggle-lightning');
+  const note = document.getElementById('lightning-note');
+  if (!sw) return;
+  const active = sw.classList.toggle('active');
+  if (note) note.style.display = active ? 'block' : 'none';
+  if (active) {
+    applyLightningLayer();
+    if (!lightningInterval) lightningInterval = setInterval(applyLightningLayer, LIGHTNING_REFRESH_MS);
+  } else {
+    removeLightningLayer();
+    if (lightningInterval) { clearInterval(lightningInterval); lightningInterval = null; }
+  }
+}
+
+// =============================================
+// IMAGEN OFICIAL NOAA/NESDIS — sector completo (Sudamérica Norte), banda 13.
+// No es una capa de Leaflet georreferenciada (es una imagen fija de sector
+// geoestacionario, sin coordenadas de esquina verificadas): se muestra como
+// imagen simple, sin zoom/paneo, para no arriesgar una alineación incorrecta
+// con los límites del mapa.
+// =============================================
+const NOAA_OFFICIAL_IMG_URL = 'https://cdn.star.nesdis.noaa.gov/GOES19/ABI/SECTOR/nsa/13/1200x720.jpg';
+const NOAA_OFFICIAL_REFRESH_MS = 10 * 60 * 1000; // 10 minutos
+
+let noaaOfficialInterval = null;
+
+function refreshNoaaOfficialImage() {
+  const img = document.getElementById('noaa-official-img');
+  const t = document.getElementById('noaa-official-time');
+  if (!img) return;
+  img.src = NOAA_OFFICIAL_IMG_URL + '?t=' + Date.now();
+  if (t) t.textContent = new Date().toLocaleTimeString('es-PY',{hour:'2-digit',minute:'2-digit'});
+}
+
+function toggleNoaaOfficialImage() {
+  const sw = document.getElementById('toggle-noaa-official');
+  const wrap = document.getElementById('noaa-official-wrap');
+  if (!sw) return;
+  const active = sw.classList.toggle('active');
+  if (wrap) wrap.style.display = active ? 'block' : 'none';
+  if (active) {
+    refreshNoaaOfficialImage();
+    if (!noaaOfficialInterval) noaaOfficialInterval = setInterval(refreshNoaaOfficialImage, NOAA_OFFICIAL_REFRESH_MS);
+  } else if (noaaOfficialInterval) {
+    clearInterval(noaaOfficialInterval); noaaOfficialInterval = null;
+  }
+}
+
 // Compatibilidad: ya no hay capa satelital separada, el "frame" controla el radar de lluvia
 function applySatelliteFrame(idx) {
   applyRainFrame(idx);
-  syncGoes19WithFrame(idx);
   updateFrameLabel(idx);
 }
 
@@ -4884,183 +5065,6 @@ async function renderWindTempLayer(variable) {
   });
 }
 
-// =============================================
-// CAPA SATELITAL GOES-19 ABI Banda 13 (10,3 µm) — NOAA/NESDIS vía Iowa
-// Environmental Mesonet (IEM), servicio TMS público sin API key.
-// =============================================
-// URL configurable: para cambiar de fuente en el futuro alcanza con editar
-// esta plantilla, sin tocar el resto del código. Debe soportar {z}/{x}/{y}.
-// A diferencia de NASA GIBS (solo escala de grises), este servicio entrega
-// el canal 13 con la curva de color meteorológica estándar (blanco/negro/
-// verde/amarillo/rojo/azul) — el mismo tipo de paleta que usa el visor
-// oficial de NOAA/NESDIS.
-const GOES19_TILE_URL_TEMPLATE = 'https://mesonet.agron.iastate.edu/cache/tile.py/1.0.0/goes_east_fulldisk_ch13/{z}/{x}/{y}.png';
-const GOES19_REFRESH_MS = 10 * 60 * 1000; // 10 minutos
-const GOES19_MAX_FRAMES = 6; // ~1 hora de historial local (6 x 10 min)
-
-let goes19Layer = null;
-let goes19Interval = null;
-let goes19FailCount = 0;
-let goes19Active = false;
-// Buffer local de cuadros: este servicio siempre sirve "la última imagen"
-// bajo la misma URL, así que para poder animar hacia atrás guardamos
-// nosotros mismos, en cada refresco, una copia con cache-busting distinto
-// (el navegador la mantiene en caché, direccionable de nuevo por su URL).
-let goes19FrameHistory = [];
-
-function buildGoes19Url(cacheBust) {
-  return GOES19_TILE_URL_TEMPLATE + '?t=' + cacheBust;
-}
-
-function applyGoes19Layer(frameIdx = null) {
-  if (!radarMap) return;
-  if (goes19Layer) { goes19Layer.remove(); goes19Layer = null; }
-  goes19FailCount = 0;
-  hideGoes19Unavailable();
-
-  let url, ts;
-  if (frameIdx != null && goes19FrameHistory[frameIdx]) {
-    ({ url, ts } = goes19FrameHistory[frameIdx]);
-  } else {
-    ts = Date.now();
-    url = buildGoes19Url(ts);
-    goes19FrameHistory.push({ url, ts });
-    if (goes19FrameHistory.length > GOES19_MAX_FRAMES) goes19FrameHistory.shift();
-  }
-
-  goes19Layer = L.tileLayer(url, {
-    opacity: 0.85, zIndex: 5,
-    tms: true, // el TMS de IEM usa el eje Y invertido (estándar OSGeo TMS)
-    attribution: 'NOAA/NESDIS GOES-19 ABI Banda 13 · Iowa Environmental Mesonet',
-    maxNativeZoom: 8, maxZoom: 18,
-    // Solo carga los mosaicos visibles del viewport, sin precargar de más
-    // (clave para no penalizar el rendimiento en celulares)
-    updateWhenIdle: true, keepBuffer: 1, updateWhenZooming: false,
-  });
-  goes19Layer.on('tileerror', () => {
-    goes19FailCount++;
-    if (goes19FailCount >= 4) showGoes19Unavailable();
-  });
-  goes19Layer.on('load', () => { goes19FailCount = 0; hideGoes19Unavailable(); });
-  goes19Layer.addTo(radarMap);
-
-  const cr = document.getElementById('goes19-credit');
-  const lg = document.getElementById('goes19-legend');
-  if (cr) cr.style.display = 'block';
-  if (lg) lg.style.display = 'block';
-
-  const rt = document.getElementById('radar-time');
-  if (rt) rt.textContent = new Date(ts).toLocaleTimeString('es-PY',{hour:'2-digit',minute:'2-digit'}) + (frameIdx != null && frameIdx < goes19FrameHistory.length - 1 ? ' · Cuadro anterior' : ' · Satélite actual');
-}
-
-function removeGoes19Layer() {
-  if (goes19Layer) { goes19Layer.remove(); goes19Layer = null; }
-  hideGoes19Unavailable();
-  const cr = document.getElementById('goes19-credit');
-  const lg = document.getElementById('goes19-legend');
-  if (cr) cr.style.display = 'none';
-  if (lg) lg.style.display = 'none';
-}
-
-function showGoes19Unavailable() {
-  const el = document.getElementById('goes19-status');
-  if (el) el.style.display = 'block';
-}
-function hideGoes19Unavailable() {
-  const el = document.getElementById('goes19-status');
-  if (el) el.style.display = 'none';
-}
-
-// Toggle independiente: puede activarse junto con lluvia/nubes/viento/temp,
-// no forma parte del grupo exclusivo que maneja setRadarLayer()
-function toggleGoes19Layer() {
-  const sw = document.getElementById('toggle-goes19');
-  if (!sw) return;
-  goes19Active = !sw.classList.contains('active');
-  sw.classList.toggle('active', goes19Active);
-
-  if (goes19Active) {
-    applyGoes19Layer();
-    if (!goes19Interval) goes19Interval = setInterval(() => applyGoes19Layer(), GOES19_REFRESH_MS);
-  } else {
-    removeGoes19Layer();
-    if (goes19Interval) { clearInterval(goes19Interval); goes19Interval = null; }
-  }
-}
-
-// Sincroniza la capa GOES-19 con la línea de tiempo compartida (mismo
-// control de reproducción que usa el radar de lluvia), usando nuestro
-// propio historial de cuadros capturados (no hay forma de pedirle a este
-// servicio una imagen de un momento específico del pasado).
-function syncGoes19WithFrame(idx) {
-  if (!goes19Active || !goes19FrameHistory.length) return;
-  const n = goes19FrameHistory.length;
-  const frameIdx = Math.round((idx / Math.max(radarFrames.length - 1, 1)) * (n - 1));
-  applyGoes19Layer(frameIdx);
-}
-
-// =============================================
-// CAPA DE RAYOS (opcional) — placeholder honesto
-// =============================================
-// No encontré un servicio de rayos en tiempo real público, gratuito y sin
-// registro que se pueda integrar de forma confiable como capa de mapa
-// (Blitzortung/ENTLN no ofrecen teselas públicas simples). El toggle queda
-// visible como lo pidió el usuario, pero avisa en vez de simular datos.
-// =============================================
-// CAPA DE RAYOS — Xweather (Vaisala), vía proxy del Worker propio para no
-// exponer las credenciales en el index.html público.
-// =============================================
-const LIGHTNING_TILE_URL = DMH_WORKER_URL + '/tiles/lightning/{z}/{x}/{y}';
-const LIGHTNING_REFRESH_MS = 5 * 60 * 1000; // 5 minutos — los rayos cambian rápido
-
-let lightningLayer = null;
-let lightningInterval = null;
-let lightningFailCount = 0;
-
-function applyLightningLayer() {
-  if (!radarMap) return;
-  if (lightningLayer) { lightningLayer.remove(); lightningLayer = null; }
-  lightningFailCount = 0;
-
-  lightningLayer = L.tileLayer(LIGHTNING_TILE_URL + '?t=' + Date.now(), {
-    opacity: 0.9, zIndex: 10,
-    attribution: 'Xweather (Vaisala)',
-    maxNativeZoom: 10, maxZoom: 18,
-    updateWhenIdle: true, keepBuffer: 1, updateWhenZooming: false,
-  });
-  lightningLayer.on('tileerror', () => {
-    lightningFailCount++;
-    if (lightningFailCount >= 4) setLightningStatus('⚠️ No se pudo cargar la capa de rayos por ahora.');
-  });
-  lightningLayer.on('load', () => { lightningFailCount = 0; setLightningStatus('⚡ Datos: Xweather (Vaisala) — vía Worker propio'); });
-  lightningLayer.addTo(radarMap);
-}
-
-function removeLightningLayer() {
-  if (lightningLayer) { lightningLayer.remove(); lightningLayer = null; }
-}
-
-function setLightningStatus(text) {
-  const el = document.getElementById('lightning-status');
-  if (el) el.textContent = text;
-}
-
-function toggleLightningLayer() {
-  const sw = document.getElementById('toggle-lightning');
-  const note = document.getElementById('lightning-note');
-  if (!sw) return;
-  const active = sw.classList.toggle('active');
-  if (note) note.style.display = active ? 'block' : 'none';
-
-  if (active) {
-    applyLightningLayer();
-    if (!lightningInterval) lightningInterval = setInterval(applyLightningLayer, LIGHTNING_REFRESH_MS);
-  } else {
-    removeLightningLayer();
-    if (lightningInterval) { clearInterval(lightningInterval); lightningInterval = null; }
-  }
-}
-
 // Capa de NUBOSIDAD — imagen satelital real (NASA GIBS, gratis, sin API key)
 let cloudSatLayer = null;
 function applyCloudSatLayer() {
@@ -5090,7 +5094,7 @@ function removeCloudSatLayer() {
 
 function setRadarLayer(type) {
   currentLayerType = type;
-  document.querySelectorAll('.layer-toggle-switch').forEach(s => { if (s.id !== 'toggle-goes19' && s.id !== 'toggle-lightning') s.classList.remove('active'); });
+  document.querySelectorAll('.layer-toggle-switch').forEach(s => { if (!['toggle-goes19','toggle-lightning','toggle-noaa-official'].includes(s.id)) s.classList.remove('active'); });
   const el = document.getElementById('toggle-'+type);
   if (el) el.classList.add('active');
 
