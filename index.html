@@ -3202,7 +3202,10 @@ async function checkNow() {
 async function checkRadarRainNearby(lat, lon) {
   try {
     if (!rvHost || !radarFrames.length) {
-      const r = await fetch('https://api.rainviewer.com/public/weather-maps.json');
+      const controller = new AbortController();
+      const t1 = setTimeout(() => controller.abort(), 6000);
+      const r = await fetch('https://api.rainviewer.com/public/weather-maps.json', { signal: controller.signal });
+      clearTimeout(t1);
       if (!r.ok) return null;
       const d = await r.json();
       rvHost = d.host || 'https://tilecache.rainviewer.com';
@@ -3222,11 +3225,15 @@ async function checkRadarRainNearby(lat, lon) {
     const py = Math.min(tileSize - 1, Math.floor((yFrac - tileY) * tileSize));
 
     const url = `${rvHost}${frame.path}/${tileSize}/${z}/${tileX}/${tileY}/4/1_1.png`;
+    // Timeout propio: si la imagen nunca dispara load NI error (se cuelga),
+    // esto garantiza que el chequeo igual termine y no trabe el resto de
+    // las alertas ni el botón "Revisar ahora".
     const img = await new Promise((resolve, reject) => {
+      const timer = setTimeout(() => reject(new Error('timeout cargando el mosaico del radar')), 6000);
       const im = new Image();
       im.crossOrigin = 'anonymous';
-      im.onload = () => resolve(im);
-      im.onerror = () => reject(new Error('no se pudo cargar el mosaico del radar'));
+      im.onload = () => { clearTimeout(timer); resolve(im); };
+      im.onerror = () => { clearTimeout(timer); reject(new Error('no se pudo cargar el mosaico del radar')); };
       im.src = url;
     });
 
@@ -3237,7 +3244,7 @@ async function checkRadarRainNearby(lat, lon) {
     const alpha = ctx.getImageData(px, py, 1, 1).data[3]; // puede tirar si no hay CORS
     return alpha > 20; // el radar dibuja transparente donde no hay eco de lluvia
   } catch (e) {
-    console.warn('[Radar real] no se pudo leer (probable falta de CORS):', e.message);
+    console.warn('[Radar real] no se pudo leer (probable falta de CORS o timeout):', e.message);
     return null; // desconocido — no bloquea el resto de las alertas
   }
 }
