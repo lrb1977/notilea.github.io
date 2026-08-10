@@ -654,9 +654,15 @@
           <span style="font-size:11px;font-weight:700;color:var(--text)">🛰️ Imagen oficial NOAA/NESDIS (sector completo)</span>
           <span id="noaa-official-time" style="font-size:9.5px;color:var(--muted)"></span>
         </div>
-        <img id="noaa-official-img" style="width:100%;border-radius:9px;display:block;background:#0a0f1a" alt="Imagen satelital oficial NOAA/NESDIS GOES-19 Banda 13">
+        <div id="noaa-official-viewport" style="position:relative;width:100%;height:340px;overflow:hidden;border-radius:9px;background:#0a0f1a;touch-action:none">
+          <img id="noaa-official-img" style="position:absolute;top:0;left:0;width:100%;transform-origin:0 0;display:block;user-select:none;-webkit-user-drag:none" alt="Imagen satelital oficial NOAA/NESDIS GOES-19 Banda 13" draggable="false">
+          <div style="position:absolute;bottom:8px;left:8px;z-index:5;display:flex;flex-direction:column;gap:4px">
+            <button onclick="noaaZoomStep(1.4)" style="width:30px;height:30px;border-radius:8px;background:rgba(8,14,26,0.85);border:1px solid var(--border);color:var(--text);font-size:16px;font-weight:700">+</button>
+            <button onclick="noaaZoomStep(1/1.4)" style="width:30px;height:30px;border-radius:8px;background:rgba(8,14,26,0.85);border:1px solid var(--border);color:var(--text);font-size:16px;font-weight:700">−</button>
+          </div>
+        </div>
         <div style="font-size:9px;color:var(--muted);text-align:center;margin-top:6px">
-          Sin zoom/paneo (imagen completa del sector) · Se actualiza cada 10 min · Fuente: cdn.star.nesdis.noaa.gov
+          Pellizcá para acercar, arrastrá para mover, doble toque para restablecer · Se actualiza cada 10 min · Fuente: cdn.star.nesdis.noaa.gov
         </div>
       </div>
 
@@ -4947,9 +4953,10 @@ function toggleLightningLayer() {
 // =============================================
 // IMAGEN OFICIAL NOAA/NESDIS — sector completo (Sudamérica Norte), banda 13.
 // No es una capa de Leaflet georreferenciada (es una imagen fija de sector
-// geoestacionario, sin coordenadas de esquina verificadas): se muestra como
-// imagen simple, sin zoom/paneo, para no arriesgar una alineación incorrecta
-// con los límites del mapa.
+// geoestacionario, sin coordenadas de esquina verificadas para anclarla al
+// mapa): se muestra con zoom/paneo tipo "foto" (pellizcar/arrastrar/doble
+// toque), no zoom cartográfico — no hay selección de coordenadas exacta,
+// solo acercar visualmente la imagen.
 // =============================================
 const NOAA_OFFICIAL_IMG_URL = 'https://cdn.star.nesdis.noaa.gov/GOES19/ABI/SECTOR/nsa/13/3600x2160.jpg';
 const NOAA_OFFICIAL_REFRESH_MS = 10 * 60 * 1000; // 10 minutos
@@ -4962,6 +4969,7 @@ function refreshNoaaOfficialImage() {
   if (!img) return;
   img.src = NOAA_OFFICIAL_IMG_URL + '?t=' + Date.now();
   if (t) t.textContent = new Date().toLocaleTimeString('es-PY',{hour:'2-digit',minute:'2-digit'});
+  noaaZoomReset();
 }
 
 function toggleNoaaOfficialImage() {
@@ -4973,10 +4981,97 @@ function toggleNoaaOfficialImage() {
   if (active) {
     refreshNoaaOfficialImage();
     if (!noaaOfficialInterval) noaaOfficialInterval = setInterval(refreshNoaaOfficialImage, NOAA_OFFICIAL_REFRESH_MS);
+    initNoaaZoomPan();
   } else if (noaaOfficialInterval) {
     clearInterval(noaaOfficialInterval); noaaOfficialInterval = null;
   }
 }
+
+// ---- Zoom/paneo tipo foto para la imagen NOAA (pellizcar, arrastrar, doble toque) ----
+let noaaZoomState = { scale: 1, x: 0, y: 0 };
+let noaaZoomInited = false;
+
+function noaaApplyTransform() {
+  const img = document.getElementById('noaa-official-img');
+  if (!img) return;
+  const s = noaaZoomState;
+  img.style.transform = `translate(${s.x}px, ${s.y}px) scale(${s.scale})`;
+}
+
+function noaaClampPan() {
+  const vp = document.getElementById('noaa-official-viewport');
+  const img = document.getElementById('noaa-official-img');
+  if (!vp || !img) return;
+  const s = noaaZoomState;
+  const w = vp.clientWidth * s.scale, h = img.clientHeight * s.scale;
+  const minX = Math.min(0, vp.clientWidth - w), minY = Math.min(0, vp.clientHeight - h);
+  s.x = Math.max(minX, Math.min(0, s.x));
+  s.y = Math.max(minY, Math.min(0, s.y));
+}
+
+function noaaZoomStep(factor) {
+  noaaZoomState.scale = Math.max(1, Math.min(5, noaaZoomState.scale * factor));
+  noaaClampPan();
+  noaaApplyTransform();
+}
+
+function noaaZoomReset() {
+  noaaZoomState = { scale: 1, x: 0, y: 0 };
+  noaaApplyTransform();
+}
+
+function initNoaaZoomPan() {
+  if (noaaZoomInited) return;
+  noaaZoomInited = true;
+  const vp = document.getElementById('noaa-official-viewport');
+  if (!vp) return;
+
+  let pointers = new Map();
+  let startDist = 0, startScale = 1;
+  let dragStart = null, lastTap = 0;
+
+  vp.addEventListener('pointerdown', (e) => {
+    vp.setPointerCapture(e.pointerId);
+    pointers.set(e.pointerId, { x: e.clientX, y: e.clientY });
+    if (pointers.size === 1) {
+      dragStart = { x: e.clientX - noaaZoomState.x, y: e.clientY - noaaZoomState.y };
+      const now = Date.now();
+      if (now - lastTap < 300) { noaaZoomState.scale === 1 ? noaaZoomStep(2.5) : noaaZoomReset(); }
+      lastTap = now;
+    } else if (pointers.size === 2) {
+      const pts = [...pointers.values()];
+      startDist = Math.hypot(pts[0].x - pts[1].x, pts[0].y - pts[1].y);
+      startScale = noaaZoomState.scale;
+    }
+  });
+  vp.addEventListener('pointermove', (e) => {
+    if (!pointers.has(e.pointerId)) return;
+    pointers.set(e.pointerId, { x: e.clientX, y: e.clientY });
+    if (pointers.size === 2) {
+      const pts = [...pointers.values()];
+      const dist = Math.hypot(pts[0].x - pts[1].x, pts[0].y - pts[1].y);
+      if (startDist > 0) {
+        noaaZoomState.scale = Math.max(1, Math.min(5, startScale * (dist / startDist)));
+        noaaClampPan();
+        noaaApplyTransform();
+      }
+    } else if (pointers.size === 1 && dragStart && noaaZoomState.scale > 1) {
+      noaaZoomState.x = e.clientX - dragStart.x;
+      noaaZoomState.y = e.clientY - dragStart.y;
+      noaaClampPan();
+      noaaApplyTransform();
+    }
+  });
+  const endPointer = (e) => {
+    pointers.delete(e.pointerId);
+    if (pointers.size < 2) startDist = 0;
+    if (pointers.size === 0) dragStart = null;
+  };
+  vp.addEventListener('pointerup', endPointer);
+  vp.addEventListener('pointercancel', endPointer);
+  vp.addEventListener('pointerleave', endPointer);
+}
+
 
 // Compatibilidad: ya no hay capa satelital separada, el "frame" controla el radar de lluvia
 function applySatelliteFrame(idx) {
