@@ -4967,9 +4967,16 @@ function refreshNoaaOfficialImage() {
   const img = document.getElementById('noaa-official-img');
   const t = document.getElementById('noaa-official-time');
   if (!img) return;
+  // El evento onload se asigna ANTES de cambiar el src (si se hace al
+  // revés, en algunos navegadores móviles el evento puede dispararse
+  // antes de que el handler quede conectado y el centrado nunca corre).
+  img.onload = () => requestAnimationFrame(noaaCenterOnParaguay);
   img.src = NOAA_OFFICIAL_IMG_URL + '?t=' + Date.now();
   if (t) t.textContent = new Date().toLocaleTimeString('es-PY',{hour:'2-digit',minute:'2-digit'});
-  img.onload = () => noaaCenterOnParaguay();
+  // Respaldo: si la imagen ya estaba en caché, "load" puede no volver a
+  // disparar — chequeamos igual con un pequeño margen para que el layout
+  // (ancho del contenedor) ya esté listo.
+  setTimeout(() => { if (img.complete && img.naturalWidth) noaaCenterOnParaguay(); }, 300);
 }
 
 function toggleNoaaOfficialImage() {
