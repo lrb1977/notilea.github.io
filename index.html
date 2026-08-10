@@ -645,6 +645,21 @@
         </button>
       </div>
 
+      <!-- Imagen oficial NOAA/NESDIS (sector completo, colores reales) —
+           sin zoom/paneo (no es una capa Leaflet georreferenciada, es la
+           imagen fija que publica NOAA), se auto-actualiza cada 10 min.
+           Va primero: es la vista principal por defecto. -->
+      <div id="noaa-official-wrap" style="display:none;border-bottom:1px solid var(--border);padding:12px 14px">
+        <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:8px">
+          <span style="font-size:11px;font-weight:700;color:var(--text)">🛰️ Imagen oficial NOAA/NESDIS (sector completo)</span>
+          <span id="noaa-official-time" style="font-size:9.5px;color:var(--muted)"></span>
+        </div>
+        <img id="noaa-official-img" style="width:100%;border-radius:9px;display:block;background:#0a0f1a" alt="Imagen satelital oficial NOAA/NESDIS GOES-19 Banda 13">
+        <div style="font-size:9px;color:var(--muted);text-align:center;margin-top:6px">
+          Sin zoom/paneo (imagen completa del sector) · Se actualiza cada 10 min · Fuente: cdn.star.nesdis.noaa.gov
+        </div>
+      </div>
+
       <!-- Buscador flotante sobre el mapa + contenedor mapa -->
       <div style="position:relative">
         <div style="position:absolute;top:10px;left:10px;right:54px;z-index:50">
@@ -679,20 +694,6 @@
         <!-- GOES-19: crédito flotante inferior derecho -->
         <div id="goes19-credit" style="display:none;position:absolute;bottom:10px;right:10px;z-index:50;background:rgba(8,14,26,0.85);border-radius:6px;padding:3px 8px">
           <span style="font-size:8.5px;color:var(--muted)">Fuente: NOAA/NESDIS - GOES-19 ABI Banda 13 (10,3 µm)</span>
-        </div>
-      </div>
-
-      <!-- Imagen oficial NOAA/NESDIS (sector completo, colores reales) —
-           sin zoom/paneo (no es una capa Leaflet georreferenciada, es la
-           imagen fija que publica NOAA), se auto-actualiza cada 10 min -->
-      <div id="noaa-official-wrap" style="display:none;border-top:1px solid var(--border);padding:12px 14px">
-        <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:8px">
-          <span style="font-size:11px;font-weight:700;color:var(--text)">🛰️ Imagen oficial NOAA/NESDIS (sector completo)</span>
-          <span id="noaa-official-time" style="font-size:9.5px;color:var(--muted)"></span>
-        </div>
-        <img id="noaa-official-img" style="width:100%;border-radius:9px;display:block;background:#0a0f1a" alt="Imagen satelital oficial NOAA/NESDIS GOES-19 Banda 13">
-        <div style="font-size:9px;color:var(--muted);text-align:center;margin-top:6px">
-          Sin zoom/paneo (imagen completa del sector) · Se actualiza cada 10 min · Fuente: cdn.star.nesdis.noaa.gov
         </div>
       </div>
 
@@ -4764,8 +4765,10 @@ function initRadarMap() {
     }
   }, 1000);
 
-  // El satélite GOES-19 es la vista principal por defecto (no la lluvia)
-  toggleGoes19Layer();
+  // La imagen oficial de NOAA/NESDIS (colores reales) es la vista principal
+  // por defecto — la capa de IEM (gris) queda como opción secundaria, ya que
+  // NOAA tiene la curva de color correcta y coincide con el visor oficial.
+  toggleNoaaOfficialImage();
 }
 
 // Carga los timestamps reales del radar de lluvia RainViewer
@@ -4948,7 +4951,7 @@ function toggleLightningLayer() {
 // imagen simple, sin zoom/paneo, para no arriesgar una alineación incorrecta
 // con los límites del mapa.
 // =============================================
-const NOAA_OFFICIAL_IMG_URL = 'https://cdn.star.nesdis.noaa.gov/GOES19/ABI/SECTOR/nsa/13/1200x720.jpg';
+const NOAA_OFFICIAL_IMG_URL = 'https://cdn.star.nesdis.noaa.gov/GOES19/ABI/SECTOR/nsa/13/3600x2160.jpg';
 const NOAA_OFFICIAL_REFRESH_MS = 10 * 60 * 1000; // 10 minutos
 
 let noaaOfficialInterval = null;
