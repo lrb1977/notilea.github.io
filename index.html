@@ -655,7 +655,7 @@
           <span id="noaa-official-time" style="font-size:9.5px;color:var(--muted)"></span>
         </div>
         <div id="noaa-official-viewport" style="position:relative;width:100%;height:340px;overflow:hidden;border-radius:9px;background:#0a0f1a;touch-action:none">
-          <img id="noaa-official-img" style="position:absolute;top:0;left:0;width:100%;height:100%;object-fit:cover;object-position:40% 62%;transform-origin:0 0;display:block;user-select:none;-webkit-user-drag:none" alt="Imagen satelital oficial NOAA/NESDIS GOES-19 Banda 13" draggable="false">
+          <img id="noaa-official-img" style="position:absolute;top:0;left:0;width:100%;height:100%;object-fit:cover;transform-origin:0 0;display:block;user-select:none;-webkit-user-drag:none" alt="Imagen satelital oficial NOAA/NESDIS GOES-19 Banda 13" draggable="false">
           <div style="position:absolute;bottom:8px;left:8px;z-index:5;display:flex;flex-direction:column;gap:4px">
             <button onclick="noaaZoomStep(1.4)" style="width:30px;height:30px;border-radius:8px;background:rgba(8,14,26,0.85);border:1px solid var(--border);color:var(--text);font-size:16px;font-weight:700">+</button>
             <button onclick="noaaZoomStep(1/1.4)" style="width:30px;height:30px;border-radius:8px;background:rgba(8,14,26,0.85);border:1px solid var(--border);color:var(--text);font-size:16px;font-weight:700">−</button>
@@ -4969,7 +4969,7 @@ function refreshNoaaOfficialImage() {
   if (!img) return;
   img.src = NOAA_OFFICIAL_IMG_URL + '?t=' + Date.now();
   if (t) t.textContent = new Date().toLocaleTimeString('es-PY',{hour:'2-digit',minute:'2-digit'});
-  noaaZoomReset(); // vuelve al recorte por defecto (lo centra el CSS object-position, no JS)
+  noaaZoomReset(); // encuadre inicial centrado en Paraguay (se calcula al instante, sin esperar a que cargue la imagen)
 }
 
 function toggleNoaaOfficialImage() {
@@ -4988,11 +4988,10 @@ function toggleNoaaOfficialImage() {
 }
 
 // ---- Zoom/paneo tipo foto para la imagen NOAA (pellizcar, arrastrar, doble toque) ----
-// El recorte/centrado inicial en Paraguay lo hace el CSS (object-position en
-// el <img>), NO JavaScript — así no depende de que un evento "imagen
-// cargada" se dispare a tiempo, que era la causa de que no se aplicara
-// antes en algunos navegadores. El JS de acá abajo solo agrega el zoom
-// INTERACTIVO por encima de ese recorte ya centrado.
+// El encuadre inicial en Paraguay se calcula con transform (translate+scale)
+// usando SOLO el tamaño del contenedor (vp.clientWidth/clientHeight), que
+// está disponible al instante por CSS — no depende de que la imagen termine
+// de cargar ni de su tamaño natural, que era la causa de que fallara antes.
 let noaaZoomState = { scale: 1, x: 0, y: 0 };
 let noaaZoomInited = false;
 
@@ -5038,8 +5037,25 @@ function noaaZoomStep(factor) {
   noaaZoomToward(cx, cy, noaaZoomState.scale * factor);
 }
 
+// Posición aproximada (estimada a ojo, no calibrada con coordenadas reales)
+// de Paraguay dentro del sector "nsa" — se usa para centrar la vista por
+// defecto. Se calcula solo con el tamaño del contenedor (siempre disponible
+// al instante por CSS), sin depender de que la imagen termine de cargar.
+const NOAA_PARAGUAY_FRAC = { x: 0.40, y: 0.62 };
+const NOAA_DEFAULT_SCALE = 2.6;
+
 function noaaZoomReset() {
-  noaaZoomState = { scale: 1, x: 0, y: 0 };
+  const vp = document.getElementById('noaa-official-viewport');
+  if (!vp || !vp.clientWidth) { noaaZoomState = { scale: 1, x: 0, y: 0 }; noaaApplyTransform(); return; }
+  const s = NOAA_DEFAULT_SCALE;
+  const targetX = NOAA_PARAGUAY_FRAC.x * vp.clientWidth;
+  const targetY = NOAA_PARAGUAY_FRAC.y * vp.clientHeight;
+  noaaZoomState = {
+    scale: s,
+    x: vp.clientWidth / 2 - targetX * s,
+    y: vp.clientHeight / 2 - targetY * s,
+  };
+  noaaClampPan();
   noaaApplyTransform();
 }
 
