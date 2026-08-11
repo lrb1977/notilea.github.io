@@ -655,7 +655,7 @@
           <span id="noaa-official-time" style="font-size:9.5px;color:var(--muted)"></span>
         </div>
         <div id="noaa-official-viewport" style="position:relative;width:100%;height:340px;overflow:hidden;border-radius:9px;background:#0a0f1a;touch-action:none">
-          <img id="noaa-official-img" style="position:absolute;top:0;left:0;width:100%;transform-origin:0 0;display:block;user-select:none;-webkit-user-drag:none" alt="Imagen satelital oficial NOAA/NESDIS GOES-19 Banda 13" draggable="false">
+          <img id="noaa-official-img" style="position:absolute;top:0;left:0;width:100%;height:100%;object-fit:cover;object-position:40% 62%;transform-origin:0 0;display:block;user-select:none;-webkit-user-drag:none" alt="Imagen satelital oficial NOAA/NESDIS GOES-19 Banda 13" draggable="false">
           <div style="position:absolute;bottom:8px;left:8px;z-index:5;display:flex;flex-direction:column;gap:4px">
             <button onclick="noaaZoomStep(1.4)" style="width:30px;height:30px;border-radius:8px;background:rgba(8,14,26,0.85);border:1px solid var(--border);color:var(--text);font-size:16px;font-weight:700">+</button>
             <button onclick="noaaZoomStep(1/1.4)" style="width:30px;height:30px;border-radius:8px;background:rgba(8,14,26,0.85);border:1px solid var(--border);color:var(--text);font-size:16px;font-weight:700">−</button>
@@ -4967,16 +4967,9 @@ function refreshNoaaOfficialImage() {
   const img = document.getElementById('noaa-official-img');
   const t = document.getElementById('noaa-official-time');
   if (!img) return;
-  // El evento onload se asigna ANTES de cambiar el src (si se hace al
-  // revés, en algunos navegadores móviles el evento puede dispararse
-  // antes de que el handler quede conectado y el centrado nunca corre).
-  img.onload = () => requestAnimationFrame(noaaCenterOnParaguay);
   img.src = NOAA_OFFICIAL_IMG_URL + '?t=' + Date.now();
   if (t) t.textContent = new Date().toLocaleTimeString('es-PY',{hour:'2-digit',minute:'2-digit'});
-  // Respaldo: si la imagen ya estaba en caché, "load" puede no volver a
-  // disparar — chequeamos igual con un pequeño margen para que el layout
-  // (ancho del contenedor) ya esté listo.
-  setTimeout(() => { if (img.complete && img.naturalWidth) noaaCenterOnParaguay(); }, 300);
+  noaaZoomReset(); // vuelve al recorte por defecto (lo centra el CSS object-position, no JS)
 }
 
 function toggleNoaaOfficialImage() {
@@ -4995,13 +4988,13 @@ function toggleNoaaOfficialImage() {
 }
 
 // ---- Zoom/paneo tipo foto para la imagen NOAA (pellizcar, arrastrar, doble toque) ----
+// El recorte/centrado inicial en Paraguay lo hace el CSS (object-position en
+// el <img>), NO JavaScript — así no depende de que un evento "imagen
+// cargada" se dispare a tiempo, que era la causa de que no se aplicara
+// antes en algunos navegadores. El JS de acá abajo solo agrega el zoom
+// INTERACTIVO por encima de ese recorte ya centrado.
 let noaaZoomState = { scale: 1, x: 0, y: 0 };
 let noaaZoomInited = false;
-// Posición aproximada (estimada a ojo, no calibrada con coordenadas reales)
-// de Paraguay dentro del sector "nsa" — se usa solo para centrar la vista
-// inicial; el usuario puede arrastrar para ajustar si no queda exacto.
-const NOAA_PARAGUAY_FRAC = { x: 0.40, y: 0.62 };
-const NOAA_DEFAULT_SCALE = 3;
 
 function noaaApplyTransform() {
   const img = document.getElementById('noaa-official-img');
@@ -5015,7 +5008,10 @@ function noaaClampPan() {
   const img = document.getElementById('noaa-official-img');
   if (!vp || !img) return;
   const s = noaaZoomState;
-  const w = vp.clientWidth * s.scale, h = img.clientHeight * s.scale;
+  // Con object-fit:cover, la imagen ya ocupa exactamente el viewport a
+  // escala 1 (antes de aplicar el transform), así que estas son las
+  // dimensiones base correctas para el recorte.
+  const w = vp.clientWidth * s.scale, h = vp.clientHeight * s.scale;
   const minX = Math.min(0, vp.clientWidth - w), minY = Math.min(0, vp.clientHeight - h);
   s.x = Math.max(minX, Math.min(0, s.x));
   s.y = Math.max(minY, Math.min(0, s.y));
@@ -5047,23 +5043,6 @@ function noaaZoomReset() {
   noaaApplyTransform();
 }
 
-// Vista inicial: centrada en la posición estimada de Paraguay, no en el
-// sector completo (que lo muestra muy chico y difícil de ubicar).
-function noaaCenterOnParaguay() {
-  const vp = document.getElementById('noaa-official-viewport');
-  const img = document.getElementById('noaa-official-img');
-  if (!vp || !img || !img.naturalWidth) { noaaZoomReset(); return; }
-  const baseW = vp.clientWidth;
-  const baseH = baseW * (img.naturalHeight / img.naturalWidth);
-  const targetImgX = NOAA_PARAGUAY_FRAC.x * baseW;
-  const targetImgY = NOAA_PARAGUAY_FRAC.y * baseH;
-  noaaZoomState.scale = NOAA_DEFAULT_SCALE;
-  noaaZoomState.x = vp.clientWidth / 2 - targetImgX * NOAA_DEFAULT_SCALE;
-  noaaZoomState.y = vp.clientHeight / 2 - targetImgY * NOAA_DEFAULT_SCALE;
-  noaaClampPan();
-  noaaApplyTransform();
-}
-
 function initNoaaZoomPan() {
   if (noaaZoomInited) return;
   noaaZoomInited = true;
@@ -5083,7 +5062,7 @@ function initNoaaZoomPan() {
       if (now - lastTap < 300) {
         const rect = vp.getBoundingClientRect();
         const tapX = e.clientX - rect.left, tapY = e.clientY - rect.top;
-        noaaZoomState.scale < 3 ? noaaZoomToward(tapX, tapY, noaaZoomState.scale * 2.2) : noaaCenterOnParaguay();
+        noaaZoomState.scale < 3 ? noaaZoomToward(tapX, tapY, noaaZoomState.scale * 2.2) : noaaZoomReset();
       }
       lastTap = now;
     } else if (pointers.size === 2) {
