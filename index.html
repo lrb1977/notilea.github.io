@@ -4982,6 +4982,12 @@ function toggleNoaaOfficialImage() {
     refreshNoaaOfficialImage();
     if (!noaaOfficialInterval) noaaOfficialInterval = setInterval(refreshNoaaOfficialImage, NOAA_OFFICIAL_REFRESH_MS);
     initNoaaZoomPan();
+    // Si justo en este instante el contenedor todavía medía 0px de ancho
+    // (recién se está por volver visible), noaaZoomReset() se resetea sin
+    // zoom como resguardo. Reintentamos un par de veces con margen, una vez
+    // que el layout ya se asentó, para no quedar pegados en la vista sin acercar.
+    setTimeout(noaaZoomReset, 60);
+    setTimeout(noaaZoomReset, 250);
   } else if (noaaOfficialInterval) {
     clearInterval(noaaOfficialInterval); noaaOfficialInterval = null;
   }
@@ -5044,8 +5050,16 @@ function noaaZoomStep(factor) {
 const NOAA_PARAGUAY_FRAC = { x: 0.40, y: 0.62 };
 const NOAA_DEFAULT_SCALE = 2.6;
 
-function noaaZoomReset() {
+function noaaZoomReset(intentos = 0) {
   const vp = document.getElementById('noaa-official-viewport');
+  // Si el contenedor todavía no tiene tamaño (0px) — por ejemplo porque el
+  // panel se está mostrando justo en este instante y el navegador no
+  // terminó de calcular el layout — reintentamos en el próximo cuadro en
+  // vez de resignarnos a mostrar la imagen sin zoom para siempre.
+  if ((!vp || !vp.clientWidth) && intentos < 20) {
+    requestAnimationFrame(() => noaaZoomReset(intentos + 1));
+    return;
+  }
   if (!vp || !vp.clientWidth) { noaaZoomState = { scale: 1, x: 0, y: 0 }; noaaApplyTransform(); return; }
   const s = NOAA_DEFAULT_SCALE;
   const targetX = NOAA_PARAGUAY_FRAC.x * vp.clientWidth;
