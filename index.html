@@ -1020,11 +1020,90 @@
     <canvas id="rioChartHistorico" height="140"></canvas>
   </div>
 
+  <!-- 9. Pronóstico hidrológico DMH (modelo MGB-IPH SSTd-CIC Plata) -->
+  <div class="card" style="margin-bottom:10px;border:1px solid rgba(56,189,248,0.3)">
+    <div class="card-title" style="color:#38bdf8">
+      <span>🌊</span>
+      Pronóstico Hidrológico | Ríos de Paraguay
+    </div>
+    <div style="font-size:11px;color:var(--muted);line-height:1.5">
+      Proyección del modelo <b>MGB-IPH SSTd-CIC Plata</b>, procesada por el Departamento de Pronósticos Hidrológicos de la <b>Dirección de Meteorología e Hidrología (DMH)</b> de Paraguay. Escenario proyectado desde septiembre 2026 hasta febrero 2027 para dos puntos clave de la cuenca del Plata.
+    </div>
+    <div style="display:flex;align-items:center;gap:6px;margin-top:8px;background:rgba(251,191,36,0.08);border:1px solid rgba(251,191,36,0.3);border-radius:8px;padding:7px 9px">
+      <span style="font-size:13px">⚠️</span>
+      <span style="font-size:10.5px;color:#fbbf24">Pronóstico sujeto a actualización — los valores pueden cambiar con las próximas corridas del modelo. No lo tomes como un valor confirmado.</span>
+    </div>
+  </div>
+
+  <!-- Puerto de Asunción -->
+  <div class="card" style="margin-bottom:10px">
+    <div style="display:flex;align-items:center;justify-content:space-between;flex-wrap:wrap;gap:6px">
+      <div class="card-title" style="margin-bottom:0">🏙️ Puerto de Asunción — Río Paraguay</div>
+      <span id="dmh-asuncion-tendencia" class="rio-level-badge rio-level-atencion">📈 Tendencia al alza</span>
+    </div>
+    <div style="font-size:10.5px;color:var(--muted);margin:4px 0 8px">Precipitación proyectada (barras) y evolución del caudal (línea) · set 2026 – feb 2027</div>
+    <canvas id="dmhChartAsuncion" height="150"></canvas>
+    <div style="display:flex;gap:16px;margin-top:10px;flex-wrap:wrap">
+      <div>
+        <div style="font-size:9px;color:var(--muted);text-transform:uppercase">Caudal inicial (proyectado)</div>
+        <div style="font-size:15px;font-weight:700;color:var(--text);font-family:'Courier New',monospace">~650 <span style="font-size:10px;color:var(--muted)">m³/s</span></div>
+      </div>
+      <div>
+        <div style="font-size:9px;color:var(--muted);text-transform:uppercase">Caudal a fin de periodo</div>
+        <div style="font-size:15px;font-weight:700;color:#fbbf24;font-family:'Courier New',monospace">~2.000 <span style="font-size:10px;color:var(--muted)">m³/s</span></div>
+      </div>
+    </div>
+    <div style="font-size:10.5px;color:var(--muted);margin-top:8px;line-height:1.5">
+      🌧️ <b>Picos de precipitación destacados</b> en el escenario proyectado: fines de octubre, mediados de noviembre, diciembre y sobre todo fines de enero / principios de febrero, donde el modelo marca el repunte de lluvia más fuerte del período.<br>
+      🌊 La <b>tendencia prevista</b> del caudal muestra una suba sostenida desde noviembre, con una aceleración hacia fines de enero y principios de febrero de 2027.
+    </div>
+  </div>
+
+  <!-- Puerto de Ayolas -->
+  <div class="card" style="margin-bottom:10px">
+    <div style="display:flex;align-items:center;justify-content:space-between;flex-wrap:wrap;gap:6px">
+      <div class="card-title" style="margin-bottom:0">🏙️ Puerto de Ayolas — Río Paraná</div>
+      <span id="dmh-ayolas-tendencia" class="rio-level-badge rio-level-alerta">📈 Aumento proyectado</span>
+    </div>
+    <div style="font-size:10.5px;color:var(--muted);margin:4px 0 8px">Precipitación proyectada (barras) y evolución del caudal (línea) · set 2026 – feb 2027</div>
+    <canvas id="dmhChartAyolas" height="150"></canvas>
+    <div style="display:flex;gap:16px;margin-top:10px;flex-wrap:wrap">
+      <div>
+        <div style="font-size:9px;color:var(--muted);text-transform:uppercase">Caudal inicial (proyectado)</div>
+        <div style="font-size:15px;font-weight:700;color:var(--text);font-family:'Courier New',monospace">~10.500 <span style="font-size:10px;color:var(--muted)">m³/s</span></div>
+      </div>
+      <div>
+        <div style="font-size:9px;color:var(--muted);text-transform:uppercase">Caudal a fin de periodo</div>
+        <div style="font-size:15px;font-weight:700;color:#fb923c;font-family:'Courier New',monospace">~29.000 <span style="font-size:10px;color:var(--muted)">m³/s</span></div>
+      </div>
+    </div>
+    <div style="font-size:10.5px;color:var(--muted);margin-top:8px;line-height:1.5">
+      🌧️ <b>Episodios de precipitación destacados</b> en el escenario proyectado: mediados de octubre y, especialmente, fines de noviembre — el evento de lluvia más marcado de toda la serie para este punto.<br>
+      🌊 El caudal muestra un <b>escenario proyectado de recuperación y aumento</b> sostenido, con la suba más pronunciada concentrada en enero y, sobre todo, en las últimas semanas antes de febrero de 2027.
+    </div>
+  </div>
+
+  <!-- ¿Qué nos está mostrando el modelo? -->
+  <div class="card" style="margin-bottom:10px">
+    <div class="card-title">🔎 ¿Qué nos está mostrando el modelo?</div>
+    <div style="font-size:12px;color:var(--muted);line-height:1.6">
+      En criollo: el modelo proyecta que los caudales de los ríos Paraguay y Paraná van a ir <b style="color:var(--text)">subiendo de a poco</b> desde ahora hasta el verano, con un <b style="color:var(--text)">repunte más marcado hacia enero-febrero de 2027</b> — especialmente en Puerto de Ayolas, sobre el río Paraná, donde la suba proyectada es más pronunciada que en Asunción.
+      <br><br>
+      Esto <b style="color:#fbbf24">no es, por sí solo, una alerta de inundación</b>. Es una tendencia esperada del modelo hidrológico para esta época del año, coherente con más lluvia en la cuenca alta. Para saber si eso realmente se traduce en riesgo de crecida en algún puerto puntual, hay que mirarlo junto con el <a href="#" onclick="document.getElementById('rio-puertos-list').scrollIntoView({behavior:'smooth'});return false" style="color:var(--accent)">monitoreo en tiempo real</a> de más arriba en esta misma sección, que sí compara el caudal actual contra el caudal medio histórico de cada estación.
+    </div>
+  </div>
+
+  <div style="font-size:10px;color:var(--muted);text-align:center;padding:4px 8px 8px">
+    Fuente: Dirección de Meteorología e Hidrología (DMH) — Paraguay · Modelo MGB-IPH SSTd-CIC Plata · Procesamiento: Departamento de Pronósticos Hidrológicos<br>
+    <span id="dmh-fecha-actualizacion">Actualizado: —</span>
+  </div>
+
   <div style="font-size:10px;color:var(--muted);text-align:center;padding:8px">
     Fuente: GloFAS (Global Flood Awareness System) · Copernicus EMS vía Open-Meteo Flood API<br>
     Noticlima de <span class="notilea-tag">Notilea</span> · Actualización automática
   </div>
 </div>
+
 
 
 <footer>
@@ -1086,7 +1165,7 @@ function showTab(id) {
   if (id === 'noticias') renderNoticias();
   if (id === 'reportes') cargarImagenesReportes();
   if (id === 'eventos') renderEventos();
-  if (id === 'rio') renderRioParaguay();
+  if (id === 'rio') { renderRioParaguay(); setTimeout(renderDmhPronosticoHidrologico, 50); }
   if (id === 'mapa') { 
     renderMapWeather(); 
     document.getElementById('radar-panel').style.display = 'block';
@@ -4356,6 +4435,104 @@ function renderRioHistoricoChart(floodData) {
 }
 
 // Dibuja un gráfico de línea genérico (canvas nativo, sin librerías)
+// =============================================
+// PRONÓSTICO HIDROLÓGICO DMH — Puerto de Asunción y Puerto de Ayolas
+// Fuente: gráficos oficiales del Departamento de Pronósticos Hidrológicos -
+// DMH (modelo MGB-IPH SSTd-CIC Plata), compartidos por el usuario.
+// Los valores de abajo son una lectura aproximada de esos gráficos (no hay
+// una API con los datos crudos) — se usan solo para reproducir la FORMA y
+// TENDENCIA del pronóstico visual, no como medición exacta. Por eso en la
+// UI todo se presenta con lenguaje de proyección/escenario, nunca como
+// hecho confirmado.
+// =============================================
+const DMH_PRONOSTICO_FECHA = '08/09/2026'; // fecha del gráfico compartido por el usuario
+
+const DMH_ASUNCION = {
+  labels: ['Set','','Oct','','Nov','','Dic','','Ene','','Feb'],
+  precipitacion: [5, 15, 35, 10, 52, 20, 45, 15, 63, 55, 93],
+  caudal: [650, 700, 900, 750, 700, 1150, 1400, 1300, 1450, 1600, 2000],
+};
+const DMH_AYOLAS = {
+  labels: ['Set','','Oct','','Nov','','Dic','','Ene','','Feb'],
+  precipitacion: [10, 45, 120, 25, 130, 35, 20, 15, 35, 65, 30],
+  caudal: [10500, 10000, 9000, 8500, 9000, 16000, 13000, 14000, 15000, 20000, 29000],
+};
+
+// Gráfico combinado: barras de precipitación (mm) + línea de caudal (m³/s),
+// cada una con su propia escala — igual patrón visual que el gráfico
+// original de la DMH, adaptado al estilo oscuro de Noticlima.
+function drawHidroForecastChart(canvas, labels, precip, caudal) {
+  if (!canvas) return;
+  const dpr = window.devicePixelRatio || 1;
+  const W = canvas.offsetWidth || 300;
+  const H = 150;
+  canvas.width = W * dpr; canvas.height = H * dpr;
+  const ctx = canvas.getContext('2d');
+  ctx.scale(dpr, dpr);
+  ctx.clearRect(0,0,W,H);
+
+  const padL=38, padR=38, padT=12, padB=20;
+  const w = W - padL - padR, h = H - padT - padB;
+  const n = caudal.length;
+
+  ctx.fillStyle = '#1a2235';
+  if (ctx.roundRect) { ctx.beginPath(); ctx.roundRect(0,0,W,H,8); ctx.fill(); } else { ctx.fillRect(0,0,W,H); }
+
+  const maxPrecip = Math.max(...precip) * 1.15;
+  const minCaudal = Math.min(...caudal) * 0.92, maxCaudal = Math.max(...caudal) * 1.05;
+
+  // Grid horizontal
+  ctx.strokeStyle = 'rgba(255,255,255,0.06)'; ctx.lineWidth = 1;
+  for (let i=0;i<=3;i++) {
+    const y = padT + (i/3)*h;
+    ctx.beginPath(); ctx.moveTo(padL,y); ctx.lineTo(padL+w,y); ctx.stroke();
+  }
+
+  // Barras de precipitación (mm) — eje izquierdo
+  ctx.fillStyle = 'rgba(96,165,250,0.55)';
+  const barW = Math.max(2, (w/n) * 0.5);
+  precip.forEach((v,i) => {
+    const x = padL + (i/(n-1))*w - barW/2;
+    const barH = (v/maxPrecip)*h;
+    ctx.fillRect(x, padT+h-barH, barW, barH);
+  });
+
+  // Línea de caudal (m³/s) — eje derecho
+  ctx.beginPath();
+  caudal.forEach((v,i) => {
+    const x = padL + (i/(n-1))*w;
+    const y = padT + h - ((v-minCaudal)/(maxCaudal-minCaudal))*h;
+    i===0 ? ctx.moveTo(x,y) : ctx.lineTo(x,y);
+  });
+  ctx.strokeStyle = '#f87171'; ctx.lineWidth = 2.2; ctx.stroke();
+
+  // Etiquetas eje izquierdo (mm)
+  ctx.fillStyle = 'rgba(96,165,250,0.9)'; ctx.font = '9px monospace';
+  ctx.fillText(Math.round(maxPrecip)+'mm', 2, padT+8);
+  ctx.fillText('0', 2, padT+h);
+
+  // Etiquetas eje derecho (m³/s)
+  ctx.fillStyle = 'rgba(248,113,113,0.9)'; ctx.textAlign = 'right';
+  ctx.fillText(Math.round(maxCaudal).toLocaleString('es-PY'), W-2, padT+8);
+  ctx.fillText(Math.round(minCaudal).toLocaleString('es-PY'), W-2, padT+h);
+  ctx.textAlign = 'left';
+
+  // Etiquetas eje X (meses)
+  ctx.fillStyle = 'rgba(255,255,255,0.4)'; ctx.font = '9px sans-serif';
+  labels.forEach((lab,i) => {
+    if (!lab) return;
+    const x = padL + (i/(n-1))*w;
+    ctx.fillText(lab, x-8, H-6);
+  });
+}
+
+function renderDmhPronosticoHidrologico() {
+  drawHidroForecastChart(document.getElementById('dmhChartAsuncion'), DMH_ASUNCION.labels, DMH_ASUNCION.precipitacion, DMH_ASUNCION.caudal);
+  drawHidroForecastChart(document.getElementById('dmhChartAyolas'), DMH_AYOLAS.labels, DMH_AYOLAS.precipitacion, DMH_AYOLAS.caudal);
+  const f = document.getElementById('dmh-fecha-actualizacion');
+  if (f) f.textContent = 'Gráfico de referencia del ' + DMH_PRONOSTICO_FECHA + ' · próxima corrida del modelo puede variar estos valores';
+}
+
 function drawRioLineChart(canvas, labels, values, color, unit) {
   if (!canvas) return;
   const dpr = window.devicePixelRatio || 1;
