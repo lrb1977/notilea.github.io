@@ -931,12 +931,20 @@
     <div style="display:flex;align-items:center;justify-content:space-between">
       <div class="card-title" style="color:#38bdf8">
         <span class="rio-banner-dot" style="width:9px;height:9px"></span>
-        Monitoreo Río Paraguay — Tiempo Real
+        Centro de Monitoreo Hidrológico — Río Paraguay
       </div>
       <button onclick="renderRioParaguay(true)" style="background:var(--bg-card2);border:1px solid var(--border);border-radius:7px;padding:5px 10px;font-size:11px;color:#38bdf8;cursor:pointer">🔄 Actualizar</button>
     </div>
-    <div style="font-size:11px;color:var(--muted)">Datos GloFAS (Copernicus) vía Open-Meteo Flood API · Cuenca del Río Paraguay</div>
+    <div style="font-size:11px;color:var(--muted)">Fuente principal: DMH (observación real) · Verificación: GloFAS/Copernicus (modelo) · MGB-IPH/SSTd-CIC: boletín oficial DMH</div>
   </div>
+
+  <!-- Panel de estado (centro de monitoreo) -->
+  <div class="card" style="margin-bottom:10px" id="rio-panel-estado">
+    <div class="loading" style="padding:16px"><div class="spinner"></div><div class="loading-text">Comparando fuentes…</div></div>
+  </div>
+
+  <!-- Comparación entre fuentes (por estación) -->
+  <div class="card" style="margin-bottom:10px" id="rio-comparacion-modelos"></div>
 
   <!-- 1. Monitoreo de lluvias en toda la cuenca -->
   <div class="card" style="margin-bottom:10px">
@@ -986,17 +994,6 @@
   <!-- 4 y 8. Alertas automáticas + puertos -->
   <div class="card" style="margin-bottom:10px">
     <div class="card-title">📍 Puertos Monitoreados</div>
-
-    <div style="display:flex;align-items:flex-start;gap:8px;background:rgba(251,191,36,0.08);border:1px solid rgba(251,191,36,0.3);border-radius:9px;padding:9px 10px;margin-bottom:10px;cursor:pointer" onclick="toggleRioMetodologia()">
-      <span style="font-size:14px;line-height:1">⚠️</span>
-      <div style="flex:1">
-        <div style="font-size:11px;color:#fbbf24;font-weight:600">Estimación de modelo, no medición de estación de aforo</div>
-        <div style="font-size:10px;color:var(--muted);margin-top:2px">Los caudales vienen del modelo hidrológico GloFAS (Open-Meteo), no de un caudalímetro oficial en tiempo real. Tocá para ver la fuente y el caudal medio de referencia de cada puerto.</div>
-      </div>
-      <span id="rio-metodologia-caret" style="font-size:11px;color:var(--muted)">▾</span>
-    </div>
-    <div id="rio-metodologia-detalle" style="display:none;font-size:10px;color:var(--muted);background:var(--bg-card2);border-radius:9px;padding:8px 10px;margin-bottom:10px"></div>
-
     <div id="rio-puertos-list">
       <div class="loading" style="padding:20px"><div class="spinner"></div><div class="loading-text">Consultando puertos…</div></div>
     </div>
@@ -1020,90 +1017,11 @@
     <canvas id="rioChartHistorico" height="140"></canvas>
   </div>
 
-  <!-- 9. Pronóstico hidrológico DMH (modelo MGB-IPH SSTd-CIC Plata) -->
-  <div class="card" style="margin-bottom:10px;border:1px solid rgba(56,189,248,0.3)">
-    <div class="card-title" style="color:#38bdf8">
-      <span>🌊</span>
-      Pronóstico Hidrológico | Ríos de Paraguay
-    </div>
-    <div style="font-size:11px;color:var(--muted);line-height:1.5">
-      Proyección del modelo <b>MGB-IPH SSTd-CIC Plata</b>, procesada por el Departamento de Pronósticos Hidrológicos de la <b>Dirección de Meteorología e Hidrología (DMH)</b> de Paraguay. Escenario proyectado desde septiembre 2026 hasta febrero 2027 para dos puntos clave de la cuenca del Plata.
-    </div>
-    <div style="display:flex;align-items:center;gap:6px;margin-top:8px;background:rgba(251,191,36,0.08);border:1px solid rgba(251,191,36,0.3);border-radius:8px;padding:7px 9px">
-      <span style="font-size:13px">⚠️</span>
-      <span style="font-size:10.5px;color:#fbbf24">Pronóstico sujeto a actualización — los valores pueden cambiar con las próximas corridas del modelo. No lo tomes como un valor confirmado.</span>
-    </div>
-  </div>
-
-  <!-- Puerto de Asunción -->
-  <div class="card" style="margin-bottom:10px">
-    <div style="display:flex;align-items:center;justify-content:space-between;flex-wrap:wrap;gap:6px">
-      <div class="card-title" style="margin-bottom:0">🏙️ Puerto de Asunción — Río Paraguay</div>
-      <span id="dmh-asuncion-tendencia" class="rio-level-badge rio-level-atencion">📈 Tendencia al alza</span>
-    </div>
-    <div style="font-size:10.5px;color:var(--muted);margin:4px 0 8px">Precipitación proyectada (barras) y evolución del caudal (línea) · set 2026 – feb 2027</div>
-    <canvas id="dmhChartAsuncion" height="150"></canvas>
-    <div style="display:flex;gap:16px;margin-top:10px;flex-wrap:wrap">
-      <div>
-        <div style="font-size:9px;color:var(--muted);text-transform:uppercase">Caudal inicial (proyectado)</div>
-        <div style="font-size:15px;font-weight:700;color:var(--text);font-family:'Courier New',monospace">~650 <span style="font-size:10px;color:var(--muted)">m³/s</span></div>
-      </div>
-      <div>
-        <div style="font-size:9px;color:var(--muted);text-transform:uppercase">Caudal a fin de periodo</div>
-        <div style="font-size:15px;font-weight:700;color:#fbbf24;font-family:'Courier New',monospace">~2.000 <span style="font-size:10px;color:var(--muted)">m³/s</span></div>
-      </div>
-    </div>
-    <div style="font-size:10.5px;color:var(--muted);margin-top:8px;line-height:1.5">
-      🌧️ <b>Picos de precipitación destacados</b> en el escenario proyectado: fines de octubre, mediados de noviembre, diciembre y sobre todo fines de enero / principios de febrero, donde el modelo marca el repunte de lluvia más fuerte del período.<br>
-      🌊 La <b>tendencia prevista</b> del caudal muestra una suba sostenida desde noviembre, con una aceleración hacia fines de enero y principios de febrero de 2027.
-    </div>
-  </div>
-
-  <!-- Puerto de Ayolas -->
-  <div class="card" style="margin-bottom:10px">
-    <div style="display:flex;align-items:center;justify-content:space-between;flex-wrap:wrap;gap:6px">
-      <div class="card-title" style="margin-bottom:0">🏙️ Puerto de Ayolas — Río Paraná</div>
-      <span id="dmh-ayolas-tendencia" class="rio-level-badge rio-level-alerta">📈 Aumento proyectado</span>
-    </div>
-    <div style="font-size:10.5px;color:var(--muted);margin:4px 0 8px">Precipitación proyectada (barras) y evolución del caudal (línea) · set 2026 – feb 2027</div>
-    <canvas id="dmhChartAyolas" height="150"></canvas>
-    <div style="display:flex;gap:16px;margin-top:10px;flex-wrap:wrap">
-      <div>
-        <div style="font-size:9px;color:var(--muted);text-transform:uppercase">Caudal inicial (proyectado)</div>
-        <div style="font-size:15px;font-weight:700;color:var(--text);font-family:'Courier New',monospace">~10.500 <span style="font-size:10px;color:var(--muted)">m³/s</span></div>
-      </div>
-      <div>
-        <div style="font-size:9px;color:var(--muted);text-transform:uppercase">Caudal a fin de periodo</div>
-        <div style="font-size:15px;font-weight:700;color:#fb923c;font-family:'Courier New',monospace">~29.000 <span style="font-size:10px;color:var(--muted)">m³/s</span></div>
-      </div>
-    </div>
-    <div style="font-size:10.5px;color:var(--muted);margin-top:8px;line-height:1.5">
-      🌧️ <b>Episodios de precipitación destacados</b> en el escenario proyectado: mediados de octubre y, especialmente, fines de noviembre — el evento de lluvia más marcado de toda la serie para este punto.<br>
-      🌊 El caudal muestra un <b>escenario proyectado de recuperación y aumento</b> sostenido, con la suba más pronunciada concentrada en enero y, sobre todo, en las últimas semanas antes de febrero de 2027.
-    </div>
-  </div>
-
-  <!-- ¿Qué nos está mostrando el modelo? -->
-  <div class="card" style="margin-bottom:10px">
-    <div class="card-title">🔎 ¿Qué nos está mostrando el modelo?</div>
-    <div style="font-size:12px;color:var(--muted);line-height:1.6">
-      En criollo: el modelo proyecta que los caudales de los ríos Paraguay y Paraná van a ir <b style="color:var(--text)">subiendo de a poco</b> desde ahora hasta el verano, con un <b style="color:var(--text)">repunte más marcado hacia enero-febrero de 2027</b> — especialmente en Puerto de Ayolas, sobre el río Paraná, donde la suba proyectada es más pronunciada que en Asunción.
-      <br><br>
-      Esto <b style="color:#fbbf24">no es, por sí solo, una alerta de inundación</b>. Es una tendencia esperada del modelo hidrológico para esta época del año, coherente con más lluvia en la cuenca alta. Para saber si eso realmente se traduce en riesgo de crecida en algún puerto puntual, hay que mirarlo junto con el <a href="#" onclick="document.getElementById('rio-puertos-list').scrollIntoView({behavior:'smooth'});return false" style="color:var(--accent)">monitoreo en tiempo real</a> de más arriba en esta misma sección, que sí compara el caudal actual contra el caudal medio histórico de cada estación.
-    </div>
-  </div>
-
-  <div style="font-size:10px;color:var(--muted);text-align:center;padding:4px 8px 8px">
-    Fuente: Dirección de Meteorología e Hidrología (DMH) — Paraguay · Modelo MGB-IPH SSTd-CIC Plata · Procesamiento: Departamento de Pronósticos Hidrológicos<br>
-    <span id="dmh-fecha-actualizacion">Actualizado: —</span>
-  </div>
-
   <div style="font-size:10px;color:var(--muted);text-align:center;padding:8px">
     Fuente: GloFAS (Global Flood Awareness System) · Copernicus EMS vía Open-Meteo Flood API<br>
     Noticlima de <span class="notilea-tag">Notilea</span> · Actualización automática
   </div>
 </div>
-
 
 
 <footer>
@@ -1165,7 +1083,7 @@ function showTab(id) {
   if (id === 'noticias') renderNoticias();
   if (id === 'reportes') cargarImagenesReportes();
   if (id === 'eventos') renderEventos();
-  if (id === 'rio') { renderRioParaguay(); setTimeout(renderDmhPronosticoHidrologico, 50); }
+  if (id === 'rio') renderRioParaguay();
   if (id === 'mapa') { 
     renderMapWeather(); 
     document.getElementById('radar-panel').style.display = 'block';
@@ -4062,6 +3980,7 @@ async function cargarNivelOficialRio(forzar = false) {
         const obj = JSON.parse(raw);
         if ((Date.now() - obj.ts) / 60000 < NIVEL_RIO_CACHE_MIN) {
           renderNivelOficialRio(obj.data);
+          refrescarComparacionConCacheGlofas();
           return;
         }
       }
@@ -4092,6 +4011,7 @@ async function cargarNivelOficialRio(forzar = false) {
 
     localStorage.setItem(NIVEL_RIO_CACHE_KEY, JSON.stringify({ data, ts: Date.now() }));
     renderNivelOficialRio(data);
+    refrescarComparacionConCacheGlofas();
 
     // Notificar solo si la DMH efectivamente publicó datos nuevos (no en cada chequeo)
     if ((data.isNew || huboActualizacionDMH) && Notification.permission === 'granted') {
@@ -4212,6 +4132,195 @@ function clasificarNivelRio(discharge, puerto) {
   return { label:'NORMAL', clase:'normal' };
 }
 
+// =============================================
+// COMPARACIÓN DE FUENTES — Panel de estado hidrológico
+// =============================================
+// Jerarquía: DMH (observación real) > GloFAS (verificación independiente,
+// modelo) > MGB-IPH/SSTd-CIC (sin API oficial — ver nota más abajo).
+//
+// MGB-IPH/SSTd-CIC: la DMH SÍ publica este pronóstico ("Sistema Soporte
+// para la Toma de Decisiones en la Cuenca del Plata"), pero como boletín/
+// gráfico periódico en meteorologia.gov.py/pronostico-de-caudales/, no
+// como datos estructurados vía API. No hay forma honesta de traer esos
+// números automáticamente hoy — se linkea al boletín oficial en vez de
+// simular un valor.
+const DMH_BOLETIN_CAUDALES_URL = 'https://www.meteorologia.gov.py/pronostico-de-caudales/';
+
+// Vuelve a pintar el panel de estado/comparación usando el asuncionFlood ya
+// cacheado de GloFAS (sin volver a pedirlo) — se usa cuando llega una
+// actualización de la DMH de forma independiente al ciclo de GloFAS.
+function refrescarComparacionConCacheGlofas() {
+  try {
+    const raw = localStorage.getItem(RIO_CACHE_KEY);
+    const asuncionFlood = raw ? JSON.parse(raw).data.asuncionFlood : null;
+    renderPanelEstadoRio(asuncionFlood);
+    renderComparacionModelos(asuncionFlood);
+  } catch(e) {}
+}
+
+// Lee la última observación real de la DMH para una localidad (ya cacheada
+// por cargarNivelOficialRio) — devuelve null si no hay dato todavía.
+function getDmhEstacionObservada(nombreLocalidad) {
+  try {
+    const raw = localStorage.getItem(NIVEL_RIO_CACHE_KEY);
+    if (!raw) return null;
+    const data = JSON.parse(raw).data;
+    if (!data || !data.estaciones) return null;
+    return data.estaciones.find(e => e.localidad === nombreLocalidad) || null;
+  } catch(e) { return null; }
+}
+
+// Evalúa la concordancia entre la tendencia de GloFAS (modelo) y la
+// tendencia observada por la DMH (dato real) — NUNCA se convierte en
+// alerta de inundación por sí sola, solo describe si las fuentes coinciden.
+function calcularCoincidencia(tendenciaGlofas, tendenciaDmh) {
+  const arriba = (t) => t === 'creciente' || t === 'subiendo';
+  const abajo  = (t) => t === 'decreciente' || t === 'bajando';
+  if (tendenciaGlofas == null || tendenciaDmh == null) {
+    return { clase:'sindatos', texto:'No hay datos suficientes de ambas fuentes para comparar todavía.' };
+  }
+  const gArriba = arriba(tendenciaGlofas), gAbajo = abajo(tendenciaGlofas);
+  const dArriba = arriba(tendenciaDmh), dAbajo = abajo(tendenciaDmh);
+
+  if (gArriba && dArriba) {
+    return { clase:'alta', texto:'🟢 Alta coincidencia: el modelo GloFAS y la observación real de la DMH muestran una tendencia creciente.' };
+  }
+  if (gAbajo && dAbajo) {
+    return { clase:'baja-coincide', texto:'🔵 Ambas fuentes indican una tendencia descendente.' };
+  }
+  if ((gArriba && dAbajo) || (gAbajo && dArriba)) {
+    return { clase:'discrepancia', texto:'🟡 Discrepancia: el modelo y la observación real no coinciden en la dirección de la tendencia. Se recomienda vigilancia de la evolución.' };
+  }
+  return { clase:'estable', texto:'➡️ Ambas fuentes describen una situación estable, sin cambios marcados.' };
+}
+
+// Panel de estado — "centro de monitoreo"
+function renderPanelEstadoRio(asuncionFlood) {
+  const el = document.getElementById('rio-panel-estado');
+  if (!el) return;
+
+  // Tendencia GloFAS (misma lógica que el gráfico de crecida)
+  let tendenciaGlofas = null, glofasActual = null, glofasPico = null, glofasFechaPico = null;
+  if (asuncionFlood && asuncionFlood.daily) {
+    const times = asuncionFlood.daily.time || [];
+    const values = asuncionFlood.daily.river_discharge || [];
+    const futureValues = values.slice(30);
+    const futureTimes = times.slice(30);
+    if (futureValues.length) {
+      glofasActual = futureValues[0];
+      glofasPico = Math.max(...futureValues.filter(v => v != null));
+      glofasFechaPico = futureTimes[futureValues.indexOf(glofasPico)];
+      tendenciaGlofas = glofasPico > glofasActual * 1.15 ? 'creciente' : glofasPico < glofasActual * 0.9 ? 'decreciente' : 'estable';
+    }
+  }
+
+  const dmhAsuncion = getDmhEstacionObservada('Asunción');
+  const tendenciaDmh = dmhAsuncion ? dmhAsuncion.tendencia : null;
+
+  const coincidencia = calcularCoincidencia(tendenciaGlofas, tendenciaDmh);
+  const coincidenciaColor = { alta:'#4ade80', 'baja-coincide':'#38bdf8', discrepancia:'#fbbf24', estable:'var(--muted)', sindatos:'var(--muted)' };
+
+  const iconoTendencia = (t) => t === 'creciente' || t === 'subiendo' ? '📈' : t === 'decreciente' || t === 'bajando' ? '📉' : t === 'estable' ? '➡️' : '—';
+
+  el.innerHTML = `
+    <div class="card-title">🌊 Estado — Río Paraguay (Asunción)</div>
+    <div style="display:grid;grid-template-columns:1fr 1fr;gap:10px;margin-top:6px">
+      <div>
+        <div style="font-size:9px;color:var(--muted);text-transform:uppercase">Modelo principal</div>
+        <div style="font-size:11px;color:var(--text);font-weight:600">MGB-IPH/SSTd-CIC</div>
+        <div style="font-size:10px;color:var(--muted)">Sin API — ver boletín oficial</div>
+      </div>
+      <div>
+        <div style="font-size:9px;color:var(--muted);text-transform:uppercase">Verificación</div>
+        <div style="font-size:11px;color:var(--text);font-weight:600">GloFAS (modelo)</div>
+        <div style="font-size:13px">${iconoTendencia(tendenciaGlofas)} ${tendenciaGlofas || 'sin datos'}</div>
+      </div>
+      <div>
+        <div style="font-size:9px;color:var(--muted);text-transform:uppercase">Observación real</div>
+        <div style="font-size:11px;color:var(--text);font-weight:600">Estación DMH</div>
+        <div style="font-size:13px">${iconoTendencia(tendenciaDmh)} ${tendenciaDmh || (dmhAsuncion ? 'estable' : 'no disponible')}</div>
+      </div>
+      <div>
+        <div style="font-size:9px;color:var(--muted);text-transform:uppercase">Coincidencia modelo/observación</div>
+        <div style="font-size:11px;font-weight:600;color:${coincidenciaColor[coincidencia.clase]}">${coincidencia.clase === 'sindatos' ? 'Sin datos suficientes' : coincidencia.clase === 'discrepancia' ? 'Discrepancia' : coincidencia.clase === 'estable' ? 'Estable' : 'Coinciden'}</div>
+      </div>
+    </div>
+    <div style="font-size:11px;color:var(--muted);margin-top:10px;padding-top:8px;border-top:1px solid var(--border);line-height:1.5">
+      ${coincidencia.texto}
+    </div>
+    <div style="font-size:9.5px;color:var(--muted);margin-top:8px">
+      ⚠️ Esta comparación describe la tendencia de los modelos y la observación real — no es, por sí sola, una alerta de inundación. Una alerta requiere además nivel/caudal observado, umbrales oficiales y persistencia de la crecida.
+    </div>`;
+}
+
+// Comparación de fuentes por estación (por ahora solo Asunción tiene las 3
+// fuentes potenciales; se puede ampliar a otras estaciones a medida que la
+// DMH publique más observaciones)
+function renderComparacionModelos(asuncionFlood) {
+  const el = document.getElementById('rio-comparacion-modelos');
+  if (!el) return;
+
+  let glofasActual = null, glofasPico = null, glofasFechaPico = null, tendenciaGlofas = null;
+  if (asuncionFlood && asuncionFlood.daily) {
+    const times = asuncionFlood.daily.time || [];
+    const values = asuncionFlood.daily.river_discharge || [];
+    const futureValues = values.slice(30);
+    const futureTimes = times.slice(30);
+    if (futureValues.length) {
+      glofasActual = futureValues[0];
+      glofasPico = Math.max(...futureValues.filter(v => v != null));
+      glofasFechaPico = futureTimes[futureValues.indexOf(glofasPico)];
+      tendenciaGlofas = glofasPico > glofasActual * 1.15 ? 'creciente 📈' : glofasPico < glofasActual * 0.9 ? 'decreciente 📉' : 'estable ➡️';
+    }
+  }
+  const dmh = getDmhEstacionObservada('Asunción');
+
+  el.innerHTML = `
+    <div class="card-title">🔎 Comparación de fuentes — Puerto de Asunción</div>
+
+    <div style="border:1px dashed var(--border);border-radius:9px;padding:10px;margin-top:8px">
+      <div style="display:flex;justify-content:space-between;align-items:center">
+        <b style="font-size:12px;color:var(--text)">🥇 MGB-IPH / SSTd-CIC — Modelo principal</b>
+      </div>
+      <div style="font-size:11px;color:var(--muted);margin-top:4px">
+        La DMH publica este pronóstico como boletín periódico (gráfico/PDF), sin API pública con datos estructurados. No se puede traer un valor automático y confiable acá.
+      </div>
+      <a href="${DMH_BOLETIN_CAUDALES_URL}" target="_blank" rel="noopener" style="display:inline-block;margin-top:8px;font-size:11px;color:#38bdf8">Ver boletín oficial de la DMH ↗</a>
+    </div>
+
+    <div style="border:1px solid var(--border);border-radius:9px;padding:10px;margin-top:8px">
+      <div style="display:flex;justify-content:space-between;align-items:center">
+        <b style="font-size:12px;color:var(--text)">🥈 GloFAS — Verificación independiente</b>
+      </div>
+      ${glofasActual != null ? `
+        <div style="display:flex;gap:16px;margin-top:6px;flex-wrap:wrap">
+          <div><div style="font-size:9px;color:var(--muted)">VALOR ACTUAL</div><div style="font-size:14px;font-weight:700;color:#38bdf8;font-family:'Courier New',monospace">${Math.round(glofasActual)} m³/s</div></div>
+          <div><div style="font-size:9px;color:var(--muted)">PICO PROYECTADO</div><div style="font-size:14px;font-weight:700;color:#fbbf24;font-family:'Courier New',monospace">${Math.round(glofasPico)} m³/s</div></div>
+          <div><div style="font-size:9px;color:var(--muted)">HORIZONTE</div><div style="font-size:11px;color:var(--text)">${new Date(glofasFechaPico).toLocaleDateString('es-PY',{day:'numeric',month:'short'})}</div></div>
+        </div>
+        <div style="font-size:11px;color:var(--muted);margin-top:6px">Tendencia: ${tendenciaGlofas}</div>
+      ` : '<div style="font-size:11px;color:var(--muted);margin-top:6px">GloFAS: sin datos disponibles para este punto.</div>'}
+    </div>
+
+    <div style="border:1px solid rgba(74,222,128,0.35);border-radius:9px;padding:10px;margin-top:8px">
+      <div style="display:flex;justify-content:space-between;align-items:center">
+        <b style="font-size:12px;color:var(--text)">🥉 Estación DMH — Observación real</b>
+      </div>
+      ${dmh ? `
+        <div style="display:flex;gap:16px;margin-top:6px;flex-wrap:wrap">
+          <div><div style="font-size:9px;color:var(--muted)">NIVEL DEL DÍA</div><div style="font-size:14px;font-weight:700;color:#4ade80;font-family:'Courier New',monospace">${dmh.nivel_texto} m</div></div>
+          <div><div style="font-size:9px;color:var(--muted)">VARIACIÓN DIARIA</div><div style="font-size:14px;font-weight:700;color:var(--text);font-family:'Courier New',monospace">${(typeof dmh.variacion === 'number' && dmh.variacion > 0) ? '+' : ''}${dmh.variacion_texto} cm</div></div>
+          <div><div style="font-size:9px;color:var(--muted)">FECHA</div><div style="font-size:11px;color:var(--text)">${dmh.fecha}</div></div>
+        </div>
+        <div style="font-size:11px;color:var(--muted);margin-top:6px">Tendencia: ${dmh.tendencia || 'estable'}</div>
+      ` : '<div style="font-size:11px;color:var(--muted);margin-top:6px">Observación DMH no disponible en este momento.</div>'}
+    </div>
+
+    <div style="font-size:9.5px;color:var(--muted);margin-top:10px;text-align:center">
+      Fuente principal: MGB-IPH/SSTd-CIC (DMH) · Verificación: GloFAS/Copernicus · Observación: estación DMH correspondiente
+    </div>`;
+}
+
 function renderRioFromCache(data) {
   // Banner preview
   const previewEl = document.getElementById('rio-banner-preview');
@@ -4226,6 +4335,8 @@ function renderRioFromCache(data) {
 
   renderRioLluviasCuenca('rio-lluvias-cuenca', RIO_CUENCA_ALTA, data.cuencaData);
   renderRioLluviasCuenca('rio-lluvias-cuenca-media', RIO_CUENCA_MEDIA, data.cuencaMediaData);
+  renderPanelEstadoRio(data.asuncionFlood);
+  renderComparacionModelos(data.asuncionFlood);
   renderRioCrecidaChart(data.asuncionFlood);
   renderRioPuertosList(data.puertosData);
   renderRioNivelEsperado(data.asuncionFlood);
@@ -4319,32 +4430,6 @@ function renderRioMapaRiesgo(puertosData) {
 }
 
 // 4 y 8. Lista de puertos monitoreados con alertas automáticas
-// Muestra/oculta el detalle de metodología: de dónde sale el "caudal medio"
-// de referencia de cada puerto y por qué el caudal actual es una estimación
-// de modelo (GloFAS), no una medición confirmada de estación de aforo.
-function toggleRioMetodologia() {
-  const el = document.getElementById('rio-metodologia-detalle');
-  const caret = document.getElementById('rio-metodologia-caret');
-  if (!el) return;
-  const abierto = el.style.display === 'block';
-  if (abierto) { el.style.display = 'none'; if (caret) caret.textContent = '▾'; return; }
-
-  const todos = [...RIO_PUERTOS, ...RIO_PUERTO_PARANA];
-  el.innerHTML = `
-    <div style="font-weight:600;color:var(--text);margin-bottom:6px">Caudal medio de referencia por estación</div>
-    ${todos.map(p => `
-      <div style="padding:5px 0;border-bottom:1px solid var(--border)">
-        <b style="color:var(--text)">${p.nombre}</b>: ${p.caudal_medio_m3s ? p.caudal_medio_m3s.toLocaleString('es-PY') : '—'} m³/s medio
-        <div style="color:var(--muted)">Fuente: ${p.fuente_caudal || 'sin referencia específica'}</div>
-      </div>
-    `).join('')}
-    <div style="margin-top:6px;color:var(--muted)">
-      El caudal actual de cada puerto es un pronóstico/reanálisis de GloFAS (Copernicus Emergency Management Service vía Open-Meteo), no la lectura de un caudalímetro en tiempo real. El estado (Normal/Atención/Alerta/Peligro) se calcula comparando ese valor contra el caudal medio de esta tabla — no hay un umbral único para todos los puertos.
-    </div>`;
-  el.style.display = 'block';
-  if (caret) caret.textContent = '▴';
-}
-
 function renderRioPuertosList(puertosData) {
   const el = document.getElementById('rio-puertos-list');
   if (!el) return;
@@ -4435,104 +4520,6 @@ function renderRioHistoricoChart(floodData) {
 }
 
 // Dibuja un gráfico de línea genérico (canvas nativo, sin librerías)
-// =============================================
-// PRONÓSTICO HIDROLÓGICO DMH — Puerto de Asunción y Puerto de Ayolas
-// Fuente: gráficos oficiales del Departamento de Pronósticos Hidrológicos -
-// DMH (modelo MGB-IPH SSTd-CIC Plata), compartidos por el usuario.
-// Los valores de abajo son una lectura aproximada de esos gráficos (no hay
-// una API con los datos crudos) — se usan solo para reproducir la FORMA y
-// TENDENCIA del pronóstico visual, no como medición exacta. Por eso en la
-// UI todo se presenta con lenguaje de proyección/escenario, nunca como
-// hecho confirmado.
-// =============================================
-const DMH_PRONOSTICO_FECHA = '08/09/2026'; // fecha del gráfico compartido por el usuario
-
-const DMH_ASUNCION = {
-  labels: ['Set','','Oct','','Nov','','Dic','','Ene','','Feb'],
-  precipitacion: [5, 15, 35, 10, 52, 20, 45, 15, 63, 55, 93],
-  caudal: [650, 700, 900, 750, 700, 1150, 1400, 1300, 1450, 1600, 2000],
-};
-const DMH_AYOLAS = {
-  labels: ['Set','','Oct','','Nov','','Dic','','Ene','','Feb'],
-  precipitacion: [10, 45, 120, 25, 130, 35, 20, 15, 35, 65, 30],
-  caudal: [10500, 10000, 9000, 8500, 9000, 16000, 13000, 14000, 15000, 20000, 29000],
-};
-
-// Gráfico combinado: barras de precipitación (mm) + línea de caudal (m³/s),
-// cada una con su propia escala — igual patrón visual que el gráfico
-// original de la DMH, adaptado al estilo oscuro de Noticlima.
-function drawHidroForecastChart(canvas, labels, precip, caudal) {
-  if (!canvas) return;
-  const dpr = window.devicePixelRatio || 1;
-  const W = canvas.offsetWidth || 300;
-  const H = 150;
-  canvas.width = W * dpr; canvas.height = H * dpr;
-  const ctx = canvas.getContext('2d');
-  ctx.scale(dpr, dpr);
-  ctx.clearRect(0,0,W,H);
-
-  const padL=38, padR=38, padT=12, padB=20;
-  const w = W - padL - padR, h = H - padT - padB;
-  const n = caudal.length;
-
-  ctx.fillStyle = '#1a2235';
-  if (ctx.roundRect) { ctx.beginPath(); ctx.roundRect(0,0,W,H,8); ctx.fill(); } else { ctx.fillRect(0,0,W,H); }
-
-  const maxPrecip = Math.max(...precip) * 1.15;
-  const minCaudal = Math.min(...caudal) * 0.92, maxCaudal = Math.max(...caudal) * 1.05;
-
-  // Grid horizontal
-  ctx.strokeStyle = 'rgba(255,255,255,0.06)'; ctx.lineWidth = 1;
-  for (let i=0;i<=3;i++) {
-    const y = padT + (i/3)*h;
-    ctx.beginPath(); ctx.moveTo(padL,y); ctx.lineTo(padL+w,y); ctx.stroke();
-  }
-
-  // Barras de precipitación (mm) — eje izquierdo
-  ctx.fillStyle = 'rgba(96,165,250,0.55)';
-  const barW = Math.max(2, (w/n) * 0.5);
-  precip.forEach((v,i) => {
-    const x = padL + (i/(n-1))*w - barW/2;
-    const barH = (v/maxPrecip)*h;
-    ctx.fillRect(x, padT+h-barH, barW, barH);
-  });
-
-  // Línea de caudal (m³/s) — eje derecho
-  ctx.beginPath();
-  caudal.forEach((v,i) => {
-    const x = padL + (i/(n-1))*w;
-    const y = padT + h - ((v-minCaudal)/(maxCaudal-minCaudal))*h;
-    i===0 ? ctx.moveTo(x,y) : ctx.lineTo(x,y);
-  });
-  ctx.strokeStyle = '#f87171'; ctx.lineWidth = 2.2; ctx.stroke();
-
-  // Etiquetas eje izquierdo (mm)
-  ctx.fillStyle = 'rgba(96,165,250,0.9)'; ctx.font = '9px monospace';
-  ctx.fillText(Math.round(maxPrecip)+'mm', 2, padT+8);
-  ctx.fillText('0', 2, padT+h);
-
-  // Etiquetas eje derecho (m³/s)
-  ctx.fillStyle = 'rgba(248,113,113,0.9)'; ctx.textAlign = 'right';
-  ctx.fillText(Math.round(maxCaudal).toLocaleString('es-PY'), W-2, padT+8);
-  ctx.fillText(Math.round(minCaudal).toLocaleString('es-PY'), W-2, padT+h);
-  ctx.textAlign = 'left';
-
-  // Etiquetas eje X (meses)
-  ctx.fillStyle = 'rgba(255,255,255,0.4)'; ctx.font = '9px sans-serif';
-  labels.forEach((lab,i) => {
-    if (!lab) return;
-    const x = padL + (i/(n-1))*w;
-    ctx.fillText(lab, x-8, H-6);
-  });
-}
-
-function renderDmhPronosticoHidrologico() {
-  drawHidroForecastChart(document.getElementById('dmhChartAsuncion'), DMH_ASUNCION.labels, DMH_ASUNCION.precipitacion, DMH_ASUNCION.caudal);
-  drawHidroForecastChart(document.getElementById('dmhChartAyolas'), DMH_AYOLAS.labels, DMH_AYOLAS.precipitacion, DMH_AYOLAS.caudal);
-  const f = document.getElementById('dmh-fecha-actualizacion');
-  if (f) f.textContent = 'Gráfico de referencia del ' + DMH_PRONOSTICO_FECHA + ' · próxima corrida del modelo puede variar estos valores';
-}
-
 function drawRioLineChart(canvas, labels, values, color, unit) {
   if (!canvas) return;
   const dpr = window.devicePixelRatio || 1;
