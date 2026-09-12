@@ -102,6 +102,7 @@
   .tab-ico-red    { color:#ef4444; }
   .tab-ico-gold   { color:#f59e0b; }
   .tab-ico-blue   { color:#3b82f6; }
+  .tab-ico-purple { color:#a78bfa; }
   .tab-ico-green  { color:#22c55e; }
   .tab-ico-orange { color:#f97316; }
 
@@ -553,6 +554,10 @@
   <div class="tab" onclick="showTab('rio')">
     <span class="tab-ico tab-ico-blue"><svg viewBox="0 0 24 24"><path d="M2 16q2.5-4 5-0t5-4 5 4 5-4" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"/><path d="M2 20q2.5-4 5-0t5-4 5 4 5-4" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" opacity="0.5"/></svg></span>
     Río Paraguay
+  </div>
+  <div class="tab" onclick="showTab('avanzado')">
+    <span class="tab-ico tab-ico-purple"><svg viewBox="0 0 24 24"><path d="M9 2v6l-5 9a2 2 0 0 0 2 3h12a2 2 0 0 0 2-3l-5-9V2" fill="none" stroke="currentColor" stroke-width="2" stroke-linejoin="round"/><line x1="9" y1="2" x2="15" y2="2" stroke="currentColor" stroke-width="2"/></svg></span>
+    Avanzado
   </div>
 </div>
 
@@ -1023,6 +1028,87 @@
   </div>
 </div>
 
+<!-- PREDICCIÓN AVANZADA -->
+<div class="section" id="sec-avanzado">
+
+  <div class="card" style="margin-bottom:10px;border:1px solid rgba(167,139,250,0.3)">
+    <div class="card-title" style="color:#a78bfa">🔬 Predicción Avanzada — Modelos</div>
+    <div style="font-size:11px;color:var(--muted);line-height:1.5">
+      Herramientas de análisis basadas en modelos numéricos internacionales. <b style="color:#fbbf24">Esto no reemplaza los avisos oficiales del DMH</b> — son señales de modelo para seguimiento técnico, no confirmaciones de eventos.
+    </div>
+  </div>
+
+  <!-- Selector de herramienta -->
+  <div style="display:flex;gap:6px;margin-bottom:10px;overflow-x:auto;padding-bottom:2px">
+    <button class="btn-adv-tool active" id="btn-adv-sondeo" onclick="switchAdvTool('sondeo')" style="flex:1;min-width:110px;padding:9px 6px;font-size:10.5px;font-weight:600;background:var(--accent2);color:#fff;border:none;border-radius:8px;cursor:pointer;white-space:nowrap">🎈 Sondeo GEFS</button>
+    <button class="btn-adv-tool" id="btn-adv-severidad" onclick="switchAdvTool('severidad')" style="flex:1;min-width:110px;padding:9px 6px;font-size:10.5px;font-weight:600;background:var(--bg-card2);color:var(--text);border:1px solid var(--border);border-radius:8px;cursor:pointer;white-space:nowrap">🌩️ Severidad GEFS</button>
+    <button class="btn-adv-tool" id="btn-adv-sam" onclick="switchAdvTool('sam')" style="flex:1;min-width:110px;padding:9px 6px;font-size:10.5px;font-weight:600;background:var(--bg-card2);color:var(--text);border:1px solid var(--border);border-radius:8px;cursor:pointer;white-space:nowrap">🌀 Índice SAM</button>
+  </div>
+
+  <!-- ============ SONDEO GEFS (Rawinsonde) ============ -->
+  <div id="adv-panel-sondeo" class="adv-panel">
+    <div class="card" style="margin-bottom:10px">
+      <div class="card-title">🎈 Sondeo Atmosférico — Media del Ensemble GEFS</div>
+      <div style="font-size:10.5px;color:var(--muted);line-height:1.5;margin-bottom:8px">
+        Perfil vertical de la atmósfera (temperatura, humedad y viento en altura) calculado como <b>media de los 31 miembros del ensemble GEFS</b> (NOAA/NCEP), vía Open-Meteo. No es un sondeo real de globo — es una estimación de modelo.
+      </div>
+      <div style="display:flex;gap:6px;flex-wrap:wrap;margin-bottom:8px">
+        <select id="adv-sondeo-ciudad" onchange="cargarSondeoGefs()" style="flex:1;min-width:130px;background:var(--bg-card2);border:1px solid var(--border);border-radius:7px;padding:7px;color:var(--text);font-size:11px">
+          <option value="-25.2867,-57.6350">Asunción</option>
+          <option value="-23.4055,-57.4333">Concepción</option>
+          <option value="-27.3333,-55.8667">Encarnación</option>
+          <option value="-25.5194,-54.6111">Ciudad del Este</option>
+          <option value="-22.5597,-60.0022">Mariscal Estigarribia</option>
+        </select>
+        <select id="adv-sondeo-hora" onchange="renderSondeoGefs()" style="flex:1;min-width:110px;background:var(--bg-card2);border:1px solid var(--border);border-radius:7px;padding:7px;color:var(--text);font-size:11px"></select>
+      </div>
+      <div id="adv-sondeo-resultado">
+        <div class="loading" style="padding:16px"><div class="spinner"></div><div class="loading-text">Consultando GEFS…</div></div>
+      </div>
+    </div>
+  </div>
+
+  <!-- ============ SEVERIDAD GEFS ============ -->
+  <div id="adv-panel-severidad" class="adv-panel" style="display:none">
+    <div class="card" style="margin-bottom:10px">
+      <div class="card-title">🌩️ Parámetros de Severidad — GEFS</div>
+      <div style="font-size:10.5px;color:var(--muted);line-height:1.5;margin-bottom:8px">
+        Parámetros de inestabilidad (CAPE, Lifted Index) derivados del ensemble GEFS. <b style="color:#fbbf24">Aclaración importante:</b> el Storm Prediction Center (SPC) de EE.UU. no emite pronósticos para Sudamérica — esto NO es un producto SPC, es un cálculo propio de parámetros de severidad a partir de datos GEFS.
+      </div>
+      <div style="display:flex;gap:6px;flex-wrap:wrap;margin-bottom:8px">
+        <select id="adv-sev-ciudad" onchange="cargarSeveridadGefs()" style="flex:1;min-width:130px;background:var(--bg-card2);border:1px solid var(--border);border-radius:7px;padding:7px;color:var(--text);font-size:11px">
+          <option value="-25.2867,-57.6350">Asunción</option>
+          <option value="-23.4055,-57.4333">Concepción</option>
+          <option value="-27.3333,-55.8667">Encarnación</option>
+          <option value="-25.5194,-54.6111">Ciudad del Este</option>
+          <option value="-22.5597,-60.0022">Mariscal Estigarribia</option>
+        </select>
+      </div>
+      <div id="adv-sev-resultado">
+        <div class="loading" style="padding:16px"><div class="spinner"></div><div class="loading-text">Consultando GEFS…</div></div>
+      </div>
+    </div>
+  </div>
+
+  <!-- ============ ÍNDICE SAM ============ -->
+  <div id="adv-panel-sam" class="adv-panel" style="display:none">
+    <div class="card" style="margin-bottom:10px">
+      <div class="card-title">🌀 Índice SAM (Southern Annular Mode)</div>
+      <div style="font-size:10.5px;color:var(--muted);line-height:1.5;margin-bottom:8px">
+        También llamado Antártic Oscillation. Mide si los vientos del oeste alrededor de la Antártida están más contraídos (fase positiva) o expandidos hacia latitudes más bajas (fase negativa) — esto último suele asociarse a más lluvia en el sur/centro de Sudamérica. Fuente: NOAA Climate Prediction Center.
+      </div>
+      <div id="adv-sam-resultado">
+        <div class="loading" style="padding:16px"><div class="spinner"></div><div class="loading-text">Consultando NOAA CPC…</div></div>
+      </div>
+    </div>
+  </div>
+
+  <div style="font-size:10px;color:var(--muted);text-align:center;padding:8px">
+    Fuentes: NOAA/NCEP GEFS (vía Open-Meteo Ensemble API) · NOAA Climate Prediction Center (índice SAM/AAO)<br>
+    Noticlima de <span class="notilea-tag">Notilea</span> · Ninguno de estos productos reemplaza los avisos oficiales del DMH
+  </div>
+</div>
+
 
 <footer>
   <span class="notilea-tag">Notilea</span> · Desde Nueva Asunción · <a href="#">notilea.com.py</a><br>
@@ -1074,7 +1160,7 @@ let state = {
 // =============================================
 function showTab(id) {
   document.querySelectorAll('.tab').forEach((t,i) => {
-    const ids = ['actual','alertas','noticias','reportes','horas','dias','dias15','mapa','enso','eventos','rio'];
+    const ids = ['actual','alertas','noticias','reportes','horas','dias','dias15','mapa','enso','eventos','rio','avanzado'];
     t.classList.toggle('active', ids[i] === id);
   });
   document.querySelectorAll('.section').forEach(s => s.classList.remove('active'));
@@ -1084,6 +1170,7 @@ function showTab(id) {
   if (id === 'reportes') cargarImagenesReportes();
   if (id === 'eventos') renderEventos();
   if (id === 'rio') renderRioParaguay();
+  if (id === 'avanzado') initPrediccionAvanzada();
   if (id === 'mapa') { 
     renderMapWeather(); 
     document.getElementById('radar-panel').style.display = 'block';
@@ -4319,6 +4406,217 @@ function renderComparacionModelos(asuncionFlood) {
     <div style="font-size:9.5px;color:var(--muted);margin-top:10px;text-align:center">
       Fuente principal: MGB-IPH/SSTd-CIC (DMH) · Verificación: GloFAS/Copernicus · Observación: estación DMH correspondiente
     </div>`;
+}
+
+// =============================================
+// PREDICCIÓN AVANZADA — Sondeo GEFS, Severidad GEFS, Índice SAM
+// =============================================
+const GEFS_ENSEMBLE_API = 'https://ensemble-api.open-meteo.com/v1/ensemble';
+const GEFS_NIVELES_HPA = [1000, 925, 850, 700, 500, 300, 200];
+let advTabInited = false;
+let advSondeoData = null; // cache en memoria de la última respuesta del sondeo
+
+function initPrediccionAvanzada() {
+  if (!advTabInited) {
+    advTabInited = true;
+    cargarSondeoGefs();
+    cargarSeveridadGefs();
+    cargarSamIndex();
+  }
+}
+
+function switchAdvTool(tool) {
+  ['sondeo','severidad','sam'].forEach(t => {
+    const panel = document.getElementById('adv-panel-' + t);
+    const btn = document.getElementById('btn-adv-' + t);
+    const activo = t === tool;
+    if (panel) panel.style.display = activo ? 'block' : 'none';
+    if (btn) {
+      btn.classList.toggle('active', activo);
+      btn.style.background = activo ? 'var(--accent2)' : 'var(--bg-card2)';
+      btn.style.color = activo ? '#fff' : 'var(--text)';
+      btn.style.border = activo ? 'none' : '1px solid var(--border)';
+    }
+  });
+}
+
+// ---- 1. Sondeo GEFS (rawinsonde) ----
+async function cargarSondeoGefs() {
+  const sel = document.getElementById('adv-sondeo-ciudad');
+  const [lat, lon] = sel.value.split(',');
+  const el = document.getElementById('adv-sondeo-resultado');
+  el.innerHTML = '<div class="loading" style="padding:16px"><div class="spinner"></div><div class="loading-text">Consultando GEFS…</div></div>';
+
+  const vars = [];
+  GEFS_NIVELES_HPA.forEach(h => vars.push(`temperature_${h}hPa`, `relative_humidity_${h}hPa`, `wind_speed_${h}hPa`, `wind_direction_${h}hPa`));
+  const url = `${GEFS_ENSEMBLE_API}?latitude=${lat}&longitude=${lon}&models=ncep_gefs025&hourly=${vars.join(',')},cape,lifted_index&forecast_days=3&timezone=America%2FAsuncion`;
+
+  try {
+    const controller = new AbortController();
+    const t = setTimeout(() => controller.abort(), 12000);
+    const resp = await fetch(url, { signal: controller.signal });
+    clearTimeout(t);
+    if (!resp.ok) throw new Error('HTTP ' + resp.status);
+    const data = await resp.json();
+    advSondeoData = data;
+
+    // Armar el selector de horas de pronóstico
+    const horaSel = document.getElementById('adv-sondeo-hora');
+    const times = data.hourly && data.hourly.time ? data.hourly.time : [];
+    horaSel.innerHTML = times.map((t, i) => {
+      const d = new Date(t);
+      const label = d.toLocaleDateString('es-PY', {weekday:'short', day:'numeric'}) + ' ' + d.toLocaleTimeString('es-PY', {hour:'2-digit', minute:'2-digit'});
+      return `<option value="${i}" ${i === 0 ? 'selected' : ''}>${label}</option>`;
+    }).join('');
+
+    renderSondeoGefs();
+  } catch (e) {
+    el.innerHTML = `<div style="text-align:center;padding:16px;color:var(--muted);font-size:12px">📡 Datos no disponibles por ahora.<br><button onclick="cargarSondeoGefs()" class="btn-search" style="margin-top:8px;font-size:12px">🔄 Reintentar</button></div>`;
+  }
+}
+
+// Calcula la media del ensemble (todos los miembros member00..memberNN) para
+// una variable+índice horario dado
+function mediaEnsemble(hourly, prefijo, idx) {
+  const claves = Object.keys(hourly).filter(k => k === prefijo || k.startsWith(prefijo + '_member'));
+  const vals = claves.map(k => hourly[k] ? hourly[k][idx] : null).filter(v => v != null);
+  if (!vals.length) return null;
+  return vals.reduce((a,b) => a+b, 0) / vals.length;
+}
+
+function renderSondeoGefs() {
+  const el = document.getElementById('adv-sondeo-resultado');
+  if (!advSondeoData || !advSondeoData.hourly) return;
+  const idx = parseInt(document.getElementById('adv-sondeo-hora').value || 0, 10);
+  const hourly = advSondeoData.hourly;
+
+  const cape = mediaEnsemble(hourly, 'cape', idx);
+  const li = mediaEnsemble(hourly, 'lifted_index', idx);
+
+  const filas = GEFS_NIVELES_HPA.map(h => {
+    const temp = mediaEnsemble(hourly, `temperature_${h}hPa`, idx);
+    const hum = mediaEnsemble(hourly, `relative_humidity_${h}hPa`, idx);
+    const ws = mediaEnsemble(hourly, `wind_speed_${h}hPa`, idx);
+    const wd = mediaEnsemble(hourly, `wind_direction_${h}hPa`, idx);
+    return { h, temp, hum, ws, wd };
+  });
+
+  el.innerHTML = `
+    <div style="display:flex;gap:16px;margin-bottom:10px;flex-wrap:wrap">
+      <div><div style="font-size:9px;color:var(--muted);text-transform:uppercase">CAPE (media ensemble)</div><div style="font-size:15px;font-weight:700;color:${cape > 1500 ? '#f87171' : cape > 500 ? '#fbbf24' : 'var(--text)'};font-family:'Courier New',monospace">${cape != null ? Math.round(cape) : '—'} <span style="font-size:10px;color:var(--muted)">J/kg</span></div></div>
+      <div><div style="font-size:9px;color:var(--muted);text-transform:uppercase">Lifted Index</div><div style="font-size:15px;font-weight:700;color:${li < -2 ? '#f87171' : li < 0 ? '#fbbf24' : 'var(--text)'};font-family:'Courier New',monospace">${li != null ? li.toFixed(1) : '—'}</div></div>
+    </div>
+    <table style="width:100%;border-collapse:collapse;font-size:11px">
+      <thead><tr style="border-bottom:1px solid var(--border);color:var(--muted);text-align:left">
+        <th style="padding:4px 2px">hPa</th><th style="padding:4px 2px">Temp</th><th style="padding:4px 2px">Hum.</th><th style="padding:4px 2px">Viento</th>
+      </tr></thead>
+      <tbody>
+        ${filas.map(f => `<tr style="border-bottom:1px solid var(--border)">
+          <td style="padding:5px 2px;color:var(--text);font-family:'Courier New',monospace">${f.h}</td>
+          <td style="padding:5px 2px;color:var(--text)">${f.temp != null ? f.temp.toFixed(1)+'°C' : '—'}</td>
+          <td style="padding:5px 2px;color:var(--muted)">${f.hum != null ? Math.round(f.hum)+'%' : '—'}</td>
+          <td style="padding:5px 2px;color:var(--muted)">${f.ws != null ? Math.round(f.ws)+' km/h '+gradoAdireccion(f.wd) : '—'}</td>
+        </tr>`).join('')}
+      </tbody>
+    </table>
+    <div style="font-size:9px;color:var(--muted);margin-top:8px">Media de 31 miembros del ensemble GEFS (NOAA/NCEP) vía Open-Meteo · No es un sondeo real de globo</div>`;
+}
+
+function gradoAdireccion(deg) {
+  if (deg == null) return '';
+  const dirs = ['N','NE','E','SE','S','SO','O','NO'];
+  return dirs[Math.round(deg / 45) % 8];
+}
+
+// ---- 2. Severidad GEFS (parámetros de inestabilidad — NO es producto SPC) ----
+async function cargarSeveridadGefs() {
+  const sel = document.getElementById('adv-sev-ciudad');
+  const [lat, lon] = sel.value.split(',');
+  const el = document.getElementById('adv-sev-resultado');
+  el.innerHTML = '<div class="loading" style="padding:16px"><div class="spinner"></div><div class="loading-text">Consultando GEFS…</div></div>';
+
+  const url = `${GEFS_ENSEMBLE_API}?latitude=${lat}&longitude=${lon}&models=ncep_gefs025&hourly=cape,lifted_index,wind_speed_10m,wind_speed_500hPa&forecast_days=5&timezone=America%2FAsuncion`;
+
+  try {
+    const controller = new AbortController();
+    const t = setTimeout(() => controller.abort(), 12000);
+    const resp = await fetch(url, { signal: controller.signal });
+    clearTimeout(t);
+    if (!resp.ok) throw new Error('HTTP ' + resp.status);
+    const data = await resp.json();
+    const hourly = data.hourly || {};
+    const times = hourly.time || [];
+
+    // Tomar 1 punto cada 6h para no saturar la vista
+    const paso = 6;
+    const filas = [];
+    for (let i = 0; i < times.length; i += paso) {
+      const cape = mediaEnsemble(hourly, 'cape', i);
+      const li = mediaEnsemble(hourly, 'lifted_index', i);
+      const wSup = mediaEnsemble(hourly, 'wind_speed_10m', i);
+      const wAlt = mediaEnsemble(hourly, 'wind_speed_500hPa', i);
+      const cizalla = (wSup != null && wAlt != null) ? Math.abs(wAlt - wSup) : null;
+      filas.push({ t: times[i], cape, li, cizalla });
+    }
+
+    const señal = filas.some(f => f.cape != null && f.cape > 1500 && f.li != null && f.li < -2);
+
+    el.innerHTML = `
+      ${señal ? `<div style="display:flex;align-items:center;gap:6px;background:rgba(251,191,36,0.1);border:1px solid rgba(251,191,36,0.35);border-radius:8px;padding:8px 10px;margin-bottom:10px">
+        <span>⚠️</span><span style="font-size:11px;color:#fbbf24"><b>Señal de modelo: requiere seguimiento.</b> El ensemble GEFS muestra combinación de CAPE alto e inestabilidad en el horizonte de pronóstico. Esto no es una alerta oficial.</span>
+      </div>` : `<div style="font-size:11px;color:var(--muted);margin-bottom:10px">Sin señales destacadas de inestabilidad severa en el horizonte de 5 días para este punto, según GEFS.</div>`}
+      <div style="overflow-x:auto">
+      <table style="width:100%;border-collapse:collapse;font-size:10.5px;min-width:400px">
+        <thead><tr style="border-bottom:1px solid var(--border);color:var(--muted);text-align:left">
+          <th style="padding:4px 2px">Fecha/hora</th><th style="padding:4px 2px">CAPE</th><th style="padding:4px 2px">Lifted Index</th><th style="padding:4px 2px">Cizalladura aprox.</th>
+        </tr></thead>
+        <tbody>
+          ${filas.map(f => `<tr style="border-bottom:1px solid var(--border)">
+            <td style="padding:5px 2px;color:var(--text)">${new Date(f.t).toLocaleDateString('es-PY',{day:'numeric',month:'short'})} ${new Date(f.t).toLocaleTimeString('es-PY',{hour:'2-digit',minute:'2-digit'})}</td>
+            <td style="padding:5px 2px;color:${f.cape > 1500 ? '#f87171' : f.cape > 500 ? '#fbbf24' : 'var(--muted)'}">${f.cape != null ? Math.round(f.cape) : '—'} J/kg</td>
+            <td style="padding:5px 2px;color:${f.li < -2 ? '#f87171' : 'var(--muted)'}">${f.li != null ? f.li.toFixed(1) : '—'}</td>
+            <td style="padding:5px 2px;color:var(--muted)">${f.cizalla != null ? Math.round(f.cizalla)+' km/h' : '—'}</td>
+          </tr>`).join('')}
+        </tbody>
+      </table>
+      </div>
+      <div style="font-size:9px;color:var(--muted);margin-top:8px">Cizalladura aproximada = diferencia entre viento a 500hPa y viento a 10m (no es un cálculo de cizalladura 0-6km estándar) · Media del ensemble GEFS</div>`;
+  } catch (e) {
+    el.innerHTML = `<div style="text-align:center;padding:16px;color:var(--muted);font-size:12px">📡 Datos no disponibles por ahora.<br><button onclick="cargarSeveridadGefs()" class="btn-search" style="margin-top:8px;font-size:12px">🔄 Reintentar</button></div>`;
+  }
+}
+
+// ---- 3. Índice SAM (vía Worker, no se descarga el archivo completo de NOAA) ----
+async function cargarSamIndex() {
+  const el = document.getElementById('adv-sam-resultado');
+  try {
+    const controller = new AbortController();
+    const t = setTimeout(() => controller.abort(), 10000);
+    const resp = await fetch(DMH_WORKER_URL + '/sam-index', { signal: controller.signal });
+    clearTimeout(t);
+    if (!resp.ok) throw new Error('HTTP ' + resp.status);
+    const data = await resp.json();
+    if (!data.actual) throw new Error('sin datos');
+
+    const fase = data.actual.valor > 0.5 ? 'Positiva' : data.actual.valor < -0.5 ? 'Negativa' : 'Neutra';
+    const color = data.actual.valor > 0.5 ? '#4ade80' : data.actual.valor < -0.5 ? '#f87171' : 'var(--muted)';
+
+    el.innerHTML = `
+      <div style="display:flex;gap:16px;flex-wrap:wrap;margin-bottom:10px">
+        <div><div style="font-size:9px;color:var(--muted);text-transform:uppercase">Valor actual</div><div style="font-size:18px;font-weight:700;color:${color};font-family:'Courier New',monospace">${data.actual.valor.toFixed(2)}</div></div>
+        <div><div style="font-size:9px;color:var(--muted);text-transform:uppercase">Fase</div><div style="font-size:14px;font-weight:700;color:${color}">${fase}</div></div>
+        <div><div style="font-size:9px;color:var(--muted);text-transform:uppercase">Fecha</div><div style="font-size:12px;color:var(--text)">${data.actual.fecha}</div></div>
+      </div>
+      <canvas id="adv-sam-chart" height="120"></canvas>
+      <div style="font-size:10.5px;color:var(--muted);margin-top:8px;line-height:1.5">
+        ${fase === 'Negativa' ? 'Fase negativa: puede favorecer más lluvia en el sur/centro de Sudamérica.' : fase === 'Positiva' ? 'Fase positiva: suele asociarse a condiciones más secas en el sur de Sudamérica, aunque no es una regla fija.' : 'El índice está en un rango neutro, sin señal marcada.'}
+      </div>
+      <div style="font-size:9px;color:var(--muted);margin-top:6px">Última actualización de la fuente: ${data.checkedAt ? new Date(data.checkedAt).toLocaleString('es-PY') : '—'} · <a href="${data.fuente_url}" target="_blank" rel="noopener" style="color:#38bdf8">Fuente: NOAA CPC ↗</a></div>`;
+
+    drawRioLineChart(document.getElementById('adv-sam-chart'), data.valores.slice(-30).map(v => v.fecha.slice(5)), data.valores.slice(-30).map(v => v.valor), '#a78bfa', '');
+  } catch (e) {
+    el.innerHTML = `<div style="text-align:center;padding:16px;color:var(--muted);font-size:12px">📡 Fuente temporalmente no disponible.<br><button onclick="cargarSamIndex()" class="btn-search" style="margin-top:8px;font-size:12px">🔄 Reintentar</button></div>`;
+  }
 }
 
 function renderRioFromCache(data) {
