@@ -1042,7 +1042,7 @@
   <div style="display:flex;gap:6px;margin-bottom:10px;overflow-x:auto;padding-bottom:2px">
     <button class="btn-adv-tool active" id="btn-adv-sondeo" onclick="switchAdvTool('sondeo')" style="flex:1;min-width:110px;padding:9px 6px;font-size:10.5px;font-weight:600;background:var(--accent2);color:#fff;border:none;border-radius:8px;cursor:pointer;white-space:nowrap">🎈 Sondeo GEFS</button>
     <button class="btn-adv-tool" id="btn-adv-severidad" onclick="switchAdvTool('severidad')" style="flex:1;min-width:110px;padding:9px 6px;font-size:10.5px;font-weight:600;background:var(--bg-card2);color:var(--text);border:1px solid var(--border);border-radius:8px;cursor:pointer;white-space:nowrap">🌩️ Severidad GEFS</button>
-    <button class="btn-adv-tool" id="btn-adv-sam" onclick="switchAdvTool('sam')" style="flex:1;min-width:110px;padding:9px 6px;font-size:10.5px;font-weight:600;background:var(--bg-card2);color:var(--text);border:1px solid var(--border);border-radius:8px;cursor:pointer;white-space:nowrap">🌀 Índice SAM</button>
+    <button class="btn-adv-tool" id="btn-adv-astorp" onclick="switchAdvTool('astorp')" style="flex:1;min-width:110px;padding:9px 6px;font-size:10.5px;font-weight:600;background:var(--bg-card2);color:var(--text);border:1px solid var(--border);border-radius:8px;cursor:pointer;white-space:nowrap">⛈️ ASTORP</button>
   </div>
 
   <!-- ============ SONDEO GEFS (Rawinsonde) ============ -->
@@ -1090,21 +1090,26 @@
     </div>
   </div>
 
-  <!-- ============ ÍNDICE SAM ============ -->
-  <div id="adv-panel-sam" class="adv-panel" style="display:none">
+  <!-- ============ ASTORP (Sudamérica) ============ -->
+  <div id="adv-panel-astorp" class="adv-panel" style="display:none">
     <div class="card" style="margin-bottom:10px">
-      <div class="card-title">🌀 Índice SAM (Southern Annular Mode)</div>
+      <div class="card-title">⛈️ ASTORP — Amenazas Convectivas (Sudamérica)</div>
       <div style="font-size:10.5px;color:var(--muted);line-height:1.5;margin-bottom:8px">
-        También llamado Antártic Oscillation. Mide si los vientos del oeste alrededor de la Antártida están más contraídos (fase positiva) o expandidos hacia latitudes más bajas (fase negativa) — esto último suele asociarse a más lluvia en el sur/centro de Sudamérica. Fuente: NOAA Climate Prediction Center.
+        Pronóstico automático estilo SPC (tormenta/granizo/viento/tornado) para Sudamérica — en este sistema, "SAM" es el nombre del dominio Sudamérica, no un índice climático. Generado con GEFS 0.5° por Mateusz Taszarek (autor de <i>thundeR</i>), financiado por una beca del Centro Nacional de Ciencia de Polonia. <b style="color:#fbbf24">Es un producto experimental y automático</b> — no reemplaza los avisos oficiales del DMH.
       </div>
-      <div id="adv-sam-resultado">
-        <div class="loading" style="padding:16px"><div class="spinner"></div><div class="loading-text">Consultando NOAA CPC…</div></div>
+      <div style="display:flex;gap:6px;flex-wrap:wrap;margin-bottom:8px">
+        <select id="adv-astorp-dia" onchange="renderAstorp()" style="flex:1;min-width:110px;background:var(--bg-card2);border:1px solid var(--border);border-radius:7px;padding:7px;color:var(--text);font-size:11px"></select>
+      </div>
+      <div id="adv-astorp-resultado"></div>
+      <a href="https://rawinsonde.com/ASTORP_SAM/index.html" target="_blank" rel="noopener" style="display:block;text-align:center;background:var(--bg-card2);border:1px solid var(--border);border-radius:8px;padding:9px;color:var(--text);font-size:11.5px;text-decoration:none;margin-top:8px">📋 Ver página completa en rawinsonde.com ↗</a>
+      <div style="font-size:9px;color:var(--muted);margin-top:8px">
+        Fuente: <a href="https://rawinsonde.com/ASTORP_SAM/SPC_hazards.html" target="_blank" rel="noopener" style="color:#38bdf8">rawinsonde.com/ASTORP_SAM ↗</a> · Ciclo 06Z-06Z, actualización cada 6 horas
       </div>
     </div>
   </div>
 
   <div style="font-size:10px;color:var(--muted);text-align:center;padding:8px">
-    Fuentes: NOAA/NCEP GEFS (vía Open-Meteo Ensemble API) · NOAA Climate Prediction Center (índice SAM/AAO)<br>
+    Fuentes: NOAA/NCEP GEFS (vía Open-Meteo Ensemble API) · NOAA Climate Prediction Center (índice SAM/AAO) · ASTORP/rawinsonde.com (Mateusz Taszarek)<br>
     Noticlima de <span class="notilea-tag">Notilea</span> · Ninguno de estos productos reemplaza los avisos oficiales del DMH
   </div>
 </div>
@@ -4421,12 +4426,12 @@ function initPrediccionAvanzada() {
     advTabInited = true;
     cargarSondeoGefs();
     cargarSeveridadGefs();
-    cargarSamIndex();
+    initAstorp();
   }
 }
 
 function switchAdvTool(tool) {
-  ['sondeo','severidad','sam'].forEach(t => {
+  ['sondeo','severidad','astorp'].forEach(t => {
     const panel = document.getElementById('adv-panel-' + t);
     const btn = document.getElementById('btn-adv-' + t);
     const activo = t === tool;
@@ -4519,7 +4524,7 @@ function renderSondeoGefs() {
         </tr>`).join('')}
       </tbody>
     </table>
-    <div style="font-size:9px;color:var(--muted);margin-top:8px">Media de 31 miembros del ensemble GEFS (NOAA/NCEP) vía Open-Meteo · No es un sondeo real de globo</div>`;
+    <div style="font-size:9px;color:var(--muted);margin-top:8px">Media de 31 miembros del ensemble GEFS (NOAA/NCEP) vía Open-Meteo · No es un sondeo real de globo · <a href="https://rawinsonde.com" target="_blank" rel="noopener" style="color:#38bdf8">Ver también rawinsonde.com ↗</a></div>`;
 }
 
 function gradoAdireccion(deg) {
@@ -4580,43 +4585,39 @@ async function cargarSeveridadGefs() {
         </tbody>
       </table>
       </div>
-      <div style="font-size:9px;color:var(--muted);margin-top:8px">Cizalladura aproximada = diferencia entre viento a 500hPa y viento a 10m (no es un cálculo de cizalladura 0-6km estándar) · Media del ensemble GEFS</div>`;
+      <div style="font-size:9px;color:var(--muted);margin-top:8px">Cizalladura aproximada = diferencia entre viento a 500hPa y viento a 10m (no es un cálculo de cizalladura 0-6km estándar) · Media del ensemble GEFS · Para el mapa espacial completo de riesgos ver la pestaña <button onclick="switchAdvTool('astorp')" style="background:none;border:none;color:#38bdf8;font-size:9px;padding:0;cursor:pointer;text-decoration:underline">ASTORP</button></div>`;
   } catch (e) {
     el.innerHTML = `<div style="text-align:center;padding:16px;color:var(--muted);font-size:12px">📡 Datos no disponibles por ahora.<br><button onclick="cargarSeveridadGefs()" class="btn-search" style="margin-top:8px;font-size:12px">🔄 Reintentar</button></div>`;
   }
 }
 
-// ---- 3. Índice SAM (vía Worker, no se descarga el archivo completo de NOAA) ----
-async function cargarSamIndex() {
-  const el = document.getElementById('adv-sam-resultado');
-  try {
-    const controller = new AbortController();
-    const t = setTimeout(() => controller.abort(), 10000);
-    const resp = await fetch(DMH_WORKER_URL + '/sam-index', { signal: controller.signal });
-    clearTimeout(t);
-    if (!resp.ok) throw new Error('HTTP ' + resp.status);
-    const data = await resp.json();
-    if (!data.actual) throw new Error('sin datos');
+// ---- 4. ASTORP (Sudamérica) — imágenes de rawinsonde.com (Mateusz Taszarek) ----
+// Producto experimental, estilo SPC, generado con GEFS 0.5° para Sudamérica.
+// No hay una API JSON — se muestra la imagen oficial directamente (con
+// crédito y link a la fuente), no un dato inventado ni procesado por
+// Noticlima. Si la imagen del día no carga, se ofrece igual el link directo
+// al sitio para no dejar al usuario sin nada.
+const ASTORP_BASE_URL = 'https://rawinsonde.com/ASTORP_SAM/';
 
-    const fase = data.actual.valor > 0.5 ? 'Positiva' : data.actual.valor < -0.5 ? 'Negativa' : 'Neutra';
-    const color = data.actual.valor > 0.5 ? '#4ade80' : data.actual.valor < -0.5 ? '#f87171' : 'var(--muted)';
+function initAstorp() {
+  const sel = document.getElementById('adv-astorp-dia');
+  if (!sel) return;
+  sel.innerHTML = Array.from({length: 8}, (_, i) => `<option value="${i+1}">Día ${i+1}</option>`).join('');
+  renderAstorp();
+}
 
-    el.innerHTML = `
-      <div style="display:flex;gap:16px;flex-wrap:wrap;margin-bottom:10px">
-        <div><div style="font-size:9px;color:var(--muted);text-transform:uppercase">Valor actual</div><div style="font-size:18px;font-weight:700;color:${color};font-family:'Courier New',monospace">${data.actual.valor.toFixed(2)}</div></div>
-        <div><div style="font-size:9px;color:var(--muted);text-transform:uppercase">Fase</div><div style="font-size:14px;font-weight:700;color:${color}">${fase}</div></div>
-        <div><div style="font-size:9px;color:var(--muted);text-transform:uppercase">Fecha</div><div style="font-size:12px;color:var(--text)">${data.actual.fecha}</div></div>
-      </div>
-      <canvas id="adv-sam-chart" height="120"></canvas>
-      <div style="font-size:10.5px;color:var(--muted);margin-top:8px;line-height:1.5">
-        ${fase === 'Negativa' ? 'Fase negativa: puede favorecer más lluvia en el sur/centro de Sudamérica.' : fase === 'Positiva' ? 'Fase positiva: suele asociarse a condiciones más secas en el sur de Sudamérica, aunque no es una regla fija.' : 'El índice está en un rango neutro, sin señal marcada.'}
-      </div>
-      <div style="font-size:9px;color:var(--muted);margin-top:6px">Última actualización de la fuente: ${data.checkedAt ? new Date(data.checkedAt).toLocaleString('es-PY') : '—'} · <a href="${data.fuente_url}" target="_blank" rel="noopener" style="color:#38bdf8">Fuente: NOAA CPC ↗</a></div>`;
+function renderAstorp() {
+  const el = document.getElementById('adv-astorp-resultado');
+  const dia = document.getElementById('adv-astorp-dia').value || 1;
+  const imgUrl = `${ASTORP_BASE_URL}SPC_hazard_DAY_${dia}.jpg`;
 
-    drawRioLineChart(document.getElementById('adv-sam-chart'), data.valores.slice(-30).map(v => v.fecha.slice(5)), data.valores.slice(-30).map(v => v.valor), '#a78bfa', '');
-  } catch (e) {
-    el.innerHTML = `<div style="text-align:center;padding:16px;color:var(--muted);font-size:12px">📡 Fuente temporalmente no disponible.<br><button onclick="cargarSamIndex()" class="btn-search" style="margin-top:8px;font-size:12px">🔄 Reintentar</button></div>`;
-  }
+  el.innerHTML = `
+    <img src="${imgUrl}" alt="ASTORP SPC hazards Día ${dia}" style="width:100%;border-radius:9px;display:block;background:#0a0f1a"
+      onerror="document.getElementById('adv-astorp-fallback').style.display='block'; this.style.display='none';">
+    <div id="adv-astorp-fallback" style="display:none;text-align:center;padding:16px;color:var(--muted);font-size:12px">
+      📡 No se pudo cargar la imagen de este día.<br>
+      <a href="${ASTORP_BASE_URL}SPC_hazards.html" target="_blank" rel="noopener" style="color:#38bdf8">Ver directamente en rawinsonde.com ↗</a>
+    </div>`;
 }
 
 function renderRioFromCache(data) {
