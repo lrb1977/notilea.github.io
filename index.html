@@ -4595,27 +4595,37 @@ async function cargarSeveridadGefs() {
 // Producto experimental, estilo SPC, generado con GEFS 0.5° para Sudamérica.
 // No hay una API JSON — se muestra la imagen oficial directamente (con
 // crédito y link a la fuente), no un dato inventado ni procesado por
-// Noticlima. Si la imagen del día no carga, se ofrece igual el link directo
-// al sitio para no dejar al usuario sin nada.
+// Noticlima. Si la imagen de la hora elegida no carga, se ofrece igual el
+// link directo al sitio para no dejar al usuario sin nada.
+// URL real confirmada por el usuario (copiada directo del sitio):
+// https://rawinsonde.com/ASTORP_SAM/Results/SPC_hazard_hour_F000.jpg
+// El sitio nombra los archivos por HORA de pronóstico (F000, F006, F012…),
+// no por "Día 1-8" como habíamos supuesto antes — eso era lo que fallaba.
 const ASTORP_BASE_URL = 'https://rawinsonde.com/ASTORP_SAM/';
+const ASTORP_HORAS = Array.from({length: 33}, (_, i) => i * 6); // F000 a F192, cada 6h (8 días)
 
 function initAstorp() {
   const sel = document.getElementById('adv-astorp-dia');
   if (!sel) return;
-  sel.innerHTML = Array.from({length: 8}, (_, i) => `<option value="${i+1}">Día ${i+1}</option>`).join('');
+  sel.innerHTML = ASTORP_HORAS.map(h =>
+    `<option value="${h}">F+${String(h).padStart(3,'0')}h (~día ${Math.ceil((h||1)/24)})</option>`
+  ).join('');
   renderAstorp();
 }
 
 function renderAstorp() {
   const el = document.getElementById('adv-astorp-resultado');
-  const dia = document.getElementById('adv-astorp-dia').value || 1;
-  const imgUrl = `${ASTORP_BASE_URL}SPC_hazard_DAY_${dia}.jpg`;
+  const hora = document.getElementById('adv-astorp-dia').value || '0';
+  const horaStr = String(hora).padStart(3, '0');
+  // Cache-busting propio (el sitio original usa una marca de tiempo en la
+  // URL para que el navegador no muestre una imagen vieja en caché)
+  const imgUrl = `${ASTORP_BASE_URL}Results/SPC_hazard_hour_F${horaStr}.jpg?t=${Date.now()}`;
 
   el.innerHTML = `
-    <img src="${imgUrl}" alt="ASTORP SPC hazards Día ${dia}" style="width:100%;border-radius:9px;display:block;background:#0a0f1a"
+    <img src="${imgUrl}" alt="ASTORP SPC hazards F+${horaStr}h" style="width:100%;border-radius:9px;display:block;background:#0a0f1a"
       onerror="document.getElementById('adv-astorp-fallback').style.display='block'; this.style.display='none';">
     <div id="adv-astorp-fallback" style="display:none;text-align:center;padding:16px;color:var(--muted);font-size:12px">
-      📡 No se pudo cargar la imagen de este día.<br>
+      📡 No se pudo cargar la imagen de esta hora.<br>
       <a href="${ASTORP_BASE_URL}SPC_hazards.html" target="_blank" rel="noopener" style="color:#38bdf8">Ver directamente en rawinsonde.com ↗</a>
     </div>`;
 }
