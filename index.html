@@ -4604,12 +4604,28 @@ async function cargarSeveridadGefs() {
 const ASTORP_BASE_URL = 'https://rawinsonde.com/ASTORP_SAM/';
 const ASTORP_HORAS = Array.from({length: 33}, (_, i) => i * 6); // F000 a F192, cada 6h (8 días)
 
+// El sitio no expone el ciclo de inicialización (init) por API — lo
+// estimamos: redondeamos "ahora" hacia atrás al ciclo de 6h más reciente
+// (00/06/12/18Z), con un margen de ~5h para el tiempo de procesamiento del
+// producto. Es una aproximación, no el dato exacto que muestra la imagen.
+function astorpInitCycle() {
+  const ahora = new Date();
+  const ajustado = new Date(ahora.getTime() - 5 * 3600 * 1000); // margen de procesamiento
+  const cicloUTC = Math.floor(ajustado.getUTCHours() / 6) * 6;
+  return new Date(Date.UTC(ajustado.getUTCFullYear(), ajustado.getUTCMonth(), ajustado.getUTCDate(), cicloUTC, 0, 0));
+}
+
 function initAstorp() {
   const sel = document.getElementById('adv-astorp-dia');
   if (!sel) return;
-  sel.innerHTML = ASTORP_HORAS.map(h =>
-    `<option value="${h}">F+${String(h).padStart(3,'0')}h (~día ${Math.ceil((h||1)/24)})</option>`
-  ).join('');
+  const init = astorpInitCycle();
+  sel.innerHTML = ASTORP_HORAS.map(h => {
+    const valido = new Date(init.getTime() + h * 3600 * 1000);
+    const label = valido.toLocaleString('es-PY', {
+      timeZone: 'America/Asuncion', weekday: 'short', day: 'numeric', month: 'short', hour: '2-digit', minute: '2-digit'
+    });
+    return `<option value="${h}">${label} (hora Paraguay)</option>`;
+  }).join('');
   renderAstorp();
 }
 
