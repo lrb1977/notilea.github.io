@@ -650,17 +650,20 @@
         </button>
       </div>
 
-      <!-- Imagen oficial NOAA/NESDIS (sector completo, colores reales) —
-           sin zoom/paneo (no es una capa Leaflet georreferenciada, es la
-           imagen fija que publica NOAA), se auto-actualiza cada 10 min.
+      <!-- Imagen oficial NOAA/NESDIS — sector "Sudamérica Sur" recortado para
+           mostrar SOLO Paraguay (colores reales). No es una capa Leaflet
+           georreferenciada: es la imagen fija que publica NOAA, se auto-actualiza
+           cada 10 min. El recorte se define en NOAA_PY_FRAME (ver JS).
            Va primero: es la vista principal por defecto. -->
       <div id="noaa-official-wrap" style="display:none;border-bottom:1px solid var(--border);padding:12px 14px">
         <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:8px">
-          <span style="font-size:11px;font-weight:700;color:var(--text)">🛰️ Imagen oficial NOAA/NESDIS (sector completo)</span>
+          <span style="font-size:11px;font-weight:700;color:var(--text)">🛰️ Imagen oficial NOAA/NESDIS · Paraguay</span>
           <span id="noaa-official-time" style="font-size:9.5px;color:var(--muted)"></span>
         </div>
-        <div id="noaa-official-viewport" style="position:relative;width:100%;height:340px;overflow:hidden;border-radius:9px;background:#0a0f1a;touch-action:none">
-          <img id="noaa-official-img" style="position:absolute;top:0;left:0;width:100%;height:100%;object-fit:cover;transform-origin:0 0;display:block;user-select:none;-webkit-user-drag:none" alt="Imagen satelital oficial NOAA/NESDIS GOES-19 Banda 13" draggable="false">
+        <div id="noaa-official-viewport" style="position:relative;width:100%;max-width:560px;margin:0 auto;aspect-ratio:1.116 / 1;overflow:hidden;border-radius:9px;background:#0a0f1a;touch-action:none">
+          <div id="noaa-official-frame" style="position:absolute;top:0;left:0;width:100%;height:100%;overflow:hidden;transform-origin:0 0">
+            <img id="noaa-official-img" style="position:absolute;max-width:none;display:block;user-select:none;-webkit-user-drag:none" alt="Imagen satelital oficial NOAA/NESDIS GOES-19 Banda 13 — Paraguay" draggable="false">
+          </div>
           <div style="position:absolute;bottom:8px;left:8px;z-index:5;display:flex;flex-direction:column;gap:4px">
             <button onclick="noaaZoomStep(1.4)" style="width:30px;height:30px;border-radius:8px;background:rgba(8,14,26,0.85);border:1px solid var(--border);color:var(--text);font-size:16px;font-weight:700">+</button>
             <button onclick="noaaZoomStep(1/1.4)" style="width:30px;height:30px;border-radius:8px;background:rgba(8,14,26,0.85);border:1px solid var(--border);color:var(--text);font-size:16px;font-weight:700">−</button>
@@ -797,7 +800,7 @@
           </div>
           <div class="layer-toggle-row" data-layer="noaa-official">
             <span class="layer-toggle-icon" style="color:#38bdf8"><svg width="16" height="16" viewBox="0 0 24 24"><rect x="3" y="4" width="18" height="14" rx="2" fill="none" stroke="currentColor" stroke-width="1.8"/><circle cx="12" cy="11" r="3" fill="none" stroke="currentColor" stroke-width="1.8"/></svg></span>
-            <span class="layer-toggle-label">🛰️ Imagen oficial NOAA (sector, sin zoom)</span>
+            <span class="layer-toggle-label">🛰️ Imagen oficial NOAA (Paraguay)</span>
             <div class="layer-toggle-switch" onclick="toggleNoaaOfficialImage()" id="toggle-noaa-official"><div class="layer-toggle-knob"></div></div>
           </div>
         </div>
@@ -5477,25 +5480,59 @@ function toggleLightningLayer() {
 }
 
 // =============================================
-// IMAGEN OFICIAL NOAA/NESDIS — sector completo (Sudamérica Norte), banda 13.
-// No es una capa de Leaflet georreferenciada (es una imagen fija de sector
-// geoestacionario, sin coordenadas de esquina verificadas para anclarla al
-// mapa): se muestra con zoom/paneo tipo "foto" (pellizcar/arrastrar/doble
-// toque), no zoom cartográfico — no hay selección de coordenadas exacta,
-// solo acercar visualmente la imagen.
+// IMAGEN OFICIAL NOAA/NESDIS — sector "Sudamérica Sur" (ssa), banda 13,
+// recortada para mostrar SOLO Paraguay.
+// No es una capa de Leaflet georreferenciada: es la imagen fija que publica
+// NOAA. El recorte se logra posicionando la imagen completa dentro de un
+// marco con CSS en porcentajes (ver noaaLayoutImage): no depende del tamaño
+// natural de la imagen ni de cuándo termina de cargar. Encima del marco se
+// puede hacer zoom/paneo tipo "foto" (pellizcar/arrastrar/doble toque) sin
+// salir del recorte de Paraguay.
 // =============================================
-const NOAA_OFFICIAL_IMG_URL = 'https://cdn.star.nesdis.noaa.gov/GOES19/ABI/SECTOR/nsa/13/3600x2160.jpg';
+const NOAA_OFFICIAL_IMG_URL = 'https://cdn.star.nesdis.noaa.gov/GOES19/ABI/SECTOR/ssa/13/3600x2160.jpg';
 const NOAA_OFFICIAL_REFRESH_MS = 10 * 60 * 1000; // 10 minutos
+const NOAA_IMG_W = 3600, NOAA_IMG_H = 2160;      // proporción de la imagen completa del sector
+
+// Recorte de Paraguay dentro de la imagen completa, en fracciones 0–1:
+//   x, y = esquina superior izquierda del recorte; w, h = ancho y alto.
+// >>> ÚNICO lugar a tocar para reencuadrar Paraguay <<<
+// (más x = corre el recorte a la derecha, más y = lo baja, w/h = tamaño de la zona mostrada)
+const NOAA_PY_FRAME = { x: 0.446, y: 0.347, w: 0.156, h: 0.233 };
 
 let noaaOfficialInterval = null;
+
+// Coloca la imagen completa dentro del marco de modo que solo se vea NOAA_PY_FRAME.
+function noaaLayoutImage() {
+  const img = document.getElementById('noaa-official-img');
+  const vp = document.getElementById('noaa-official-viewport');
+  if (!img) return;
+  const F = NOAA_PY_FRAME;
+  img.style.width  = (100 / F.w) + '%';
+  img.style.height = (100 / F.h) + '%';
+  img.style.left   = (-F.x / F.w * 100) + '%';
+  img.style.top    = (-F.y / F.h * 100) + '%';
+  // el visor toma la proporción real del recorte (así Paraguay no se deforma)
+  if (vp) vp.style.aspectRatio = (F.w * NOAA_IMG_W) + ' / ' + (F.h * NOAA_IMG_H);
+}
 
 function refreshNoaaOfficialImage() {
   const img = document.getElementById('noaa-official-img');
   const t = document.getElementById('noaa-official-time');
   if (!img) return;
-  img.src = NOAA_OFFICIAL_IMG_URL + '?t=' + Date.now();
-  if (t) t.textContent = new Date().toLocaleTimeString('es-PY',{hour:'2-digit',minute:'2-digit'});
-  noaaZoomReset(); // encuadre inicial centrado en Paraguay (se calcula al instante, sin esperar a que cargue la imagen)
+  noaaLayoutImage();
+  // Se precarga aparte y solo se reemplaza si llegó bien: si NOAA falla un
+  // momento, queda la última imagen buena en vez de una imagen rota.
+  const url = NOAA_OFFICIAL_IMG_URL + '?t=' + Date.now();
+  const loader = new Image();
+  loader.onload = () => {
+    img.src = url;
+    if (t) t.textContent = new Date().toLocaleTimeString('es-PY',{hour:'2-digit',minute:'2-digit'});
+  };
+  loader.onerror = () => {
+    if (t && !img.getAttribute('src')) t.textContent = 'no disponible';
+  };
+  loader.src = url;
+  noaaZoomReset(); // vuelve al encuadre completo de Paraguay
 }
 
 function toggleNoaaOfficialImage() {
@@ -5508,49 +5545,37 @@ function toggleNoaaOfficialImage() {
     refreshNoaaOfficialImage();
     if (!noaaOfficialInterval) noaaOfficialInterval = setInterval(refreshNoaaOfficialImage, NOAA_OFFICIAL_REFRESH_MS);
     initNoaaZoomPan();
-    // Si justo en este instante el contenedor todavía medía 0px de ancho
-    // (recién se está por volver visible), noaaZoomReset() se resetea sin
-    // zoom como resguardo. Reintentamos un par de veces con margen, una vez
-    // que el layout ya se asentó, para no quedar pegados en la vista sin acercar.
-    setTimeout(noaaZoomReset, 60);
-    setTimeout(noaaZoomReset, 250);
   } else if (noaaOfficialInterval) {
     clearInterval(noaaOfficialInterval); noaaOfficialInterval = null;
   }
 }
 
-// ---- Zoom/paneo tipo foto para la imagen NOAA (pellizcar, arrastrar, doble toque) ----
-// El encuadre inicial en Paraguay se calcula con transform (translate+scale)
-// usando SOLO el tamaño del contenedor (vp.clientWidth/clientHeight), que
-// está disponible al instante por CSS — no depende de que la imagen termine
-// de cargar ni de su tamaño natural, que era la causa de que fallara antes.
+// ---- Zoom/paneo tipo foto sobre el marco de Paraguay (pellizcar, arrastrar, doble toque) ----
+// El transform se aplica al MARCO (noaa-official-frame), que mide lo mismo que el
+// visor: por eso el paneo nunca puede salirse del recorte de Paraguay.
 let noaaZoomState = { scale: 1, x: 0, y: 0 };
 let noaaZoomInited = false;
 
 function noaaApplyTransform() {
-  const img = document.getElementById('noaa-official-img');
-  if (!img) return;
+  const fr = document.getElementById('noaa-official-frame');
+  if (!fr) return;
   const s = noaaZoomState;
-  img.style.transform = `translate(${s.x}px, ${s.y}px) scale(${s.scale})`;
+  fr.style.transform = `translate(${s.x}px, ${s.y}px) scale(${s.scale})`;
 }
 
 function noaaClampPan() {
   const vp = document.getElementById('noaa-official-viewport');
-  const img = document.getElementById('noaa-official-img');
-  if (!vp || !img) return;
+  if (!vp) return;
   const s = noaaZoomState;
-  // Con object-fit:cover, la imagen ya ocupa exactamente el viewport a
-  // escala 1 (antes de aplicar el transform), así que estas son las
-  // dimensiones base correctas para el recorte.
   const w = vp.clientWidth * s.scale, h = vp.clientHeight * s.scale;
   const minX = Math.min(0, vp.clientWidth - w), minY = Math.min(0, vp.clientHeight - h);
   s.x = Math.max(minX, Math.min(0, s.x));
   s.y = Math.max(minY, Math.min(0, s.y));
 }
 
-// Hace zoom manteniendo fijo el punto (ax, ay) del viewport — así acercar
+// Hace zoom manteniendo fijo el punto (ax, ay) del visor — así acercar
 // desde el botón +/- o con doble toque amplía lo que se está mirando, no la
-// esquina superior izquierda de la imagen.
+// esquina superior izquierda.
 function noaaZoomToward(ax, ay, newScale) {
   const s = noaaZoomState;
   newScale = Math.max(1, Math.min(6, newScale));
@@ -5569,33 +5594,9 @@ function noaaZoomStep(factor) {
   noaaZoomToward(cx, cy, noaaZoomState.scale * factor);
 }
 
-// Posición aproximada (estimada a ojo, no calibrada con coordenadas reales)
-// de Paraguay dentro del sector "nsa" — se usa para centrar la vista por
-// defecto. Se calcula solo con el tamaño del contenedor (siempre disponible
-// al instante por CSS), sin depender de que la imagen termine de cargar.
-const NOAA_PARAGUAY_FRAC = { x: 0.40, y: 0.62 };
-const NOAA_DEFAULT_SCALE = 2.6;
-
-function noaaZoomReset(intentos = 0) {
-  const vp = document.getElementById('noaa-official-viewport');
-  // Si el contenedor todavía no tiene tamaño (0px) — por ejemplo porque el
-  // panel se está mostrando justo en este instante y el navegador no
-  // terminó de calcular el layout — reintentamos en el próximo cuadro en
-  // vez de resignarnos a mostrar la imagen sin zoom para siempre.
-  if ((!vp || !vp.clientWidth) && intentos < 20) {
-    requestAnimationFrame(() => noaaZoomReset(intentos + 1));
-    return;
-  }
-  if (!vp || !vp.clientWidth) { noaaZoomState = { scale: 1, x: 0, y: 0 }; noaaApplyTransform(); return; }
-  const s = NOAA_DEFAULT_SCALE;
-  const targetX = NOAA_PARAGUAY_FRAC.x * vp.clientWidth;
-  const targetY = NOAA_PARAGUAY_FRAC.y * vp.clientHeight;
-  noaaZoomState = {
-    scale: s,
-    x: vp.clientWidth / 2 - targetX * s,
-    y: vp.clientHeight / 2 - targetY * s,
-  };
-  noaaClampPan();
+// Vista inicial = recorte completo de Paraguay (escala 1, sin desplazamiento).
+function noaaZoomReset() {
+  noaaZoomState = { scale: 1, x: 0, y: 0 };
   noaaApplyTransform();
 }
 
