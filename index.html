@@ -1490,9 +1490,9 @@ async function fetchWeather() {
       + `latitude=${state.lat}&longitude=${state.lon}`
       + `&current=temperature_2m,apparent_temperature,relative_humidity_2m,precipitation_probability,`
       + `rain,wind_speed_10m,wind_direction_10m,weather_code,cloud_cover,surface_pressure,`
-      + `dew_point_2m,uv_index,visibility`
+      + `dew_point_2m,uv_index,visibility,is_day`
       + `&hourly=temperature_2m,apparent_temperature,precipitation_probability,precipitation,`
-      + `weather_code,wind_speed_10m,wind_direction_10m,relative_humidity_2m,uv_index,cloud_cover`
+      + `weather_code,wind_speed_10m,wind_direction_10m,relative_humidity_2m,uv_index,cloud_cover,is_day`
       + `&daily=weather_code,temperature_2m_max,temperature_2m_min,precipitation_sum,`
       + `precipitation_probability_max,wind_speed_10m_max,wind_direction_10m_dominant,`
       + `uv_index_max,sunrise,sunset`
@@ -1550,9 +1550,10 @@ function parseFechaLocal(fechaStr) {
   return new Date(y, m - 1, d);
 }
 
-function wmoIcon(code) {
-  if (code === 0) return '☀️';
-  if (code <= 2) return '🌤️';
+function wmoIcon(code, isDay) {
+  const night = isDay === 0 || isDay === false;
+  if (code === 0) return night ? '🌙' : '☀️';
+  if (code <= 2) return night ? '🌙' : '🌤️';
   if (code === 3) return '☁️';
   if (code <= 49) return '🌫️';
   if (code <= 55) return '🌧️';
@@ -2217,9 +2218,9 @@ function renderCurrent() {
           <div class="current-loc">📍 ${state.locationName}</div>
           <div class="current-time">${now.toLocaleDateString('es-PY',{weekday:'long',day:'numeric',month:'long'})} · ${now.toLocaleTimeString('es-PY',{hour:'2-digit',minute:'2-digit'})}</div>
           <div class="current-temp">${Math.round(c.temperature_2m)}°</div>
-          <div class="current-desc">${wmoIcon(wCode)} ${wmoDesc(wCode, c.precipitation_probability)}</div>
+          <div class="current-desc">${wmoIcon(wCode, c.is_day)} ${wmoDesc(wCode, c.precipitation_probability)}</div>
         </div>
-        <div class="current-icon">${wmoIcon(wCode)}</div>
+        <div class="current-icon">${wmoIcon(wCode, c.is_day)}</div>
       </div>
       <div class="grid2">
         <div class="metric"><div class="metric-icon">🌡️</div><div class="metric-label">Sensación</div><div class="metric-value">${Math.round(c.apparent_temperature)}°C</div></div>
@@ -2406,7 +2407,7 @@ function renderHourly() {
       <div class="hour-card" style="${isNow?'border-color:var(--accent);background:rgba(0,198,255,0.1)':''}">
         <div class="hour-time" style="${isNow?'color:var(--accent)':''}">${i===0?'Ahora':hour}</div>
         <div style="font-size:9px;color:var(--muted)">${day}</div>
-        <div class="hour-icon">${wmoIcon(fixWeatherCode(state.hourly.weather_code[i], (state.hourly.precipitation||[])[i] || 0))}</div>
+        <div class="hour-icon">${wmoIcon(fixWeatherCode(state.hourly.weather_code[i], (state.hourly.precipitation||[])[i] || 0), (state.hourly.is_day||[])[i])}</div>
         <div class="hour-temp">${Math.round(state.hourly.temperature_2m[i])}°</div>
         <div class="hour-rain">💧${state.hourly.precipitation_probability[i]||0}%</div>
       </div>`);
@@ -5965,7 +5966,7 @@ async function fetchTapWeather(lat, lng) {
 
   try {
     const url = `https://api.open-meteo.com/v1/forecast?latitude=${lat.toFixed(4)}&longitude=${lng.toFixed(4)}`
-      + `&current=temperature_2m,apparent_temperature,relative_humidity_2m,weather_code,wind_speed_10m,precipitation_probability,precipitation,cloud_cover`
+      + `&current=temperature_2m,apparent_temperature,relative_humidity_2m,weather_code,wind_speed_10m,precipitation_probability,precipitation,cloud_cover,is_day`
       + `&timezone=America%2FAsuncion`;
     const r = await fetch(url);
     const d = await r.json();
@@ -6013,7 +6014,7 @@ async function fetchTapWeather(lat, lng) {
     content.innerHTML = `
       <div style="display:grid;grid-template-columns:1fr 1fr;gap:8px">
         <div class="metric"><div class="metric-label">📍 Lugar</div><div style="font-size:12px;font-weight:600">${locName}</div></div>
-        <div class="metric"><div class="metric-label">Condición</div><div class="metric-value">${wmoIcon(weatherCode)} ${wmoDesc(weatherCode, c.precipitation_probability)}</div></div>
+        <div class="metric"><div class="metric-label">Condición</div><div class="metric-value">${wmoIcon(weatherCode, c.is_day)} ${wmoDesc(weatherCode, c.precipitation_probability)}</div></div>
         <div class="metric"><div class="metric-label">🌡 Temperatura</div><div class="metric-value">${Math.round(c.temperature_2m)}°C</div></div>
         <div class="metric"><div class="metric-label">💧 Humedad</div><div class="metric-value">${c.relative_humidity_2m}%</div></div>
         <div class="metric"><div class="metric-label">💨 Viento</div><div class="metric-value">${Math.round(c.wind_speed_10m)} km/h</div></div>
