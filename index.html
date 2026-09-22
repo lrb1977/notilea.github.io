@@ -1591,6 +1591,16 @@ function wmoDesc(code, rainProb) {
   if (code <= 99) return 'Tormenta con granizo';
   return 'Variable';
 }
+// El weather_code del modelo (estado "instantáneo") a veces no coincide con
+// la lluvia que el propio modelo reporta para ese mismo momento (p.ej. dice
+// "despejado"/"parcialmente nublado" con precipitación > 0). Si hay lluvia
+// real reportada, se sube el código a uno de lluvia para que el texto y el
+// ícono no contradigan el dato de precipitación.
+function fixWeatherCode(code, precipMm) {
+  if (precipMm > 0.1 && code <= 2) return 61; // lluvia ligera
+  return code;
+}
+
 function windDir(deg) {
   const dirs = ['N','NNE','NE','ENE','E','ESE','SE','SSE','S','SSO','SO','OSO','O','ONO','NO','NNO'];
   return dirs[Math.round(deg/22.5)%16];
@@ -2198,6 +2208,7 @@ function renderCurrent() {
   const now = new Date();
   const uv = Math.round(c.uv_index || 0);
   const uvPct = Math.min(uv/12*100,100);
+  const wCode = fixWeatherCode(c.weather_code, c.rain || 0);
   document.getElementById('current-content').innerHTML = `
     ${alertsHtml}
     <div class="card">
@@ -2206,9 +2217,9 @@ function renderCurrent() {
           <div class="current-loc">📍 ${state.locationName}</div>
           <div class="current-time">${now.toLocaleDateString('es-PY',{weekday:'long',day:'numeric',month:'long'})} · ${now.toLocaleTimeString('es-PY',{hour:'2-digit',minute:'2-digit'})}</div>
           <div class="current-temp">${Math.round(c.temperature_2m)}°</div>
-          <div class="current-desc">${wmoIcon(c.weather_code)} ${wmoDesc(c.weather_code)}</div>
+          <div class="current-desc">${wmoIcon(wCode)} ${wmoDesc(wCode, c.precipitation_probability)}</div>
         </div>
-        <div class="current-icon">${wmoIcon(c.weather_code)}</div>
+        <div class="current-icon">${wmoIcon(wCode)}</div>
       </div>
       <div class="grid2">
         <div class="metric"><div class="metric-icon">🌡️</div><div class="metric-label">Sensación</div><div class="metric-value">${Math.round(c.apparent_temperature)}°C</div></div>
@@ -2395,7 +2406,7 @@ function renderHourly() {
       <div class="hour-card" style="${isNow?'border-color:var(--accent);background:rgba(0,198,255,0.1)':''}">
         <div class="hour-time" style="${isNow?'color:var(--accent)':''}">${i===0?'Ahora':hour}</div>
         <div style="font-size:9px;color:var(--muted)">${day}</div>
-        <div class="hour-icon">${wmoIcon(state.hourly.weather_code[i])}</div>
+        <div class="hour-icon">${wmoIcon(fixWeatherCode(state.hourly.weather_code[i], (state.hourly.precipitation||[])[i] || 0))}</div>
         <div class="hour-temp">${Math.round(state.hourly.temperature_2m[i])}°</div>
         <div class="hour-rain">💧${state.hourly.precipitation_probability[i]||0}%</div>
       </div>`);
