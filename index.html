@@ -650,20 +650,17 @@
         </button>
       </div>
 
-      <!-- Imagen oficial NOAA/NESDIS — sector "Sudamérica Sur" recortado para
-           mostrar SOLO Paraguay (colores reales). No es una capa Leaflet
-           georreferenciada: es la imagen fija que publica NOAA, se auto-actualiza
-           cada 10 min. El recorte se define en NOAA_PY_FRAME (ver JS).
+      <!-- Imagen oficial NOAA/NESDIS (sector completo, colores reales) —
+           sin zoom/paneo (no es una capa Leaflet georreferenciada, es la
+           imagen fija que publica NOAA), se auto-actualiza cada 10 min.
            Va primero: es la vista principal por defecto. -->
       <div id="noaa-official-wrap" style="display:none;border-bottom:1px solid var(--border);padding:12px 14px">
         <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:8px">
-          <span style="font-size:11px;font-weight:700;color:var(--text)">🛰️ Imagen oficial NOAA/NESDIS · Paraguay</span>
+          <span style="font-size:11px;font-weight:700;color:var(--text)">🛰️ Imagen oficial NOAA/NESDIS (sector completo)</span>
           <span id="noaa-official-time" style="font-size:9.5px;color:var(--muted)"></span>
         </div>
-        <div id="noaa-official-viewport" style="position:relative;width:100%;max-width:560px;margin:0 auto;aspect-ratio:1.116 / 1;overflow:hidden;border-radius:9px;background:#0a0f1a;touch-action:none">
-          <div id="noaa-official-frame" style="position:absolute;top:0;left:0;width:100%;height:100%;overflow:hidden;transform-origin:0 0">
-            <img id="noaa-official-img" style="position:absolute;max-width:none;display:block;user-select:none;-webkit-user-drag:none" alt="Imagen satelital oficial NOAA/NESDIS GOES-19 Banda 13 — Paraguay" draggable="false">
-          </div>
+        <div id="noaa-official-viewport" style="position:relative;width:100%;height:340px;overflow:hidden;border-radius:9px;background:#0a0f1a;touch-action:none">
+          <img id="noaa-official-img" style="position:absolute;top:0;left:0;width:100%;height:100%;object-fit:cover;transform-origin:0 0;display:block;user-select:none;-webkit-user-drag:none" alt="Imagen satelital oficial NOAA/NESDIS GOES-19 Banda 13" draggable="false">
           <div style="position:absolute;bottom:8px;left:8px;z-index:5;display:flex;flex-direction:column;gap:4px">
             <button onclick="noaaZoomStep(1.4)" style="width:30px;height:30px;border-radius:8px;background:rgba(8,14,26,0.85);border:1px solid var(--border);color:var(--text);font-size:16px;font-weight:700">+</button>
             <button onclick="noaaZoomStep(1/1.4)" style="width:30px;height:30px;border-radius:8px;background:rgba(8,14,26,0.85);border:1px solid var(--border);color:var(--text);font-size:16px;font-weight:700">−</button>
@@ -800,7 +797,7 @@
           </div>
           <div class="layer-toggle-row" data-layer="noaa-official">
             <span class="layer-toggle-icon" style="color:#38bdf8"><svg width="16" height="16" viewBox="0 0 24 24"><rect x="3" y="4" width="18" height="14" rx="2" fill="none" stroke="currentColor" stroke-width="1.8"/><circle cx="12" cy="11" r="3" fill="none" stroke="currentColor" stroke-width="1.8"/></svg></span>
-            <span class="layer-toggle-label">🛰️ Imagen oficial NOAA (Paraguay)</span>
+            <span class="layer-toggle-label">🛰️ Imagen oficial NOAA (sector, sin zoom)</span>
             <div class="layer-toggle-switch" onclick="toggleNoaaOfficialImage()" id="toggle-noaa-official"><div class="layer-toggle-knob"></div></div>
           </div>
         </div>
@@ -1489,10 +1486,10 @@ async function fetchWeather() {
     const url = `https://api.open-meteo.com/v1/forecast?`
       + `latitude=${state.lat}&longitude=${state.lon}`
       + `&current=temperature_2m,apparent_temperature,relative_humidity_2m,precipitation_probability,`
-      + `rain,wind_speed_10m,wind_direction_10m,weather_code,cloud_cover,surface_pressure,`
-      + `dew_point_2m,uv_index,visibility,is_day`
+      + `precipitation,rain,wind_speed_10m,wind_direction_10m,weather_code,cloud_cover,surface_pressure,`
+      + `dew_point_2m,uv_index,visibility`
       + `&hourly=temperature_2m,apparent_temperature,precipitation_probability,precipitation,`
-      + `weather_code,wind_speed_10m,wind_direction_10m,relative_humidity_2m,uv_index,cloud_cover,is_day`
+      + `weather_code,wind_speed_10m,wind_direction_10m,relative_humidity_2m,uv_index,cloud_cover`
       + `&daily=weather_code,temperature_2m_max,temperature_2m_min,precipitation_sum,`
       + `precipitation_probability_max,wind_speed_10m_max,wind_direction_10m_dominant,`
       + `uv_index_max,sunrise,sunset`
@@ -1550,10 +1547,9 @@ function parseFechaLocal(fechaStr) {
   return new Date(y, m - 1, d);
 }
 
-function wmoIcon(code, isDay) {
-  const night = isDay === 0 || isDay === false;
-  if (code === 0) return night ? '🌙' : '☀️';
-  if (code <= 2) return night ? '🌙' : '🌤️';
+function wmoIcon(code) {
+  if (code === 0) return '☀️';
+  if (code <= 2) return '🌤️';
   if (code === 3) return '☁️';
   if (code <= 49) return '🌫️';
   if (code <= 55) return '🌧️';
@@ -1592,16 +1588,6 @@ function wmoDesc(code, rainProb) {
   if (code <= 99) return 'Tormenta con granizo';
   return 'Variable';
 }
-// El weather_code del modelo (estado "instantáneo") a veces no coincide con
-// la lluvia que el propio modelo reporta para ese mismo momento (p.ej. dice
-// "despejado"/"parcialmente nublado" con precipitación > 0). Si hay lluvia
-// real reportada, se sube el código a uno de lluvia para que el texto y el
-// ícono no contradigan el dato de precipitación.
-function fixWeatherCode(code, precipMm) {
-  if (precipMm > 0.1 && code <= 2) return 61; // lluvia ligera
-  return code;
-}
-
 function windDir(deg) {
   const dirs = ['N','NNE','NE','ENE','E','ESE','SE','SSE','S','SSO','SO','OSO','O','ONO','NO','NNO'];
   return dirs[Math.round(deg/22.5)%16];
@@ -1653,13 +1639,22 @@ function getSevereAlerts(current, hourly) {
     recs:['🏍️ Reducir velocidad en moto','🌳 Evitar zonas boscosas durante ráfagas','📌 Asegurar objetos ligeros en exteriores']
   });
 
-  // TORMENTA ELÉCTRICA
-  if (code >= 95) alerts.push({
+  // TORMENTA ELÉCTRICA — ROJA solo si el código de tormenta coincide con lluvia real medida (>=1 mm/h).
+  // Si el modelo marca tormenta pero no llueve ahora, es solo una posibilidad (naranja), no "en curso".
+  const precipNow = (current.precipitation ?? current.rain ?? 0);
+  if (code >= 95 && precipNow >= 1) alerts.push({
     level:'red', icon:'⛈️',
     title:'TORMENTA ELÉCTRICA ACTIVA',
     sublevel:'ROJO · INMEDIATO',
-    body:`Tormenta eléctrica <b>en curso o inminente</b>. Riesgo de rayos, granizo${code >= 96 ? ', granizo intenso' : ''} y ráfagas repentinas.`,
+    body:`Tormenta eléctrica <b>en curso</b> (${precipNow.toFixed(1)} mm/h medidos). Riesgo de rayos, granizo${code >= 96 ? ', granizo intenso' : ''} y ráfagas repentinas.`,
     recs:['⚡ No te refugies bajo árboles aislados','🏊 Sal del agua inmediatamente','📱 Desconecta equipos electrónicos','🚶 Agachate si estás al aire libre sin refugio','🏠 Espera 30 min tras el último trueno antes de salir']
+  });
+  else if (code >= 95) alerts.push({
+    level:'yellow', icon:'⛈️',
+    title:'Posible tormenta eléctrica (modelo)',
+    sublevel:'AMARILLO · SIN CONFIRMAR',
+    body:`El modelo indica condiciones de tormenta, pero <b>no hay lluvia medida en este momento</b> y no hay aviso oficial DMH confirmado. Vigilar el cielo y los avisos oficiales.`,
+    recs:['📻 Consulta los avisos oficiales del DMH','🌩️ Si oyes truenos, busca refugio','📱 Monitorea el radar en Notilea']
   });
   else if (code >= 80) alerts.push({
     level:'orange', icon:'🌧️',
@@ -2209,7 +2204,6 @@ function renderCurrent() {
   const now = new Date();
   const uv = Math.round(c.uv_index || 0);
   const uvPct = Math.min(uv/12*100,100);
-  const wCode = fixWeatherCode(c.weather_code, c.rain || 0);
   document.getElementById('current-content').innerHTML = `
     ${alertsHtml}
     <div class="card">
@@ -2218,9 +2212,9 @@ function renderCurrent() {
           <div class="current-loc">📍 ${state.locationName}</div>
           <div class="current-time">${now.toLocaleDateString('es-PY',{weekday:'long',day:'numeric',month:'long'})} · ${now.toLocaleTimeString('es-PY',{hour:'2-digit',minute:'2-digit'})}</div>
           <div class="current-temp">${Math.round(c.temperature_2m)}°</div>
-          <div class="current-desc">${wmoIcon(wCode, c.is_day)} ${wmoDesc(wCode, c.precipitation_probability)}</div>
+          <div class="current-desc">${wmoIcon(c.weather_code)} ${wmoDesc(c.weather_code)}</div>
         </div>
-        <div class="current-icon">${wmoIcon(wCode, c.is_day)}</div>
+        <div class="current-icon">${wmoIcon(c.weather_code)}</div>
       </div>
       <div class="grid2">
         <div class="metric"><div class="metric-icon">🌡️</div><div class="metric-label">Sensación</div><div class="metric-value">${Math.round(c.apparent_temperature)}°C</div></div>
@@ -2407,7 +2401,7 @@ function renderHourly() {
       <div class="hour-card" style="${isNow?'border-color:var(--accent);background:rgba(0,198,255,0.1)':''}">
         <div class="hour-time" style="${isNow?'color:var(--accent)':''}">${i===0?'Ahora':hour}</div>
         <div style="font-size:9px;color:var(--muted)">${day}</div>
-        <div class="hour-icon">${wmoIcon(fixWeatherCode(state.hourly.weather_code[i], (state.hourly.precipitation||[])[i] || 0), (state.hourly.is_day||[])[i])}</div>
+        <div class="hour-icon">${wmoIcon(state.hourly.weather_code[i])}</div>
         <div class="hour-temp">${Math.round(state.hourly.temperature_2m[i])}°</div>
         <div class="hour-rain">💧${state.hourly.precipitation_probability[i]||0}%</div>
       </div>`);
@@ -2803,7 +2797,7 @@ function generarNoticiaLocal() {
   const maxWeek = f ? Math.round(Math.max(...f.temperature_2m_max.slice(0,7))) : temp+3;
   const minWeek = f ? Math.round(Math.min(...f.temperature_2m_min.slice(0,7))) : temp-5;
   const rainDays = f ? f.precipitation_probability_max.slice(0,7).filter(p=>p>50).length : 0;
-  const nivel = c.weather_code >= 95 ? 'ALERTA' : c.weather_code >= 80 ? 'PRECAUCION' : 'NORMAL';
+  const nivel = (c.weather_code >= 95 && (c.precipitation ?? c.rain ?? 0) >= 1) ? 'ALERTA' : c.weather_code >= 95 ? 'PRECAUCION' : c.weather_code >= 80 ? 'PRECAUCION' : 'NORMAL';
 
   return {
     titulo: `${desc} en Paraguay — ${temp}°C con ${c.relative_humidity_2m}% de humedad`,
@@ -3427,7 +3421,7 @@ async function checkWeatherForAlerts() {
         const cuando = horasAdelante === 1 ? 'en 1 hora' : `en ${horasAdelante} horas`;
 
         // Tormenta eléctrica próxima (WMO 95-99)
-        if (hCode >= 95 && !currentAlerts.find(a => a.tag === 'storm-upcoming')) {
+        if (hCode >= 95 && (hRain >= 50 || hPrecip >= 1) && !currentAlerts.find(a => a.tag === 'storm-upcoming')) {
           upcomingAlerts.push({
             title: `⛈️ TORMENTA ELÉCTRICA — ${loc} (${cuando})`,
             body: `Se aproxima tormenta eléctrica${hCode >= 96 ? ' con granizo' : ''}. Prepara techo, asegura objetos y planifica refugio.`,
@@ -5492,59 +5486,25 @@ function toggleLightningLayer() {
 }
 
 // =============================================
-// IMAGEN OFICIAL NOAA/NESDIS — sector "Sudamérica Sur" (ssa), banda 13,
-// recortada para mostrar SOLO Paraguay.
-// No es una capa de Leaflet georreferenciada: es la imagen fija que publica
-// NOAA. El recorte se logra posicionando la imagen completa dentro de un
-// marco con CSS en porcentajes (ver noaaLayoutImage): no depende del tamaño
-// natural de la imagen ni de cuándo termina de cargar. Encima del marco se
-// puede hacer zoom/paneo tipo "foto" (pellizcar/arrastrar/doble toque) sin
-// salir del recorte de Paraguay.
+// IMAGEN OFICIAL NOAA/NESDIS — sector completo (Sudamérica Norte), banda 13.
+// No es una capa de Leaflet georreferenciada (es una imagen fija de sector
+// geoestacionario, sin coordenadas de esquina verificadas para anclarla al
+// mapa): se muestra con zoom/paneo tipo "foto" (pellizcar/arrastrar/doble
+// toque), no zoom cartográfico — no hay selección de coordenadas exacta,
+// solo acercar visualmente la imagen.
 // =============================================
-const NOAA_OFFICIAL_IMG_URL = 'https://cdn.star.nesdis.noaa.gov/GOES19/ABI/SECTOR/ssa/13/3600x2160.jpg';
+const NOAA_OFFICIAL_IMG_URL = 'https://cdn.star.nesdis.noaa.gov/GOES19/ABI/SECTOR/nsa/13/3600x2160.jpg';
 const NOAA_OFFICIAL_REFRESH_MS = 10 * 60 * 1000; // 10 minutos
-const NOAA_IMG_W = 3600, NOAA_IMG_H = 2160;      // proporción de la imagen completa del sector
-
-// Recorte de Paraguay dentro de la imagen completa, en fracciones 0–1:
-//   x, y = esquina superior izquierda del recorte; w, h = ancho y alto.
-// >>> ÚNICO lugar a tocar para reencuadrar Paraguay <<<
-// (más x = corre el recorte a la derecha, más y = lo baja, w/h = tamaño de la zona mostrada)
-const NOAA_PY_FRAME = { x: 0.414, y: 0.148, w: 0.151, h: 0.226 };
 
 let noaaOfficialInterval = null;
-
-// Coloca la imagen completa dentro del marco de modo que solo se vea NOAA_PY_FRAME.
-function noaaLayoutImage() {
-  const img = document.getElementById('noaa-official-img');
-  const vp = document.getElementById('noaa-official-viewport');
-  if (!img) return;
-  const F = NOAA_PY_FRAME;
-  img.style.width  = (100 / F.w) + '%';
-  img.style.height = (100 / F.h) + '%';
-  img.style.left   = (-F.x / F.w * 100) + '%';
-  img.style.top    = (-F.y / F.h * 100) + '%';
-  // el visor toma la proporción real del recorte (así Paraguay no se deforma)
-  if (vp) vp.style.aspectRatio = (F.w * NOAA_IMG_W) + ' / ' + (F.h * NOAA_IMG_H);
-}
 
 function refreshNoaaOfficialImage() {
   const img = document.getElementById('noaa-official-img');
   const t = document.getElementById('noaa-official-time');
   if (!img) return;
-  noaaLayoutImage();
-  // Se precarga aparte y solo se reemplaza si llegó bien: si NOAA falla un
-  // momento, queda la última imagen buena en vez de una imagen rota.
-  const url = NOAA_OFFICIAL_IMG_URL + '?t=' + Date.now();
-  const loader = new Image();
-  loader.onload = () => {
-    img.src = url;
-    if (t) t.textContent = new Date().toLocaleTimeString('es-PY',{hour:'2-digit',minute:'2-digit'});
-  };
-  loader.onerror = () => {
-    if (t && !img.getAttribute('src')) t.textContent = 'no disponible';
-  };
-  loader.src = url;
-  noaaZoomReset(); // vuelve al encuadre completo de Paraguay
+  img.src = NOAA_OFFICIAL_IMG_URL + '?t=' + Date.now();
+  if (t) t.textContent = new Date().toLocaleTimeString('es-PY',{hour:'2-digit',minute:'2-digit'});
+  noaaZoomReset(); // encuadre inicial centrado en Paraguay (se calcula al instante, sin esperar a que cargue la imagen)
 }
 
 function toggleNoaaOfficialImage() {
@@ -5557,37 +5517,49 @@ function toggleNoaaOfficialImage() {
     refreshNoaaOfficialImage();
     if (!noaaOfficialInterval) noaaOfficialInterval = setInterval(refreshNoaaOfficialImage, NOAA_OFFICIAL_REFRESH_MS);
     initNoaaZoomPan();
+    // Si justo en este instante el contenedor todavía medía 0px de ancho
+    // (recién se está por volver visible), noaaZoomReset() se resetea sin
+    // zoom como resguardo. Reintentamos un par de veces con margen, una vez
+    // que el layout ya se asentó, para no quedar pegados en la vista sin acercar.
+    setTimeout(noaaZoomReset, 60);
+    setTimeout(noaaZoomReset, 250);
   } else if (noaaOfficialInterval) {
     clearInterval(noaaOfficialInterval); noaaOfficialInterval = null;
   }
 }
 
-// ---- Zoom/paneo tipo foto sobre el marco de Paraguay (pellizcar, arrastrar, doble toque) ----
-// El transform se aplica al MARCO (noaa-official-frame), que mide lo mismo que el
-// visor: por eso el paneo nunca puede salirse del recorte de Paraguay.
+// ---- Zoom/paneo tipo foto para la imagen NOAA (pellizcar, arrastrar, doble toque) ----
+// El encuadre inicial en Paraguay se calcula con transform (translate+scale)
+// usando SOLO el tamaño del contenedor (vp.clientWidth/clientHeight), que
+// está disponible al instante por CSS — no depende de que la imagen termine
+// de cargar ni de su tamaño natural, que era la causa de que fallara antes.
 let noaaZoomState = { scale: 1, x: 0, y: 0 };
 let noaaZoomInited = false;
 
 function noaaApplyTransform() {
-  const fr = document.getElementById('noaa-official-frame');
-  if (!fr) return;
+  const img = document.getElementById('noaa-official-img');
+  if (!img) return;
   const s = noaaZoomState;
-  fr.style.transform = `translate(${s.x}px, ${s.y}px) scale(${s.scale})`;
+  img.style.transform = `translate(${s.x}px, ${s.y}px) scale(${s.scale})`;
 }
 
 function noaaClampPan() {
   const vp = document.getElementById('noaa-official-viewport');
-  if (!vp) return;
+  const img = document.getElementById('noaa-official-img');
+  if (!vp || !img) return;
   const s = noaaZoomState;
+  // Con object-fit:cover, la imagen ya ocupa exactamente el viewport a
+  // escala 1 (antes de aplicar el transform), así que estas son las
+  // dimensiones base correctas para el recorte.
   const w = vp.clientWidth * s.scale, h = vp.clientHeight * s.scale;
   const minX = Math.min(0, vp.clientWidth - w), minY = Math.min(0, vp.clientHeight - h);
   s.x = Math.max(minX, Math.min(0, s.x));
   s.y = Math.max(minY, Math.min(0, s.y));
 }
 
-// Hace zoom manteniendo fijo el punto (ax, ay) del visor — así acercar
+// Hace zoom manteniendo fijo el punto (ax, ay) del viewport — así acercar
 // desde el botón +/- o con doble toque amplía lo que se está mirando, no la
-// esquina superior izquierda.
+// esquina superior izquierda de la imagen.
 function noaaZoomToward(ax, ay, newScale) {
   const s = noaaZoomState;
   newScale = Math.max(1, Math.min(6, newScale));
@@ -5606,9 +5578,33 @@ function noaaZoomStep(factor) {
   noaaZoomToward(cx, cy, noaaZoomState.scale * factor);
 }
 
-// Vista inicial = recorte completo de Paraguay (escala 1, sin desplazamiento).
-function noaaZoomReset() {
-  noaaZoomState = { scale: 1, x: 0, y: 0 };
+// Posición aproximada (estimada a ojo, no calibrada con coordenadas reales)
+// de Paraguay dentro del sector "nsa" — se usa para centrar la vista por
+// defecto. Se calcula solo con el tamaño del contenedor (siempre disponible
+// al instante por CSS), sin depender de que la imagen termine de cargar.
+const NOAA_PARAGUAY_FRAC = { x: 0.40, y: 0.62 };
+const NOAA_DEFAULT_SCALE = 2.6;
+
+function noaaZoomReset(intentos = 0) {
+  const vp = document.getElementById('noaa-official-viewport');
+  // Si el contenedor todavía no tiene tamaño (0px) — por ejemplo porque el
+  // panel se está mostrando justo en este instante y el navegador no
+  // terminó de calcular el layout — reintentamos en el próximo cuadro en
+  // vez de resignarnos a mostrar la imagen sin zoom para siempre.
+  if ((!vp || !vp.clientWidth) && intentos < 20) {
+    requestAnimationFrame(() => noaaZoomReset(intentos + 1));
+    return;
+  }
+  if (!vp || !vp.clientWidth) { noaaZoomState = { scale: 1, x: 0, y: 0 }; noaaApplyTransform(); return; }
+  const s = NOAA_DEFAULT_SCALE;
+  const targetX = NOAA_PARAGUAY_FRAC.x * vp.clientWidth;
+  const targetY = NOAA_PARAGUAY_FRAC.y * vp.clientHeight;
+  noaaZoomState = {
+    scale: s,
+    x: vp.clientWidth / 2 - targetX * s,
+    y: vp.clientHeight / 2 - targetY * s,
+  };
+  noaaClampPan();
   noaaApplyTransform();
 }
 
@@ -5966,7 +5962,7 @@ async function fetchTapWeather(lat, lng) {
 
   try {
     const url = `https://api.open-meteo.com/v1/forecast?latitude=${lat.toFixed(4)}&longitude=${lng.toFixed(4)}`
-      + `&current=temperature_2m,apparent_temperature,relative_humidity_2m,weather_code,wind_speed_10m,precipitation_probability,precipitation,cloud_cover,is_day`
+      + `&current=temperature_2m,apparent_temperature,relative_humidity_2m,weather_code,wind_speed_10m,precipitation_probability,precipitation,cloud_cover`
       + `&timezone=America%2FAsuncion`;
     const r = await fetch(url);
     const d = await r.json();
@@ -6014,7 +6010,7 @@ async function fetchTapWeather(lat, lng) {
     content.innerHTML = `
       <div style="display:grid;grid-template-columns:1fr 1fr;gap:8px">
         <div class="metric"><div class="metric-label">📍 Lugar</div><div style="font-size:12px;font-weight:600">${locName}</div></div>
-        <div class="metric"><div class="metric-label">Condición</div><div class="metric-value">${wmoIcon(weatherCode, c.is_day)} ${wmoDesc(weatherCode, c.precipitation_probability)}</div></div>
+        <div class="metric"><div class="metric-label">Condición</div><div class="metric-value">${wmoIcon(weatherCode)} ${wmoDesc(weatherCode, c.precipitation_probability)}</div></div>
         <div class="metric"><div class="metric-label">🌡 Temperatura</div><div class="metric-value">${Math.round(c.temperature_2m)}°C</div></div>
         <div class="metric"><div class="metric-label">💧 Humedad</div><div class="metric-value">${c.relative_humidity_2m}%</div></div>
         <div class="metric"><div class="metric-label">💨 Viento</div><div class="metric-value">${Math.round(c.wind_speed_10m)} km/h</div></div>

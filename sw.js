@@ -2,7 +2,7 @@
 // Noticlima de Notilea — Service Worker v2.0
 // Verifica alertas DMH CAP + 20 ciudades PY aunque app cerrada
 // ============================================================
-const CACHE_NAME     = 'noticlima-v3';
+const CACHE_NAME     = 'noticlima-v5';
 const DMH_WORKER_URL = 'https://noticlima-dmh-worker.lromero585.workers.dev';
 
 // App-shell mínimo: sin esto, un WebAPK instalado que falla la
