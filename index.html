@@ -1486,7 +1486,7 @@ async function fetchWeather() {
     const url = `https://api.open-meteo.com/v1/forecast?`
       + `latitude=${state.lat}&longitude=${state.lon}`
       + `&current=temperature_2m,apparent_temperature,relative_humidity_2m,precipitation_probability,`
-      + `precipitation,rain,wind_speed_10m,wind_direction_10m,weather_code,cloud_cover,surface_pressure,`
+      + `rain,wind_speed_10m,wind_direction_10m,weather_code,cloud_cover,surface_pressure,`
       + `dew_point_2m,uv_index,visibility`
       + `&hourly=temperature_2m,apparent_temperature,precipitation_probability,precipitation,`
       + `weather_code,wind_speed_10m,wind_direction_10m,relative_humidity_2m,uv_index,cloud_cover`
@@ -1639,22 +1639,13 @@ function getSevereAlerts(current, hourly) {
     recs:['🏍️ Reducir velocidad en moto','🌳 Evitar zonas boscosas durante ráfagas','📌 Asegurar objetos ligeros en exteriores']
   });
 
-  // TORMENTA ELÉCTRICA — ROJA solo si el código de tormenta coincide con lluvia real medida (>=1 mm/h).
-  // Si el modelo marca tormenta pero no llueve ahora, es solo una posibilidad (naranja), no "en curso".
-  const precipNow = (current.precipitation ?? current.rain ?? 0);
-  if (code >= 95 && precipNow >= 1) alerts.push({
+  // TORMENTA ELÉCTRICA
+  if (code >= 95) alerts.push({
     level:'red', icon:'⛈️',
     title:'TORMENTA ELÉCTRICA ACTIVA',
     sublevel:'ROJO · INMEDIATO',
-    body:`Tormenta eléctrica <b>en curso</b> (${precipNow.toFixed(1)} mm/h medidos). Riesgo de rayos, granizo${code >= 96 ? ', granizo intenso' : ''} y ráfagas repentinas.`,
+    body:`Tormenta eléctrica <b>en curso o inminente</b>. Riesgo de rayos, granizo${code >= 96 ? ', granizo intenso' : ''} y ráfagas repentinas.`,
     recs:['⚡ No te refugies bajo árboles aislados','🏊 Sal del agua inmediatamente','📱 Desconecta equipos electrónicos','🚶 Agachate si estás al aire libre sin refugio','🏠 Espera 30 min tras el último trueno antes de salir']
-  });
-  else if (code >= 95) alerts.push({
-    level:'yellow', icon:'⛈️',
-    title:'Posible tormenta eléctrica (modelo)',
-    sublevel:'AMARILLO · SIN CONFIRMAR',
-    body:`El modelo indica condiciones de tormenta, pero <b>no hay lluvia medida en este momento</b> y no hay aviso oficial DMH confirmado. Vigilar el cielo y los avisos oficiales.`,
-    recs:['📻 Consulta los avisos oficiales del DMH','🌩️ Si oyes truenos, busca refugio','📱 Monitorea el radar en Notilea']
   });
   else if (code >= 80) alerts.push({
     level:'orange', icon:'🌧️',
@@ -2797,7 +2788,7 @@ function generarNoticiaLocal() {
   const maxWeek = f ? Math.round(Math.max(...f.temperature_2m_max.slice(0,7))) : temp+3;
   const minWeek = f ? Math.round(Math.min(...f.temperature_2m_min.slice(0,7))) : temp-5;
   const rainDays = f ? f.precipitation_probability_max.slice(0,7).filter(p=>p>50).length : 0;
-  const nivel = (c.weather_code >= 95 && (c.precipitation ?? c.rain ?? 0) >= 1) ? 'ALERTA' : c.weather_code >= 95 ? 'PRECAUCION' : c.weather_code >= 80 ? 'PRECAUCION' : 'NORMAL';
+  const nivel = c.weather_code >= 95 ? 'ALERTA' : c.weather_code >= 80 ? 'PRECAUCION' : 'NORMAL';
 
   return {
     titulo: `${desc} en Paraguay — ${temp}°C con ${c.relative_humidity_2m}% de humedad`,
@@ -3421,7 +3412,7 @@ async function checkWeatherForAlerts() {
         const cuando = horasAdelante === 1 ? 'en 1 hora' : `en ${horasAdelante} horas`;
 
         // Tormenta eléctrica próxima (WMO 95-99)
-        if (hCode >= 95 && (hRain >= 50 || hPrecip >= 1) && !currentAlerts.find(a => a.tag === 'storm-upcoming')) {
+        if (hCode >= 95 && !currentAlerts.find(a => a.tag === 'storm-upcoming')) {
           upcomingAlerts.push({
             title: `⛈️ TORMENTA ELÉCTRICA — ${loc} (${cuando})`,
             body: `Se aproxima tormenta eléctrica${hCode >= 96 ? ' con granizo' : ''}. Prepara techo, asegura objetos y planifica refugio.`,
