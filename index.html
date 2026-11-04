@@ -5574,6 +5574,11 @@ function initRadarMap() {
   // por defecto — la capa de IEM (gris) queda como opción secundaria, ya que
   // NOAA tiene la curva de color correcta y coincide con el visor oficial.
   toggleNoaaOfficialImage();
+
+  // El sector NOAA "nsa" (Sudamérica del Norte) termina al sur del Chaco y no alcanza a mostrar Paraguay
+  // completo. La capa GOES-19 georreferenciada se activa también por defecto: el mapa de abajo queda
+  // centrado en Paraguay con la imagen satelital encima (se puede apagar desde el panel de capas).
+  if (!goes19Active) toggleGoes19Layer();
 }
 
 // Carga los timestamps reales del radar de lluvia RainViewer
@@ -5799,6 +5804,7 @@ function toggleNoaaOfficialImage() {
 // de cargar ni de su tamaño natural, que era la causa de que fallara antes.
 let noaaZoomState = { scale: 1, x: 0, y: 0 };
 let noaaZoomInited = false;
+let noaaPendingReset = false; // el encuadre en Paraguay quedó pendiente porque el panel estaba oculto (0 px)
 
 function noaaApplyTransform() {
   const img = document.getElementById('noaa-official-img');
@@ -5859,7 +5865,11 @@ function noaaZoomReset(intentos = 0) {
     requestAnimationFrame(() => noaaZoomReset(intentos + 1));
     return;
   }
-  if (!vp || !vp.clientWidth) { noaaZoomState = { scale: 1, x: 0, y: 0 }; noaaApplyTransform(); return; }
+  // Panel oculto (otra pestaña abierta, p. ej. cuando corre el refresco de 10 min): NO se deja el sector
+  // completo sin zoom para siempre; se marca como pendiente y se encuadra Paraguay apenas el panel
+  // vuelva a tener tamaño (ver ResizeObserver en initNoaaZoomPan).
+  if (!vp || !vp.clientWidth) { noaaPendingReset = true; return; }
+  noaaPendingReset = false;
   const s = NOAA_DEFAULT_SCALE;
   const targetX = NOAA_PARAGUAY_FRAC.x * vp.clientWidth;
   const targetY = NOAA_PARAGUAY_FRAC.y * vp.clientHeight;
@@ -5877,6 +5887,7 @@ function initNoaaZoomPan() {
   noaaZoomInited = true;
   const vp = document.getElementById('noaa-official-viewport');
   if (!vp) return;
+  if (window.ResizeObserver) new ResizeObserver(() => { if (noaaPendingReset && vp.clientWidth) noaaZoomReset(); }).observe(vp);
 
   let pointers = new Map();
   let startDist = 0, startScale = 1;
