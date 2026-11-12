@@ -1489,7 +1489,7 @@ async function fetchWeather() {
       + `precipitation,rain,wind_speed_10m,wind_gusts_10m,wind_direction_10m,weather_code,cloud_cover,surface_pressure,`
       + `dew_point_2m,uv_index,visibility`
       + `&hourly=temperature_2m,apparent_temperature,precipitation_probability,precipitation,`
-      + `weather_code,wind_speed_10m,wind_gusts_10m,wind_direction_10m,relative_humidity_2m,uv_index,cloud_cover,cape,lifted_index`
+      + `weather_code,wind_speed_10m,wind_gusts_10m,wind_direction_10m,relative_humidity_2m,uv_index,cloud_cover,cape,lifted_index,convective_inhibition`
       + `&daily=weather_code,temperature_2m_max,temperature_2m_min,precipitation_sum,`
       + `precipitation_probability_max,wind_speed_10m_max,wind_gusts_10m_max,wind_direction_10m_dominant,`
       + `uv_index_max,sunrise,sunset`
@@ -1501,7 +1501,10 @@ async function fetchWeather() {
     // AbortController: cancelar si tarda mas de 12 segundos
     const controller = new AbortController();
     const timer = setTimeout(() => controller.abort(), 12000);
-    const resp = await fetch(url, { signal: controller.signal });
+    let resp = await fetch(url, { signal: controller.signal });
+    if (!resp.ok && url.includes(',convective_inhibition')) {   // variable opcional: reintento sin ella
+      resp = await fetch(url.replace(',convective_inhibition', ''), { signal: controller.signal });
+    }
     clearTimeout(timer);
 
     const data = await resp.json();
@@ -1714,32 +1717,61 @@ function wxHour(i) {
 
 // Interpretación de un DÍA: combina el código diario con las 24 horas de ese día
 // (el código diario de Open-Meteo es un único valor del modelo y puede omitir tormentas horarias).
+// Hora local actual de Asunción como {fecha:'YYYY-MM-DD', hora:0-23}
+function wxAhoraLocal() {
+  const p = new Intl.DateTimeFormat('en-CA', { timeZone: 'America/Asuncion', hourCycle: 'h23', year: 'numeric', month: '2-digit', day: '2-digit', hour: '2-digit' }).formatToParts(new Date(Date.now()));
+  const g = t => p.find(x => x.type === t).value;
+  return { fecha: g('year') + '-' + g('month') + '-' + g('day'), hora: +g('hour') };
+}
+
+// Interpretación de un DÍA: combina el código diario con las horas de ese día.
+//  · Para "hoy" solo cuentan las horas que aún no pasaron (lo ya ocurrido no es pronóstico).
+//  · El ambiente convectivo exige CAPE alto EN horas con lluvia del modelo y sin freno fuerte (CIN);
+//    un CAPE alto solo (p. ej. al mediodía con cielo despejado) NO se reporta como inestabilidad.
 function wxDay(i) {
   const d = state.forecast, h = state.hourly;
   const date = d.time[i];
-  let worst = Number(d.weather_code[i]) || 0, thunderH = 0, hailH = 0, capeMax = 0, liMin = null, gustMax = (d.wind_gusts_10m_max || [])[i] || 0, precipMaxH = 0;
-  if (h && h.time) {
-    for (let k = 0; k < h.time.length; k++) {
-      if (!String(h.time[k]).startsWith(date)) continue;
-      const p = (h.precipitation || [])[k] || 0;
-      const c = wxEffectiveCode((h.weather_code || [])[k] || 0, p);
-      if (wxRank(c) > wxRank(worst)) worst = c;
-      if (wxIsThunder(c)) thunderH++;
-      if (wxIsHail(c)) hailH++;
-      if (p > precipMaxH) precipMaxH = p;
-      const cp = (h.cape || [])[k]; if (cp != null && cp > capeMax) capeMax = cp;
-      const li = (h.lifted_index || [])[k]; if (li != null && (liMin === null || li < liMin)) liMin = li;
-      const g = (h.wind_gusts_10m || [])[k]; if (g != null && g > gustMax) gustMax = g;
-    }
+  const ahora = wxAhoraLocal();
+  const esHoy = date === ahora.fecha;
+  let desde = 0; // hora inicial considerada
+  if (esHoy) desde = ahora.hora;
+  const idx = [];
+  if (h && h.time) for (let k = 0; k < h.time.length; k++) {
+    if (!String(h.time[k]).startsWith(date)) continue;
+    if (esHoy && +String(h.time[k]).slice(11, 13) < desde) continue;
+    idx.push(k);
   }
-  const precipSum = (d.precipitation_sum || [])[i] || 0;
+  const usaHoras = idx.length > 0;
+  let worst = usaHoras && esHoy ? 0 : (Number(d.weather_code[i]) || 0);
+  let thunderH = 0, hailH = 0, capeMax = 0, gustMax = usaHoras && esHoy ? 0 : ((d.wind_gusts_10m_max || [])[i] || 0), precipMaxH = 0, precipHorasSum = 0;
+  let liMin = null, convCape = 0, probPico = 0, horaPico = null, ventanaIni = null, ventanaFin = null;
+  for (const k of idx) {
+    const p = (h.precipitation || [])[k] || 0;
+    const prob = (h.precipitation_probability || [])[k] || 0;
+    const hr = +String(h.time[k]).slice(11, 13);
+    const c = wxEffectiveCode((h.weather_code || [])[k] || 0, p);
+    if (wxRank(c) > wxRank(worst)) worst = c;
+    if (wxIsThunder(c)) thunderH++;
+    if (wxIsHail(c)) hailH++;
+    if (p > precipMaxH) precipMaxH = p;
+    precipHorasSum += p;
+    const cp = (h.cape || [])[k] || 0; if (cp > capeMax) capeMax = cp;
+    const li = (h.lifted_index || [])[k]; if (li != null && (liMin === null || li < liMin)) liMin = li;
+    const g = (h.wind_gusts_10m || [])[k]; if (g != null && g > gustMax) gustMax = g;
+    if (prob > probPico) { probPico = prob; horaPico = hr; }
+    if (p >= 0.2 || prob >= 50) { if (ventanaIni === null) ventanaIni = hr; ventanaFin = hr; }
+    // hora "convectiva": CAPE alto + lluvia del modelo + freno (CIN) débil o desconocido
+    const cin = (h.convective_inhibition || [])[k];
+    if (cp >= 1000 && (p >= 0.2 || prob >= 60) && (cin == null || cin > -100) && cp > convCape) convCape = cp;
+  }
+  const precipSum = esHoy && usaHoras ? precipHorasSum : ((d.precipitation_sum || [])[i] || 0);
   worst = wxEffectiveCode(worst, precipSum >= 1 ? 1 : 0);
-  // Ambiente convectivo (CAPE): indicador de modelo, NO equivale a tormenta pronosticada
   let conv = null;
-  if (!thunderH && capeMax >= 1000 && (precipSum >= 5 || wxRank(worst) >= 45)) conv = capeMax >= 2500 ? 'muy inestable' : 'inestable';
+  if (!thunderH && convCape >= 1000) conv = convCape >= 2500 ? 'muy inestable' : 'inestable';
   return { code: worst, desc: wxDesc(worst), icon: wxIcon(worst),
-           probPrecip: (d.precipitation_probability_max || [])[i] || 0,
-           precipSum, precipMaxH, thunderH, hailH, gustMax, capeMax, liMin, conv, date };
+           probPrecip: usaHoras && esHoy ? probPico : ((d.precipitation_probability_max || [])[i] || 0),
+           precipSum, precipMaxH, thunderH, hailH, gustMax, capeMax: conv ? convCape : capeMax, liMin, conv, date, esHoy,
+           horaPico, ventanaIni, ventanaFin };
 }
 
 // ─────────── Avisos oficiales DMH (información independiente del modelo) ───────────
@@ -2731,9 +2763,12 @@ function renderDaily(days, containerId) {
     const wd = wxDay(i);                       // interpretación diaria (código diario + 24 h del día)
     const dmhDia = wxAvisosParaDia(d.time[i]); // avisos oficiales DMH vigentes ese día
     const gustTxt = wd.gustMax ? ` · ráf. ${Math.round(wd.gustMax)}` : '';
+    const ventana = (wd.ventanaIni !== null)
+      ? `<div style="font-size:10px;color:var(--muted);margin-top:2px" title="Horas en que el modelo ubica la lluvia (precipitación ≥0,2 mm o probabilidad ≥50 %). Sirve para comparar con lo observado.">⏱ Lluvia del modelo: ${wd.ventanaIni}–${wd.ventanaFin} h${wd.horaPico!==null?` · pico ${wd.probPrecip}% a las ${wd.horaPico} h`:''}</div>` : '';
     const extra = [
+      ventana,
       wd.thunderH ? `<div style="font-size:10px;color:#f97316;margin-top:2px" title="Horas con código de tormenta en el modelo (no es una probabilidad)">⚡ Tormenta eléctrica en el modelo: ${wd.thunderH} h${wd.hailH ? ' · con granizo' : ''}</div>` : '',
-      (!wd.thunderH && wd.conv) ? `<div style="font-size:10px;color:#f59e0b;margin-top:2px" title="CAPE ${Math.round(wd.capeMax)} J/kg. Indica ambiente favorable a tormentas; es un indicador de modelo, no un pronóstico de tormenta.">🌩️ Ambiente ${wd.conv} (CAPE ${Math.round(wd.capeMax)} J/kg)</div>` : '',
+      (!wd.thunderH && wd.conv) ? `<div style="font-size:10px;color:#f59e0b;margin-top:2px" title="CAPE ${Math.round(wd.capeMax)} J/kg en horas con lluvia del modelo y sin freno fuerte (CIN). Indica ambiente favorable a tormentas; es un indicador de modelo, no un pronóstico de tormenta ni garantiza que llueva.">🌩️ Ambiente ${wd.conv} en horas con lluvia (CAPE ${Math.round(wd.capeMax)} J/kg)</div>` : '',
       dmhDia.length ? `<div style="font-size:10px;color:#8b5cf6;margin-top:2px" title="${wxEsc(dmhDia[0].title||dmhDia[0].titulo||'')}">📡 Aviso oficial DMH vigente</div>` : ''
     ].join('');
     rows.push(`
@@ -2742,7 +2777,7 @@ function renderDaily(days, containerId) {
         <div class="day-icon">${wd.icon}</div>
         <div class="day-desc">
           <div style="font-size:11px">${wd.desc}</div>
-          <span class="rain-pill" title="Probabilidad de precipitación (no de tormenta)">💧 ${d.precipitation_probability_max[i]||0}%</span>
+          <span class="rain-pill" title="Probabilidad de precipitación (no de tormenta)${wd.esHoy?' · solo horas restantes de hoy':''}">💧 ${wd.probPrecip||0}%</span>
           <span style="font-size:10px;color:var(--muted);margin-left:4px">💨 ${Math.round(d.wind_speed_10m_max[i])}km/h${gustTxt}</span>
           ${extra}
         </div>
