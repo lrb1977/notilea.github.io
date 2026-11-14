@@ -1510,6 +1510,7 @@ async function fetchWeather() {
     const data = await resp.json();
     if (!data.current) throw new Error('Sin datos');
     state.weather = data.current;
+    state.forecastUpdatedAt = Date.now();
     state.hourly  = data.hourly;
     state.forecast = data.daily;
     renderCurrent();
@@ -1772,6 +1773,79 @@ function wxDay(i) {
            probPrecip: usaHoras && esHoy ? probPico : ((d.precipitation_probability_max || [])[i] || 0),
            precipSum, precipMaxH, thunderH, hailH, gustMax, capeMax: conv ? convCape : capeMax, liMin, conv, date, esHoy,
            horaPico, ventanaIni, ventanaFin };
+}
+
+// ─────────── Pronóstico actualizado del día (para el boletín) ───────────
+// Se calcula al mostrarse (no se guarda en el caché del boletín), solo con las horas que faltan de hoy.
+function wxPronosticoHoyHtml() {
+  const h = state.hourly, d = state.forecast;
+  if (!h || !h.time || !d || !d.time) return '';
+  const ahora = wxAhoraLocal();
+  const i0 = d.time.indexOf(ahora.fecha);
+  if (i0 < 0) return '';
+  const hh2 = n => String(n).padStart(2, '0');
+  const idxPorHora = {};
+  for (let k = 0; k < h.time.length; k++) {
+    const t = String(h.time[k]);
+    if (t.startsWith(ahora.fecha)) idxPorHora[+t.slice(11, 13)] = k;
+  }
+  const bloques = [['🌙', 'Madrugada', 0, 5], ['🌅', 'Mañana', 6, 11], ['☀️', 'Tarde', 12, 17], ['🌆', 'Noche', 18, 23]];
+  const filas = [];
+  let lluviaIni = null, lluviaFin = null, tormentaH = 0, granizoH = 0;
+  for (const [ico, nombre, ini, fin] of bloques) {
+    if (ahora.hora > fin) continue;
+    const desdeH = Math.max(ini, ahora.hora);
+    let worst = 0, tmin = null, tmax = null, probMax = 0, precip = 0, gust = 0, tH = 0, gH = 0, wIni = null, wFin = null;
+    for (let hr = desdeH; hr <= fin; hr++) {
+      const k = idxPorHora[hr]; if (k === undefined) continue;
+      const w = wxHour(k);
+      if (wxRank(w.code) > wxRank(worst)) worst = w.code;
+      const t = (h.temperature_2m || [])[k];
+      if (t != null) { if (tmin === null || t < tmin) tmin = t; if (tmax === null || t > tmax) tmax = t; }
+      if (w.prob > probMax) probMax = w.prob;
+      precip += w.precip;
+      if (w.gust != null && w.gust > gust) gust = w.gust;
+      if (wxIsThunder(w.code)) tH++;
+      if (wxIsHail(w.code)) gH++;
+      if (w.precip >= 0.2 || w.prob >= 50) { if (wIni === null) wIni = hr; wFin = hr; }
+    }
+    if (tmin === null && !worst && !probMax) continue;
+    tormentaH += tH; granizoH += gH;
+    if (wIni !== null) { if (lluviaIni === null) lluviaIni = wIni; lluviaFin = wFin; }
+    const parcial = desdeH > ini;
+    const rango = `${hh2(desdeH)}–${hh2(fin + 1 === 24 ? 24 : fin + 1)} h`;
+    const lineas = [];
+    lineas.push(`<span class="rain-pill" style="margin-right:4px" title="Probabilidad de precipitación (no de tormenta)">💧 ${probMax}%</span>` +
+      `<span style="font-size:10px;color:var(--muted)">${precip >= 0.1 ? precip.toFixed(1) + ' mm · ' : ''}${gust ? 'ráf. ' + Math.round(gust) + ' km/h' : ''}</span>`);
+    if (tH) lineas.push(`<div style="font-size:10px;color:#f97316;margin-top:2px">⚡ Tormenta eléctrica en el modelo: ${tH} h${gH ? ' · con granizo' : ''}</div>`);
+    filas.push(`<div style="display:flex;gap:10px;align-items:flex-start;padding:8px 0;border-bottom:1px solid var(--border)">
+      <div style="font-size:22px;width:30px;text-align:center">${wxIcon(worst)}</div>
+      <div style="flex:1;min-width:0">
+        <div style="font-size:12px;font-weight:700">${ico} ${nombre}${parcial ? ' (resto)' : ''} <span style="font-weight:400;color:var(--muted);font-size:10px">· ${rango}</span></div>
+        <div style="font-size:12px">${wxDesc(worst)}</div>
+        <div>${lineas.join('')}</div>
+      </div>
+      <div style="font-size:13px;font-weight:700;white-space:nowrap">${tmin === null ? '' : Math.round(tmin) + '° – ' + Math.round(tmax) + '°'}</div>
+    </div>`);
+  }
+  const actualizado = state.forecastUpdatedAt
+    ? new Date(state.forecastUpdatedAt).toLocaleTimeString('es-PY', { hour: '2-digit', minute: '2-digit', timeZone: 'America/Asuncion' }) : null;
+  let lectura;
+  if (!filas.length) lectura = 'Ya no quedan horas de hoy en el pronóstico. Consulta la pestaña 7 Días para mañana.';
+  else if (lluviaIni === null) lectura = 'El modelo no ubica lluvia en el resto del día (ni precipitación ≥0,2 mm ni probabilidad ≥50 %).';
+  else lectura = `El modelo ubica lluvia entre las ${hh2(lluviaIni)} y las ${hh2(lluviaFin + 1 === 24 ? 24 : lluviaFin + 1)} h.`;
+  if (tormentaH) lectura += ` Marca tormenta eléctrica en ${tormentaH} h${granizoH ? ' (con granizo en el modelo)' : ''}.`;
+  const dmh = wxAvisosParaDia(ahora.fecha);
+  const dmhHtml = dmh.length ? `<div style="font-size:11px;color:#8b5cf6;margin-top:6px">📡 Aviso oficial DMH vigente hoy: ${wxEsc(dmh[0].title || dmh[0].titulo || 'aviso meteorológico')}${dmh[0]._vtxt ? ' · ' + wxEsc(dmh[0]._vtxt) : ''} (fuente independiente del modelo)</div>` : '';
+  const tmaxD = (d.temperature_2m_max || [])[i0], tminD = (d.temperature_2m_min || [])[i0];
+  const sol = ((d.sunrise || [])[i0] && (d.sunset || [])[i0]) ? ` · ☀️ ${String(d.sunrise[i0]).slice(11, 16)} – ${String(d.sunset[i0]).slice(11, 16)}` : '';
+  return `<div class="noticia-seccion">🕐 Pronóstico actualizado para hoy${actualizado ? ` <span style="font-weight:400;font-size:10px;color:var(--muted)">· actualizado ${actualizado}</span>` : ''}</div>
+    <div class="noticia-cuerpo">
+      <p style="margin-bottom:4px">${lectura}</p>
+      ${filas.join('')}
+      <div style="font-size:10px;color:var(--muted);margin-top:6px">Día completo: máx ${tmaxD != null ? Math.round(tmaxD) : '–'}° · mín ${tminD != null ? Math.round(tminD) : '–'}°${sol} · Fuente: modelo Open-Meteo</div>
+      ${dmhHtml}
+    </div>`;
 }
 
 // ─────────── Avisos oficiales DMH (información independiente del modelo) ───────────
@@ -3162,6 +3236,8 @@ function renderNoticiaHTML(cached, fromCache) {
 
       <div class="noticia-seccion">🌡 Condiciones Actuales</div>
       <div class="noticia-cuerpo"><p>${n.condiciones_actuales}</p></div>
+
+      ${wxPronosticoHoyHtml()}
 
       <div class="noticia-seccion">📅 Tendencia Semanal</div>
       <div class="noticia-cuerpo"><p>${n.tendencia_semanal}</p></div>
