@@ -1522,6 +1522,7 @@ async function fetchWeather() {
     renderDaily(7,  'daily-content');
     renderDaily(15, 'daily15-content');
     wxCargarDMH(); // avisos oficiales DMH para Horas/Días (independientes del modelo)
+    rayosActualizar(); // rayos observados cerca (alerta de tormentas que el modelo no anticipó)
     if (document.getElementById('sec-mapa').classList.contains('active')) renderMapWeather();
   } catch(e) {
     const msg = e.name === 'AbortError'
@@ -1852,6 +1853,48 @@ function wxPronosticoHoyHtml() {
     </div>`;
 }
 
+// ─────────── Rayos OBSERVADOS cerca de tu ubicación (dato real, no pronóstico) ───────────
+// El modelo puede no anticipar una tormenta ya en curso. Esta alerta sale de descargas eléctricas
+// detectadas (Xweather/Vaisala vía el Worker propio) y solo se usa si el dato tiene <15 min.
+async function rayosActualizar() {
+  if (state.lat == null || state.lon == null || typeof DMH_WORKER_URL === 'undefined') return;
+  const antes = wxRayosAlerta() ? wxRayosAlerta().level : null;
+  try {
+    const ctl = new AbortController(); const tm = setTimeout(() => ctl.abort(), 8000);
+    const r = await fetch(`${DMH_WORKER_URL}/lightning-near?lat=${Number(state.lat).toFixed(3)}&lon=${Number(state.lon).toFixed(3)}&radius=80&minutes=30`, { signal: ctl.signal });
+    clearTimeout(tm);
+    const j = await r.json();
+    if (j && j.ok) state.rayos = { ...j, t: Date.now(), lat: state.lat, lon: state.lon };
+  } catch (e) { /* sin servicio de rayos: no se afirma ni se descarta nada */ }
+  const despues = wxRayosAlerta() ? wxRayosAlerta().level : null;
+  if (antes !== despues) wxRefrescarAlertas();
+}
+function wxRefrescarAlertas() {
+  try {
+    if (!state.weather) return;
+    renderAlertasBadge();
+    const act = id => { const e = document.getElementById(id); return e && e.classList.contains('active'); };
+    if (act('sec-alertas')) renderAlertas();
+    if (act('sec-actual')) renderCurrent();
+  } catch (e) {}
+}
+function wxRayosAlerta() {
+  const r = state.rayos;
+  if (!r || !r.ok || !(r.n > 0) || r.nearestKm == null) return null;
+  if (Date.now() - r.t > 15 * 60000) return null;                                   // dato viejo: no se usa
+  if (r.lat != null && state.lat != null && (Math.abs(r.lat - state.lat) > 0.05 || Math.abs(r.lon - state.lon) > 0.05)) return null; // otra ubicación
+  const d = r.nearestKm;
+  const cant = r.n >= r.limit ? r.limit + '+' : String(r.n);
+  const body = `${cant} descarga${r.n === 1 ? '' : 's'} eléctrica${r.n === 1 ? '' : 's'} detectada${r.n === 1 ? '' : 's'} en los últimos ${r.minutes} min dentro de ${r.radiusKm} km; la más cercana a <b>${d} km</b>`
+    + `${r.lastAgeMin != null ? ` (la última, hace ${r.lastAgeMin} min)` : ''}. Dato <b>observado</b> (Xweather/Vaisala), no pronóstico.`;
+  if (d <= 16) return { level: 'red', icon: '⛈️', title: 'TORMENTA ELÉCTRICA EN TU ZONA', sublevel: 'ROJO · OBSERVADA', body,
+    recs: ['🏠 Refúgiate en un edificio cerrado o dentro de un vehículo', '🌳 Aléjate de árboles aislados, campo abierto, agua y torres', '⏱️ Espera 30 min después del último trueno para salir', '🔌 Desconecta equipos electrónicos sensibles'] };
+  if (d <= 40) return { level: 'orange', icon: '🌩️', title: 'Tormenta eléctrica cercana', sublevel: 'NARANJA · OBSERVADA', body,
+    recs: ['📍 La tormenta puede llegar a tu zona: ten un refugio a mano', '🚫 Evita actividades al aire libre y en el agua', '📱 Sigue el mapa de rayos y los avisos de la DMH'] };
+  return { level: 'yellow', icon: '⚡', title: 'Actividad eléctrica en la región', sublevel: 'AMARILLO · OBSERVADA', body,
+    recs: ['👀 Vigila el cielo y la evolución en el mapa de rayos', '📻 Consulta los avisos oficiales de la DMH'] };
+}
+
 // ─────────── Avisos oficiales DMH (información independiente del modelo) ───────────
 const WX_CIUDADES = [
   ['Asunción',-25.2867,-57.6470,'Asunción'],['San Lorenzo',-25.3333,-57.5167,'Central'],['Concepción',-23.4,-57.4333,'Concepción'],
@@ -1949,6 +1992,7 @@ function wxRefrescarForecast() {
   try { renderHourly(); renderDaily(7, 'daily-content'); renderDaily(15, 'daily15-content'); } catch (e) {}
 }
 // ===== FIN MÓDULO WX =====
+setInterval(() => { try { rayosActualizar(); } catch (e) {} }, 5 * 60 * 1000); // rayos observados: cada 5 min
 
 function windDir(deg) {
   const dirs = ['N','NNE','NE','ENE','E','ESE','SE','SSE','S','SSO','SO','OSO','O','ONO','NO','NNO'];
@@ -1970,6 +2014,8 @@ function uvLabel(uv) {
 }
 function getSevereAlerts(current, hourly) {
   const alerts = [];
+  const ryObs = (typeof wxRayosAlerta === 'function') ? wxRayosAlerta() : null;   // rayos observados cerca
+  if (ryObs) alerts.push(ryObs);
   const wind = Math.round(current.wind_speed_10m);
   const temp = current.temperature_2m;
   const code = current.weather_code;
@@ -3761,6 +3807,7 @@ async function checkWeatherForAlerts() {
     const data = await resp.json();
     const c = data.current;
     if (!c) return;
+    await rayosActualizar();
 
     const loc = state.locationName.split(',')[0];
 
@@ -3847,6 +3894,12 @@ async function checkWeatherForAlerts() {
 
 function buildAlerts(c, loc) {
   const alerts = [];
+  const ryObs = (typeof wxRayosAlerta === 'function') ? wxRayosAlerta() : null;   // rayos observados cerca
+  if (ryObs && (ryObs.level === 'red' || ryObs.level === 'orange')) alerts.push({
+    title: (ryObs.level === 'red' ? '⛈️ TORMENTA ELÉCTRICA EN TU ZONA — ' : '🌩️ Tormenta eléctrica cercana — ') + loc,
+    body: `Rayos detectados a ${state.rayos.nearestKm} km en los últimos ${state.rayos.minutes} min (dato observado). ` + (ryObs.level === 'red' ? 'Busca refugio en un edificio cerrado.' : 'Podría llegar a tu zona.'),
+    level: ryObs.level === 'red' ? 'EXTREME' : 'SEVERE', tag: 'lightning-near', icon: ryObs.icon
+  });
   const code  = c.weather_code || 0;
   const wind  = c.wind_speed_10m || 0;
   const temp  = c.temperature_2m || 25;
