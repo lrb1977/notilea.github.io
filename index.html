@@ -1523,6 +1523,7 @@ async function fetchWeather() {
     renderDaily(15, 'daily15-content');
     wxCargarDMH(); // avisos oficiales DMH para Horas/Días (independientes del modelo)
     rayosActualizar(); // rayos observados cerca (alerta de tormentas que el modelo no anticipó)
+    obsActualizar();   // observación real (METAR) para corregir la condición actual
     if (document.getElementById('sec-mapa').classList.contains('active')) renderMapWeather();
   } catch(e) {
     const msg = e.name === 'AbortError'
@@ -1853,6 +1854,64 @@ function wxPronosticoHoyHtml() {
     </div>`;
 }
 
+// ─────────── Observación REAL más cercana (METAR de aeropuerto) ───────────
+// El modelo puede decir "despejado" mientras llueve. El METAR es una observación real, pero de la
+// estación (aeropuerto), no de tu punto: siempre se muestra la estación, la distancia y la hora.
+async function obsActualizar() {
+  if (state.lat == null || state.lon == null || typeof DMH_WORKER_URL === 'undefined') return;
+  const antes = wxCondicionActualSig();
+  try {
+    const ctl = new AbortController(); const tm = setTimeout(() => ctl.abort(), 9000);
+    const r = await fetch(`${DMH_WORKER_URL}/obs-near?lat=${Number(state.lat).toFixed(3)}&lon=${Number(state.lon).toFixed(3)}`, { signal: ctl.signal });
+    clearTimeout(tm);
+    const j = await r.json();
+    if (j && j.ok) state.obs = { ...j, t: Date.now(), lat: state.lat, lon: state.lon };
+  } catch (e) { /* sin servicio: se usa solo el modelo, sin inventar observaciones */ }
+  if (antes !== wxCondicionActualSig()) wxRefrescarAlertas();
+}
+function wxObsVigente() {
+  const o = state.obs;
+  if (!o || !o.ok || !o.hayObservacion) return null;
+  if (Date.now() - o.t > 20 * 60000) return null;                                              // consulta vieja
+  if (o.lat != null && state.lat != null && (Math.abs(o.lat - state.lat) > 0.05 || Math.abs(o.lon - state.lon) > 0.05)) return null;
+  const edad = (o.ageMin || 0) + Math.round((Date.now() - o.t) / 60000);
+  if (edad > 90 || o.distKm > 80) return null;                                                 // observación vieja o lejana
+  return { ...o, edadMin: edad };
+}
+// Código WMO equivalente SOLO si la estación reporta tormenta o precipitación (nunca se inventa lluvia)
+function wxObsCodigo(o) {
+  if (o.thunder) return o.hail ? 96 : 95;
+  const tab = { chubascos: { ligera: 80, moderada: 81, fuerte: 82 }, lluvia: { ligera: 61, moderada: 63, fuerte: 65 }, llovizna: { ligera: 51, moderada: 53, fuerte: 55 } };
+  return (o.precipTipo && tab[o.precipTipo]) ? (tab[o.precipTipo][o.intensidad] || null) : null;
+}
+function wxCondicionActual(c) {
+  const base = wxEffectiveCode(c.weather_code, c.precipitation || 0);
+  const o = wxObsVigente();
+  const oc = o ? wxObsCodigo(o) : null;
+  // La observación corrige al modelo solo si hay precipitación/tormenta observada, la estación está a <=40 km
+  // y el reporte tiene <=60 min, y es más grave que lo que dice el modelo.
+  if (o && oc !== null && o.distKm <= 40 && o.edadMin <= 60 && wxRank(oc) > wxRank(base)) return { code: oc, obs: o, override: true };
+  return { code: base, obs: o, override: false };
+}
+function wxCondicionActualSig() { const o = wxObsVigente(); return o ? [o.station, o.wxString, o.cover, o.distKm <= 40 && o.edadMin <= 60 ? 1 : 0].join('|') : ''; }
+function wxObsTexto(o) {
+  const partes = [];
+  if (o.thunder) partes.push('tormenta eléctrica' + (o.hail ? ' con granizo' : ''));
+  if (o.precipTipo) partes.push(o.precipTipo + ' ' + o.intensidad);
+  if (!partes.length && o.vicinityTS) partes.push('tormenta en las inmediaciones del aeropuerto');
+  if (!partes.length) {
+    const cob = { SKC: 'cielo despejado', CLR: 'cielo despejado', NSC: 'cielo despejado', NCD: 'cielo despejado', CAVOK: 'cielo despejado', FEW: 'poco nublado', SCT: 'parcialmente nublado', BKN: 'mayormente nublado', OVC: 'cielo cubierto', VV: 'cielo cubierto' };
+    partes.push(cob[o.cover] || 'sin precipitación reportada');
+  }
+  return partes.join(' · ');
+}
+function wxObsLineaHtml(override) {
+  const o = wxObsVigente();
+  if (!o) return '';
+  const nombre = wxEsc(o.name ? o.name.split(',')[0] : (o.station || 'estación'));
+  return `<div style="font-size:10px;color:var(--muted);margin-top:4px;line-height:1.35" title="${wxEsc(o.rawOb || '')}">🛫 Observado en ${nombre} (${wxEsc(o.station || '')}, a ${o.distKm} km · hace ${o.edadMin} min): ${wxEsc(wxObsTexto(o))}${o.tempC != null ? ' · ' + Math.round(o.tempC) + '°C' : ''}${override ? ' · <b style="color:#f59e0b">condición ajustada con esta observación</b>' : ''}</div>`;
+}
+
 // ─────────── Rayos OBSERVADOS cerca de tu ubicación (dato real, no pronóstico) ───────────
 // El modelo puede no anticipar una tormenta ya en curso. Esta alerta sale de descargas eléctricas
 // detectadas (Xweather/Vaisala vía el Worker propio) y solo se usa si el dato tiene <15 min.
@@ -1993,6 +2052,7 @@ function wxRefrescarForecast() {
 }
 // ===== FIN MÓDULO WX =====
 setInterval(() => { try { rayosActualizar(); } catch (e) {} }, 5 * 60 * 1000); // rayos observados: cada 5 min
+setInterval(() => { try { obsActualizar(); } catch (e) {} }, 10 * 60 * 1000); // observación METAR: cada 10 min
 
 function windDir(deg) {
   const dirs = ['N','NNE','NE','ENE','E','ESE','SE','SSE','S','SSO','SO','OSO','O','ONO','NO','NNO'];
@@ -2016,6 +2076,13 @@ function getSevereAlerts(current, hourly) {
   const alerts = [];
   const ryObs = (typeof wxRayosAlerta === 'function') ? wxRayosAlerta() : null;   // rayos observados cerca
   if (ryObs) alerts.push(ryObs);
+  const obE = (typeof wxObsVigente === 'function') ? wxObsVigente() : null;      // tormenta reportada por METAR cercano
+  if (obE && obE.thunder && obE.distKm <= 40 && obE.edadMin <= 60 && !(ryObs && ryObs.level === 'red')) alerts.push({
+    level: obE.distKm <= 16 ? 'red' : 'orange', icon: '⛈️', title: 'Tormenta eléctrica observada cerca',
+    sublevel: (obE.distKm <= 16 ? 'ROJO' : 'NARANJA') + ' · OBSERVADA',
+    body: `Reporte METAR de <b>${wxEsc(obE.station)}</b> (a ${obE.distKm} km, hace ${obE.edadMin} min): tormenta eléctrica${obE.hail ? ' con granizo' : ''}. Dato <b>observado</b> en la estación (NOAA), no pronóstico.`,
+    recs: ['🏠 Refúgiate en un edificio cerrado o dentro de un vehículo', '⏱️ Espera 30 min después del último trueno para salir', '📻 Consulta los avisos oficiales de la DMH']
+  });
   const wind = Math.round(current.wind_speed_10m);
   const temp = current.temperature_2m;
   const code = current.weather_code;
@@ -2621,9 +2688,10 @@ function renderCurrent() {
           <div class="current-loc">📍 ${state.locationName}</div>
           <div class="current-time">${now.toLocaleDateString('es-PY',{weekday:'long',day:'numeric',month:'long'})} · ${now.toLocaleTimeString('es-PY',{hour:'2-digit',minute:'2-digit'})}</div>
           <div class="current-temp">${Math.round(c.temperature_2m)}°</div>
-          <div class="current-desc">${wxIcon(wxEffectiveCode(c.weather_code, c.precipitation||0))} ${wxDesc(wxEffectiveCode(c.weather_code, c.precipitation||0))}</div>
+          <div class="current-desc">${wxIcon(wxCondicionActual(c).code)} ${wxDesc(wxCondicionActual(c).code)}</div>
+          ${wxObsLineaHtml(wxCondicionActual(c).override)}
         </div>
-        <div class="current-icon">${wxIcon(wxEffectiveCode(c.weather_code, c.precipitation||0))}</div>
+        <div class="current-icon">${wxIcon(wxCondicionActual(c).code)}</div>
       </div>
       <div class="grid2">
         <div class="metric"><div class="metric-icon">🌡️</div><div class="metric-label">Sensación</div><div class="metric-value">${Math.round(c.apparent_temperature)}°C</div></div>
